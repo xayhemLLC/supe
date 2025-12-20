@@ -1,0 +1,40 @@
+# Docker Compose for Supe
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  supe:
+    build: .
+    image: supe:latest
+    container_name: supe
+    volumes:
+      # Persist data
+      - supe_data:/app/data
+      # Mount workspace for file operations
+      - ./workspace:/workspace:rw
+    environment:
+      - TASC_DB=/app/data/tasc.sqlite
+    working_dir: /workspace
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    entrypoint: [ "sh", "-c" ]
+    command: [ "echo 'Supe ready - use: docker exec -it supe supe <command>' && tail -f /dev/null" ]
+
+  # Optional: Run with specific command
+  supe-runner:
+    build: .
+    image: supe:latest
+    profiles:
+      - runner
+    volumes:
+      - supe_data:/app/data
+      - ./workspace:/workspace:rw
+    working_dir: /workspace
+    # Override for one-shot execution
+    # docker-compose --profile runner run supe-runner prove "pytest"
+
+volumes:
+  supe_data:
+    driver: local

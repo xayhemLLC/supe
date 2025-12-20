@@ -1,0 +1,634 @@
+# TAScer Primitive Action Registry v1
+# This is the canonical source of truth for all actions.
+# 
+# Each action is orthogonal, composable, and permanent.
+# Intelligence emerges from composition, not hardcoded workflows.
+
+version: "1.0"
+
+# Metadata field definitions:
+# - mutates_state: true if action can change system state
+# - risk_level: low | medium | high
+# - permissions_required: list of required permissions
+# - evidence_produced: what evidence this action generates
+# - rollback_supported: whether action can be undone
+# - sandbox_only: must run in sandbox mode
+# - frontend_scope: dom | console | network | state (for browser/frontend actions)
+
+# =============================================================================
+# A. OBSERVATION ACTIONS (read-only, zero mutation)
+# =============================================================================
+
+actions:
+  # ---------------------------------------------------------------------------
+  # Terminal Operations
+  # ---------------------------------------------------------------------------
+  terminal.run:
+    id: "terminal.run"
+    name: "Run Terminal Command"
+    description: "Execute command and capture outputs deterministically."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "terminal"
+    evidence_produced:
+      - "stdout"
+      - "stderr"
+      - "exit_code"
+      - "duration_ms"
+      - "cwd"
+    rollback_supported: false
+    sandbox_only: false
+    
+  terminal.watch:
+    id: "terminal.watch"
+    name: "Watch Terminal Stream"
+    description: "Stream output from long-running command with completion hooks."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "terminal"
+    evidence_produced:
+      - "stdout_stream"
+      - "stderr_stream"
+      - "exit_code"
+      - "completion_mode"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # File Operations
+  # ---------------------------------------------------------------------------
+  file.read:
+    id: "file.read"
+    name: "Read File"
+    description: "Read file contents with optional preview and hash."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "file_read"
+    evidence_produced:
+      - "content"
+      - "sha256"
+      - "size"
+      - "mtime"
+    rollback_supported: false
+    sandbox_only: false
+    
+  file.stat:
+    id: "file.stat"
+    name: "Stat File"
+    description: "Get file metadata without reading content."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "file_read"
+    evidence_produced:
+      - "exists"
+      - "size"
+      - "mtime"
+      - "mode"
+      - "sha256"
+    rollback_supported: false
+    sandbox_only: false
+
+  dir.snapshot:
+    id: "dir.snapshot"
+    name: "Snapshot Directory"
+    description: "Capture file tree with hashes for before/after comparison."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "file_read"
+    evidence_produced:
+      - "file_tree"
+      - "hash_map"
+      - "total_files"
+      - "total_size"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Git Operations
+  # ---------------------------------------------------------------------------
+  git.status:
+    id: "git.status"
+    name: "Git Status"
+    description: "Get authoritative repository state."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "git"
+    evidence_produced:
+      - "branch"
+      - "commit"
+      - "dirty"
+      - "status_porcelain"
+    rollback_supported: false
+    sandbox_only: false
+    
+  git.diff:
+    id: "git.diff"
+    name: "Git Diff"
+    description: "Get full diff of changes."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "git"
+    evidence_produced:
+      - "diff"
+      - "stat"
+      - "files_changed"
+    rollback_supported: false
+    sandbox_only: false
+    
+  git.log:
+    id: "git.log"
+    name: "Git Log"
+    description: "Get commit history with configurable depth."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "git"
+    evidence_produced:
+      - "commits"
+      - "authors"
+      - "messages"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # HTTP Operations
+  # ---------------------------------------------------------------------------
+  http.request:
+    id: "http.request"
+    name: "HTTP Request"
+    description: "Make HTTP request and capture response."
+    category: "observation"
+    mutates_state: false
+    risk_level: "medium"
+    permissions_required:
+      - "network"
+    evidence_produced:
+      - "status_code"
+      - "headers"
+      - "body"
+      - "duration_ms"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Browser Operations (stubs for future)
+  # ---------------------------------------------------------------------------
+  browser.capture:
+    id: "browser.capture"
+    name: "Browser Capture"
+    description: "Capture browser state: screenshot, console, network, DOM."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "browser"
+    frontend_scope:
+      - "dom"
+      - "console"
+      - "network"
+    evidence_produced:
+      - "screenshot"
+      - "console_logs"
+      - "network_summary"
+      - "dom_snapshot"
+      - "url"
+      - "viewport"
+    rollback_supported: false
+    sandbox_only: false
+    
+  browser.evaluate:
+    id: "browser.evaluate"
+    name: "Browser Evaluate"
+    description: "Execute read-only JavaScript expressions in browser."
+    category: "observation"
+    mutates_state: false
+    risk_level: "medium"
+    permissions_required:
+      - "browser"
+    frontend_scope:
+      - "dom"
+      - "state"
+    evidence_produced:
+      - "result"
+      - "type"
+      - "error"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Frontend State Operations (stubs for future)
+  # ---------------------------------------------------------------------------
+  frontend.state.dump:
+    id: "frontend.state.dump"
+    name: "Frontend State Dump"
+    description: "Framework-agnostic snapshot of DOM + app state."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "browser"
+      - "frontend"
+    frontend_scope:
+      - "dom"
+      - "state"
+    evidence_produced:
+      - "dom_snapshot"
+      - "state_hash"
+      - "framework_detected"
+      - "component_tree"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Process Operations
+  # ---------------------------------------------------------------------------
+  process.list:
+    id: "process.list"
+    name: "List Processes"
+    description: "List running processes with metadata."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "process"
+    evidence_produced:
+      - "processes"
+      - "pids"
+      - "commands"
+      - "memory_usage"
+    rollback_supported: false
+    sandbox_only: false
+    
+  process.logs:
+    id: "process.logs"
+    name: "Process Logs"
+    description: "Capture output from running process."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "process"
+    evidence_produced:
+      - "stdout"
+      - "stderr"
+      - "pid"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Environment Operations
+  # ---------------------------------------------------------------------------
+  env.read:
+    id: "env.read"
+    name: "Read Environment"
+    description: "Read allow-listed environment variables only."
+    category: "observation"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required:
+      - "env"
+    evidence_produced:
+      - "variables"
+      - "allowlist_matched"
+    rollback_supported: false
+    sandbox_only: false
+
+# =============================================================================
+# B. MUTATION ACTIONS (state-changing, guarded)
+# =============================================================================
+
+  # ---------------------------------------------------------------------------
+  # File Mutations
+  # ---------------------------------------------------------------------------
+  file.write:
+    id: "file.write"
+    name: "Write File"
+    description: "Write content to file with checkpoint guard."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "file_write"
+    evidence_produced:
+      - "path"
+      - "sha256_before"
+      - "sha256_after"
+      - "bytes_written"
+    rollback_supported: true
+    sandbox_only: false
+    requires_checkpoint: true
+    
+  file.patch:
+    id: "file.patch"
+    name: "Patch File"
+    description: "Apply unified diff to file."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "file_write"
+    evidence_produced:
+      - "path"
+      - "hunks_applied"
+      - "sha256_before"
+      - "sha256_after"
+    rollback_supported: true
+    sandbox_only: false
+    requires_checkpoint: true
+    
+  file.delete:
+    id: "file.delete"
+    name: "Delete File"
+    description: "Delete file with safety checks."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "high"
+    permissions_required:
+      - "file_write"
+      - "file_delete"
+    evidence_produced:
+      - "path"
+      - "sha256_deleted"
+      - "size_deleted"
+    rollback_supported: true
+    sandbox_only: false
+    requires_checkpoint: true
+
+  # ---------------------------------------------------------------------------
+  # Process Mutations
+  # ---------------------------------------------------------------------------
+  process.start:
+    id: "process.start"
+    name: "Start Process"
+    description: "Start a tracked process."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "process"
+    evidence_produced:
+      - "pid"
+      - "command"
+      - "started_at"
+    rollback_supported: true
+    sandbox_only: false
+    
+  process.stop:
+    id: "process.stop"
+    name: "Stop Process"
+    description: "Stop a running process (graceful or force)."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "process"
+    evidence_produced:
+      - "pid"
+      - "exit_code"
+      - "stopped_at"
+    rollback_supported: false
+    sandbox_only: false
+    
+  process.restart:
+    id: "process.restart"
+    name: "Restart Process"
+    description: "Stop and restart a process."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "process"
+    evidence_produced:
+      - "old_pid"
+      - "new_pid"
+      - "restarted_at"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Environment Mutations
+  # ---------------------------------------------------------------------------
+  env.set:
+    id: "env.set"
+    name: "Set Environment"
+    description: "Set environment variable (ephemeral scope only)."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "low"
+    permissions_required:
+      - "env"
+    evidence_produced:
+      - "variable"
+      - "old_value"
+      - "new_value"
+    rollback_supported: true
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Git Mutations (gated)
+  # ---------------------------------------------------------------------------
+  git.checkout:
+    id: "git.checkout"
+    name: "Git Checkout"
+    description: "Checkout branch or commit."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "git"
+      - "git_write"
+    evidence_produced:
+      - "old_ref"
+      - "new_ref"
+      - "files_changed"
+    rollback_supported: true
+    sandbox_only: false
+    requires_checkpoint: true
+    
+  git.commit:
+    id: "git.commit"
+    name: "Git Commit"
+    description: "Create a commit (gated operation)."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "high"
+    permissions_required:
+      - "git"
+      - "git_write"
+      - "git_commit"
+    evidence_produced:
+      - "commit_sha"
+      - "message"
+      - "files_committed"
+    rollback_supported: true
+    sandbox_only: false
+    gated: true
+
+  # ---------------------------------------------------------------------------
+  # Browser Mutations (stubs for future)
+  # ---------------------------------------------------------------------------
+  browser.interact:
+    id: "browser.interact"
+    name: "Browser Interact"
+    description: "Click, type, or navigate in browser."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "browser"
+      - "browser_interact"
+    frontend_scope:
+      - "dom"
+      - "network"
+    evidence_produced:
+      - "action"
+      - "target"
+      - "screenshot_before"
+      - "screenshot_after"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Frontend Mutations (stubs for future)
+  # ---------------------------------------------------------------------------
+  frontend.inject:
+    id: "frontend.inject"
+    name: "Frontend Inject"
+    description: "Inject temporary dev instrumentation."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "browser"
+      - "frontend"
+      - "frontend_inject"
+    frontend_scope:
+      - "dom"
+      - "state"
+    evidence_produced:
+      - "injection_id"
+      - "script_hash"
+    rollback_supported: true
+    sandbox_only: true
+
+  # ---------------------------------------------------------------------------
+  # Checkpoint Operations
+  # ---------------------------------------------------------------------------
+  checkpoint.create:
+    id: "checkpoint.create"
+    name: "Create Checkpoint"
+    description: "Capture full state for rollback."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "low"
+    permissions_required:
+      - "checkpoint"
+    evidence_produced:
+      - "checkpoint_id"
+      - "git_state"
+      - "file_tree_hash"
+      - "process_list"
+      - "frontend_state_hash"
+    rollback_supported: false
+    sandbox_only: false
+    
+  checkpoint.rollback:
+    id: "checkpoint.rollback"
+    name: "Rollback Checkpoint"
+    description: "Restore state to checkpoint."
+    category: "mutation"
+    mutates_state: true
+    risk_level: "high"
+    permissions_required:
+      - "checkpoint"
+      - "file_write"
+      - "process"
+    evidence_produced:
+      - "checkpoint_id"
+      - "files_restored"
+      - "processes_stopped"
+    rollback_supported: false
+    sandbox_only: false
+
+# =============================================================================
+# C. CONTROL / META ACTIONS
+# =============================================================================
+
+  # ---------------------------------------------------------------------------
+  # Flow Control
+  # ---------------------------------------------------------------------------
+  sleep.wait:
+    id: "sleep.wait"
+    name: "Sleep Wait"
+    description: "Explicit wait with reason."
+    category: "control"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required: []
+    evidence_produced:
+      - "duration_ms"
+      - "reason"
+    rollback_supported: false
+    sandbox_only: false
+    
+  noop:
+    id: "noop"
+    name: "No Operation"
+    description: "Explicit no-operation for decision legibility."
+    category: "control"
+    mutates_state: false
+    risk_level: "low"
+    permissions_required: []
+    evidence_produced:
+      - "reason"
+    rollback_supported: false
+    sandbox_only: false
+
+  # ---------------------------------------------------------------------------
+  # Sandbox Operations (stubs for future)
+  # ---------------------------------------------------------------------------
+  sandbox.enter:
+    id: "sandbox.enter"
+    name: "Enter Sandbox"
+    description: "Enter sandbox mode - mutations are provisional."
+    category: "control"
+    mutates_state: true
+    risk_level: "low"
+    permissions_required:
+      - "sandbox"
+    evidence_produced:
+      - "sandbox_id"
+      - "baseline_hash"
+    rollback_supported: false
+    sandbox_only: false
+    
+  sandbox.exit:
+    id: "sandbox.exit"
+    name: "Exit Sandbox"
+    description: "Exit sandbox - commit or discard changes."
+    category: "control"
+    mutates_state: true
+    risk_level: "medium"
+    permissions_required:
+      - "sandbox"
+    evidence_produced:
+      - "sandbox_id"
+      - "action"  # commit | discard
+      - "files_affected"
+    rollback_supported: false
+    sandbox_only: false

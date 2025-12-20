@@ -1,0 +1,85 @@
+{
+  "id": "session_e19d108cd436",
+  "tasc_id": "demo_scraping",
+  "goal": "Demonstrate supe's browser scraping capabilities",
+  "model": "cdp_browser",
+  "agent_name": "supe_demo",
+  "status": "success",
+  "steps": [
+    {
+      "step_index": 0,
+      "mode": "plan",
+      "thought": "Setting up CDPBrowser for JS-heavy site scraping",
+      "subgoal": null,
+      "planned_actions": [
+        {
+          "type": "START_BROWSER",
+          "headless": true
+        }
+      ],
+      "executed_actions": [],
+      "results": [],
+      "critic_verdict": null,
+      "critic_notes": [],
+      "timestamp": "2025-12-19T23:29:01.697425",
+      "duration_ms": 0
+    },
+    {
+      "step_index": 1,
+      "mode": "execute",
+      "thought": "Scraping quotes from toscrape.com",
+      "subgoal": null,
+      "planned_actions": [],
+      "executed_actions": [
+        {
+          "type": "GET",
+          "url": "quotes.toscrape.com"
+        }
+      ],
+      "results": [
+        {
+          "quotes_found": 5
+        }
+      ],
+      "critic_verdict": null,
+      "critic_notes": [],
+      "timestamp": "2025-12-19T23:29:01.697597",
+      "duration_ms": 0
+    },
+    {
+      "step_index": 2,
+      "mode": "execute",
+      "thought": "Testing infinite scroll capability",
+      "subgoal": null,
+      "planned_actions": [],
+      "executed_actions": [
+        {
+          "type": "SCROLL_AND_GET",
+          "scroll_count": 3
+        }
+      ],
+      "results": [
+        {
+          "scroll_quotes": 40
+        }
+      ],
+      "critic_verdict": "accept",
+      "critic_notes": [],
+      "timestamp": "2025-12-19T23:29:01.697734",
+      "duration_ms": 0
+    }
+  ],
+  "constraints": [
+    "Only use public/legal data sources"
+  ],
+  "context_summary": "",
+  "created_at": "2025-12-19T23:29:01.696813",
+  "updated_at": "2025-12-19T23:29:01.697851",
+  "final_summary": "Successfully demonstrated CDPBrowser scraping capabilities",
+  "final_risks": [
+    "None - all data sources are public test sites"
+  ],
+  "final_follow_ups": [
+    "Try with more complex SPA applications"
+  ]
+}

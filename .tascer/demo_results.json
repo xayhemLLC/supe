@@ -1,0 +1,75 @@
+{
+  "cdp_scraping": {
+    "static_quotes": [
+      "\u201cThe world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.\u201d",
+      "\u201cIt is our choices, Harry, that show what we truly are, far more than our abilities.\u201d",
+      "\u201cThere are only two ways to live your life. One is as though nothing is a miracle. The other is as though everything is a miracle.\u201d",
+      "\u201cThe person, be it gentleman or lady, who has not pleasure in a good novel, must be intolerably stupid.\u201d",
+      "\u201cImperfection is beauty, madness is genius and it's better to be absolutely ridiculous than absolutely boring.\u201d"
+    ],
+    "scroll_count": 40,
+    "screenshot": ".tascer/screenshots/cdp_20251219_232901.png",
+    "hn_stories": [
+      "CSS Grid Lanes",
+      "Mistral OCR 3",
+      "Carolina Cloud \u2013 One third the cost of AWS for data science workloads",
+      "Garage \u2013 An S3 object store so reliable you can run it outside datacenters",
+      "TP-Link Tapo C200: Hardcoded Keys, Buffer Overflows and Privacy"
+    ],
+    "js_eval": {
+      "title": "Hacker News",
+      "url": "https://news.ycombinator.com/"
+    }
+  },
+  "tasc_plan": {
+    "id": "plan_bbeaabf5",
+    "title": "Scrape Public Data Demo",
+    "tasc_count": 3
+  },
+  "session": {
+    "id": "session_e19d108cd436",
+    "steps": 3,
+    "status": "success"
+  },
+  "citations": [
+    {
+      "source_tasc_id": "scrape_v2",
+      "cited_tasc_id": "scrape_v1",
+      "citation_type": "supersedes",
+      "description": "Improved version using CDPBrowser instead of Selenium",
+      "proof_hash": null
+    },
+    {
+      "source_tasc_id": "full_demo",
+      "cited_tasc_id": "scrape_v2",
+      "citation_type": "derived_from",
+      "description": "Demo built on scraping implementation",
+      "proof_hash": null
+    }
+  ],
+  "browser_session": {
+    "books": [
+      {
+        "title": "A Light in the Attic",
+        "price": "\u00c2\u00a351.77"
+      },
+      {
+        "title": "Tipping the Velvet",
+        "price": "\u00c2\u00a353.74"
+      },
+      {
+        "title": "Soumission",
+        "price": "\u00c2\u00a350.10"
+      },
+      {
+        "title": "Sharp Objects",
+        "price": "\u00c2\u00a347.82"
+      },
+      {
+        "title": "Sapiens: A Brief History of Humankind",
+        "price": "\u00c2\u00a354.23"
+      }
+    ],
+    "logged_in": true
+  }
+}

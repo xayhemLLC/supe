@@ -1,0 +1,6 @@
+#LWP-Cookies-2.0
+Set-Cookie3: WMF-Last-Access="20-Dec-2025"; path="/"; domain="en.wikipedia.org"; path_spec; secure; expires="2026-01-21 00:00:00Z"; HttpOnly=None; version=0
+Set-Cookie3: NetworkProbeLimit="0.001"; path="/"; domain="en.wikipedia.org"; path_spec; secure; expires="2025-12-20 04:34:13Z"; SameSite=None; version=0
+Set-Cookie3: WMF-Last-Access-Global="20-Dec-2025"; path="/"; domain=".wikipedia.org"; path_spec; domain_dot; secure; expires="2026-01-21 00:00:00Z"; HttpOnly=None; version=0
+Set-Cookie3: GeoIP="US:NJ:Summit:40.72:-74.36:v4"; path="/"; domain=".wikipedia.org"; path_spec; domain_dot; secure; discard; version=0
+Set-Cookie3: WMF-Uniq=ZDjZ8K7EiwkArsbKQRFM4gLPAAAAAFvd1PsgmUM1sUtHvK74yyR5bbOSB4KMgLhV; path="/"; domain=".wikipedia.org"; path_spec; domain_dot; secure; expires="2026-12-20 00:00:00Z"; HttpOnly=None; SameSite=None; version=0

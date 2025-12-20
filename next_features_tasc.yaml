@@ -1,0 +1,325 @@
+# Tasc tasks representing next features for Tasc OS project planning
+# Each entry uses the minimal Tasc schema (id, status, title, additional_notes,
+# testing_instructions, desired_outcome, dependencies). These tasks are high
+# level definitions that a planner agent can break down into concrete
+# implementation tickets.
+
+- id: FEATURE-DYNAMIC-SCHEDULING
+  status: draft
+  title: Implement dynamic scheduling and dependency management
+  additional_notes: |
+    Build a timeline and Gantt‑style view for Tasc OS that automatically
+    orders tasks based on their dependencies.  Support critical‑path
+    analysis, milestone tracking and scenario planning so that project
+    managers can adjust schedules when upstream tasks slip or scope
+    changes.  Use existing Tasc dependencies to derive ordering and
+    update schedules dynamically when status changes.
+  testing_instructions: |
+    1. Create several Tascs with dependency relationships (e.g., A
+       depends on B and C).  Use the dynamic scheduler to generate a
+       timeline and verify that tasks appear in the correct order.
+    2. Change the status of an upstream task (e.g., mark B as delayed)
+       and verify that the timeline updates accordingly.
+    3. Confirm that milestone dates and critical paths are computed
+       correctly.
+  desired_outcome: |
+    A scheduling engine that produces an up‑to‑date timeline for any
+    project based on Tasc dependencies, with interactive views for
+    milestones, critical paths and what‑if scenarios.
+  dependencies: []
+
+- id: FEATURE-RESOURCE-MANAGEMENT
+  status: draft
+  title: Add resource and agent management with load balancing
+  additional_notes: |
+    Introduce a resource management layer that allows project managers
+    to assign human team members or AI agents to each Tasc.  Track
+    availability, workloads and capacity.  Implement resource
+    levelling algorithms to avoid over‑ or under‑utilization and provide
+    dashboards showing who is working on what.
+  testing_instructions: |
+    1. Define several resources (humans and agents) with available
+       hours per week.
+    2. Assign multiple Tascs to these resources and verify that
+       workload calculations highlight overbooked or underutilized
+       resources.
+    3. Use the levelling function to balance workloads and verify that
+       assignments are adjusted while respecting dependencies.
+  desired_outcome: |
+    A resource management component that helps planners assign work
+    efficiently, display utilization metrics and integrate assignments
+    into the scheduling engine.
+  dependencies: []
+
+- id: FEATURE-AI-PLANNING
+  status: draft
+  title: Integrate AI‑driven planning and predictive analytics
+  additional_notes: |
+    Develop AI modules that analyse historical Tasc data to predict
+    completion times, cost overruns and potential bottlenecks.  Use
+    machine‑learning models or LLMs to suggest missing subtascs, detect
+    scope creep and recommend optimal resource allocations.  Provide a
+    risk‑scoring function that feeds into the scheduler and resource
+    manager.
+  testing_instructions: |
+    1. Train the predictive model on a set of past Tascs with known
+       durations and outcomes; evaluate forecasting accuracy on unseen
+       data.
+    2. Generate AI suggestions for new Tascs and verify that they
+       identify relevant subtascs and potential risks.
+    3. Confirm that risk scores adjust schedules and resource
+       assignments appropriately.
+  desired_outcome: |
+    A reliable AI planning component that surfaces insights and
+    predictions, enabling proactive decision‑making and risk
+    mitigation.
+  dependencies: []
+
+- id: FEATURE-DASHBOARDS
+  status: draft
+  title: Build centralized dashboards and custom reporting
+  additional_notes: |
+    Create a single source of truth dashboard that aggregates project
+    data from Tascs, AB memory and resource assignments.  Provide
+    customizable widgets for monitoring KPIs like earned value (EV),
+    cost performance index (CPI), schedule performance index (SPI),
+    burn rate and budget variance.  Include real‑time reporting and
+    export capabilities.
+  testing_instructions: |
+    1. Populate the system with sample projects and verify that the
+       dashboard displays accurate totals for task statuses, budgets and
+       resource utilization.
+    2. Customize a dashboard by adding and rearranging widgets; confirm
+       that the changes persist and render correctly.
+    3. Generate and export a report (PDF or CSV) and verify that
+       figures match the dashboard.
+  desired_outcome: |
+    A modular dashboard interface that gives stakeholders a holistic
+    view of project health and allows them to generate custom reports
+    quickly.
+  dependencies: []
+
+- id: FEATURE-COLLABORATION
+  status: draft
+  title: Implement real‑time collaboration and communication tools
+  additional_notes: |
+    Add chat and comment capabilities directly on Tasc objects.  Allow
+    file attachments, code snippets and design mockups.  Integrate
+    notifications and webhooks so that team members receive updates
+    through Slack, email or other channels.  Support inline
+    discussions and mention syntax to ensure decisions are recorded
+    within the Tasc context.
+  testing_instructions: |
+    1. Post comments on a Tasc and verify that notifications are
+       delivered to assigned users.
+    2. Upload attachments (documents, images) and ensure they are
+       stored in AB memory with proper metadata.
+    3. Test mention functionality (@user) and confirm that the
+       mentioned user receives a notification.
+  desired_outcome: |
+    A collaborative workspace where users and agents can discuss work
+    within Tascs, attach relevant files and stay informed of changes in
+    real time.
+  dependencies: []
+
+- id: FEATURE-BUDGET-MANAGEMENT
+  status: draft
+  title: Add budget and cost management features
+  additional_notes: |
+    Extend the Tasc schema to include budget fields (baseline budget,
+    actual cost, forecasts) and integrate these values into the
+    scheduling and reporting modules.  Compute earned value
+    management (EVM) metrics such as Estimate at Completion (EAC) and
+    cost variance (CV).  Trigger alerts when spending exceeds
+    thresholds or when forecasts exceed the budget at completion.
+  testing_instructions: |
+    1. Create Tascs with budget values and track cost accrual as
+       execution progresses; verify that EVM metrics update correctly.
+    2. Simulate a budget overrun and confirm that the system raises
+       alerts and updates forecasts.
+    3. Generate a budget report and ensure that calculations match
+       manual estimates.
+  desired_outcome: |
+    An integrated budgeting system that allows managers to track costs,
+    forecast overruns and maintain financial control over projects.
+  dependencies: []
+
+- id: FEATURE-RISK-MANAGEMENT
+  status: draft
+  title: Create proactive risk management with automated alerts
+  additional_notes: |
+    Implement a risk tracking module that lets users log risks with
+    probability and impact ratings.  Provide AI‑assisted risk
+    identification based on schedule changes, resource constraints and
+    historical patterns.  Automate escalations by creating mitigation
+    Tascs and sending alerts when high‑risk conditions are detected.
+  testing_instructions: |
+    1. Log a risk manually and verify that it appears in the risk
+       register with correct fields.
+    2. Simulate a delay or resource conflict and confirm that the AI
+       engine flags a risk and creates a mitigation Tasc.
+    3. Ensure that risk reports display probability, impact and
+       mitigation status for each risk.
+  desired_outcome: |
+    A risk management workflow that proactively surfaces issues and
+    triggers mitigation actions, reducing the likelihood of schedule
+    slippage or budget overruns.
+  dependencies: []
+
+- id: FEATURE-PORTFOLIO
+  status: draft
+  title: Support multi‑project portfolios with cross‑project dependencies
+  additional_notes: |
+    Enhance the Tasc OS to manage multiple projects simultaneously,
+    including cross‑project dependencies and portfolio dashboards.  Allow
+    managers to group related projects into portfolios and track
+    aggregate metrics (budget, schedule performance, resource
+    utilization) across all projects.
+  testing_instructions: |
+    1. Create multiple projects with interdependent Tascs and verify
+       that the scheduler honors cross‑project dependencies.
+    2. View the portfolio dashboard and confirm that metrics roll up
+       correctly across projects.
+    3. Test navigation between portfolio, project and Tasc views.
+  desired_outcome: |
+    A scalable portfolio layer that gives organizations visibility
+    across multiple projects and supports enterprise program
+    management.
+  dependencies: []
+
+- id: FEATURE-INTEGRATIONS
+  status: draft
+  title: Develop a framework for external integrations
+  additional_notes: |
+    Design an integration layer that connects Tasc OS with external
+    tools such as GitHub, Jira, Slack, CRM, ERP and calendar systems.
+    Provide adapters for synchronizing data (e.g., tasks to issues,
+    pull requests to Tasc status, budgets to finance systems) and
+    triggering events (e.g., status changes, new commits) within Tasc
+    OS.  Ensure that integration services respect security and
+    privacy requirements.
+  testing_instructions: |
+    1. Implement a dummy adapter for GitHub that updates a Tasc when
+       a pull request is merged; verify that the Tasc status changes.
+    2. Create a test Slack integration that sends notifications for
+       status updates and receives commands to create Tascs.
+    3. Validate that sensitive data is handled securely and that
+       integration failures are logged and retried.
+  desired_outcome: |
+    A modular integration framework that allows Tasc OS to exchange
+    information with third‑party systems, enabling end‑to‑end process
+    automation.
+  dependencies: []
+
+- id: FEATURE-SECURITY
+  status: draft
+  title: Implement robust security and access controls
+  additional_notes: |
+    Establish a security model for Tasc OS and AB memory.  Implement
+    encryption for data at rest and in transit, role‑based access
+    controls (RBAC) for Tasc objects and AB cards, and audit logging
+    for all operations.  Provide options for multi‑factor
+    authentication and integrate with identity providers (OAuth/OIDC).
+  testing_instructions: |
+    1. Attempt unauthorized access to Tasc data and confirm that the
+       system denies access and logs the event.
+    2. Test encryption of stored data by verifying that raw files in
+       AB storage are not readable without decryption keys.
+    3. Enable multi‑factor authentication and confirm that login
+       requires additional verification.
+  desired_outcome: |
+    A secure system that protects sensitive project data and meets
+    compliance requirements, without compromising usability.
+  dependencies: []
+
+- id: FEATURE-TEMPLATES
+  status: draft
+  title: Provide template and workflow library
+  additional_notes: |
+    Create a library of template Tasc sets for common project types
+    (e.g., software release, marketing campaign, research grant).  Each
+    template should define typical subtascs, dependencies, budgets and
+    resource assignments.  Allow users to clone and customize
+    templates when starting new projects.
+  testing_instructions: |
+    1. Develop at least two templates and verify that they can be
+       cloned into new projects with all tasks and dependencies
+       intact.
+    2. Customize a cloned template by changing durations and
+       assignments, and confirm that the changes propagate correctly.
+    3. Ensure that template updates do not affect existing projects
+       based on older versions.
+  desired_outcome: |
+    A template system that accelerates project setup and promotes
+    best practices by providing ready‑made task structures.
+  dependencies: []
+
+- id: FEATURE-AGENT-ORCHESTRATION
+  status: draft
+  title: Enable agent orchestration and multi‑agent pipelines
+  additional_notes: |
+    Extend the agent runtime to support sequencing and coordination of
+    multiple agents for complex workflows.  Define a way to specify
+    multi‑step pipelines (e.g., code generation → code review → testing
+    → deployment) within Tasc definitions.  Agents should publish
+    intermediate artifacts as buffers and pass them along to the next
+    agent.  Provide tools for monitoring agent pipelines and
+    intervening when needed.
+  testing_instructions: |
+    1. Create a pipeline definition in a Tasc and verify that agents
+       execute the steps in order, passing outputs via AB buffers.
+    2. Introduce an intentional failure at one step and confirm that
+       subsequent steps do not run and that the system raises an
+       alert.
+    3. Monitor pipeline execution through a dashboard and ensure
+       intermediate artifacts are accessible for inspection.
+  desired_outcome: |
+    A flexible agent orchestration framework that automates
+    end‑to‑end workflows and supports manual intervention when
+    necessary.
+  dependencies: []
+
+- id: FEATURE-HUMAN-APPROVAL
+  status: draft
+  title: Support human‑in‑the‑loop approval workflows
+  additional_notes: |
+    Implement a Tasc type that requires a designated human to review
+    and approve or reject deliverables before the Tasc progresses.  The
+    system should support editing deliverables, providing feedback and
+    branching execution depending on the decision.  Notifications and
+    reminders should be sent to the approver until a decision is
+    made.
+  testing_instructions: |
+    1. Assign a Tasc to a human approver and ensure that they are
+       prompted to review the deliverable.
+    2. Approve the task and verify that dependent tasks proceed; then
+       reject the task and confirm that a revision Tasc is created.
+    3. Check that reminders are sent at configured intervals until
+       approval or rejection occurs.
+  desired_outcome: |
+    A smooth human‑in‑the‑loop process that ensures critical
+    deliverables are reviewed by people without blocking automated
+    tasks unnecessarily.
+  dependencies: []
+
+- id: FEATURE-MEETING-SCHEDULING
+  status: draft
+  title: Integrate scheduling and meeting coordination
+  additional_notes: |
+    Connect Tasc OS with calendar systems to schedule meetings and
+    reviews automatically.  For example, schedule sprint planning or
+    daily stand‑ups based on team availability and project deadlines.
+    Provide a UI for viewing proposed times and rescheduling.  Ensure
+    that scheduled events are recorded as Tasc events in AB memory.
+  testing_instructions: |
+    1. Integrate with a calendar API (e.g., Google Calendar) and
+       schedule a meeting by selecting participants and time windows.
+    2. Verify that meeting invites are sent and that the event is
+       recorded as a Tasc event with the correct metadata.
+    3. Change the meeting time and confirm that updates propagate
+       across all participants and the Tasc record.
+  desired_outcome: |
+    A seamless scheduling feature that reduces manual coordination,
+    helps teams find meeting times and logs decisions and events in the
+    project history.
+  dependencies: []

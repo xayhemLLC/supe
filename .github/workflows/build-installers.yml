@@ -1,0 +1,116 @@
+name: Build Installers
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: false
+        default: 'dev'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable
+        run: pyinstaller supe.spec --clean --noconfirm
+
+      - name: Create zip
+        run: Compress-Archive -Path dist/supe.exe -DestinationPath dist/supe-windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supe-windows-x64
+          path: dist/supe-windows-x64.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable
+        run: pyinstaller supe.spec --clean --noconfirm
+
+      - name: Create zip
+        run: cd dist && zip -r supe-macos-x64.zip supe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supe-macos-x64
+          path: dist/supe-macos-x64.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable
+        run: pyinstaller supe.spec --clean --noconfirm
+
+      - name: Create tarball
+        run: cd dist && tar -czvf supe-linux-x64.tar.gz supe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supe-linux-x64
+          path: dist/supe-linux-x64.tar.gz
+
+  release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/supe-windows-x64/supe-windows-x64.zip
+            artifacts/supe-macos-x64/supe-macos-x64.zip
+            artifacts/supe-linux-x64/supe-linux-x64.tar.gz
+          generate_release_notes: true
