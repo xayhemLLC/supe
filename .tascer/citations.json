@@ -1,0 +1,23 @@
+[
+  {
+    "source_tasc_id": "fix_auth_v2",
+    "cited_tasc_id": "fix_auth_v1",
+    "citation_type": "supersedes",
+    "description": "Improved error handling",
+    "proof_hash": "abc123"
+  },
+  {
+    "source_tasc_id": "scrape_v2",
+    "cited_tasc_id": "scrape_v1",
+    "citation_type": "supersedes",
+    "description": "Improved version using CDPBrowser instead of Selenium",
+    "proof_hash": null
+  },
+  {
+    "source_tasc_id": "full_demo",
+    "cited_tasc_id": "scrape_v2",
+    "citation_type": "derived_from",
+    "description": "Demo built on scraping implementation",
+    "proof_hash": null
+  }
+]

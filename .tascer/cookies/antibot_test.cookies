@@ -1,0 +1,5 @@
+#LWP-Cookies-2.0
+Set-Cookie3: test_cookie=scraper_works; path="/"; domain="httpbin.org"; path_spec; discard; version=0
+Set-Cookie3: _gh_sess="seY%2B6kK7xm8Jl%2B%2BRKbN%2BUXKOSRj1c9wyH9jlMIqj1ME4MO18BOLXa%2BXvh9YCzfFTYwarI%2B3ZfjypG2rgBm9AI%2FBMDPuCO2crRBHgV2ripkdfIxSDlZxjB1zzsB%2FivfXXrQXV9eCbOgVZoAnK1lt8o8qMOHg851P2qcVXMUaIiFdxLBUN5kJB5xQ6FQBQRzYKSqsOoQXYryUPp4KVArGKdT6qXxUdn%2BVJ3zPyjP6md7odGIIpBjAB99l3E1CxLOwtQE0j5Wec5h%2BIuUbq4BCDAg%3D%3D--MXz4fGXEbcBOYh0o--wi06mQhbuJ0vCyU6Lqp6%2Bw%3D%3D"; path="/"; domain="github.com"; path_spec; secure; discard; HttpOnly=None; SameSite=Lax; version=0
+Set-Cookie3: _octo="GH1.1.1192885335.1766201688"; path="/"; domain=".github.com"; path_spec; secure; expires="2026-12-20 03:34:48Z"; SameSite=Lax; version=0
+Set-Cookie3: logged_in=no; path="/"; domain=".github.com"; path_spec; secure; expires="2026-12-20 03:34:48Z"; HttpOnly=None; SameSite=Lax; version=0

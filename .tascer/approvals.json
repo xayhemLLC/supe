@@ -1,0 +1,57 @@
+{
+  "approval_0d4111faf1c0": {
+    "id": "approval_0d4111faf1c0",
+    "tasc_id": "test_tasc_1",
+    "plan_id": null,
+    "title": "Deploy to production",
+    "description": "Please approve deployment to prod",
+    "action_type": "manual_gate",
+    "requested_by": "agent",
+    "requested_at": "2025-12-19T21:06:29.034166",
+    "status": "approved",
+    "required_approvals": 2,
+    "approvals": [
+      {
+        "approver": "alice",
+        "approved": true,
+        "timestamp": "2025-12-19T21:06:29.034729",
+        "comment": "Looks good"
+      },
+      {
+        "approver": "bob",
+        "approved": true,
+        "timestamp": "2025-12-19T21:06:29.034857",
+        "comment": null
+      }
+    ],
+    "context": {
+      "command": "kubectl apply -f deployment.yaml"
+    },
+    "rejection_reason": null
+  },
+  "approval_b8fabfdf74e8": {
+    "id": "approval_b8fabfdf74e8",
+    "tasc_id": "review",
+    "plan_id": "plan_baf8099a",
+    "title": "Approve: Human review",
+    "description": "Manual approval required",
+    "action_type": "manual_gate",
+    "requested_by": "agent",
+    "requested_at": "2025-12-19T21:06:43.723631",
+    "status": "approved",
+    "required_approvals": 1,
+    "approvals": [
+      {
+        "approver": "chris",
+        "approved": true,
+        "timestamp": "2025-12-19T21:06:52.851456",
+        "comment": "LGTM"
+      }
+    ],
+    "context": {
+      "command": "echo 'No command specified'",
+      "tasc_title": "Human review"
+    },
+    "rejection_reason": null
+  }
+}
