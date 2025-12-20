@@ -41,6 +41,12 @@ class ProofType(str, Enum):
     FILE = "file"           # Expected file(s) exist
     MANUAL = "manual"       # Human approval required
     COMPOSITE = "composite" # Multiple proofs required
+    # Learning-specific proof types
+    LEARNING_SESSION = "learning_session"  # Validates learning outcomes
+    EXPERIMENT = "experiment"              # Validates experiments
+    EXPLORATION = "exploration"            # Validates exploratory learning
+    CONFIDENCE = "confidence"              # Validates confidence threshold
+    REVIEW = "review"                      # Validates spaced repetition review
 
 
 class TaskStatus(str, Enum):
@@ -53,6 +59,11 @@ class TaskStatus(str, Enum):
     FAILED = "failed"         # Proof failed
     SKIPPED = "skipped"       # Intentionally skipped
     AWAITING_APPROVAL = "awaiting_approval"  # Waiting for human sign-off
+    # Learning-specific statuses
+    EXPLORING = "exploring"        # Active exploration
+    LEARNING = "learning"          # Learning in progress
+    UNCERTAIN = "uncertain"        # Low confidence result
+    NEEDS_REVIEW = "needs_review"  # Scheduled for review
 
 
 # ---------------------------------------------------------------------------

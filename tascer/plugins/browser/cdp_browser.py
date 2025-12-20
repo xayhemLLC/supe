@@ -96,6 +96,31 @@ class CDPBrowser:
         self._ws_url: Optional[str] = None
         self._message_id = 0
         self._session_id: Optional[str] = None
+        self._current_url: Optional[str] = None
+        self._viewport: Dict[str, int] = {"width": 1280, "height": 720}
+    
+    def get_state(self) -> Dict[str, Any]:
+        """Return current browser state for context capture.
+        
+        Used for AB-style plugin context integration:
+        
+            context = capture_context(tasc_id="scrape_hn")
+            context.plugin_state = browser.get_state()
+        
+        Returns:
+            Dictionary with browser state including configuration and current URL.
+        """
+        return {
+            "browser_type": "cdp",
+            "chrome_path": self.find_chrome(),
+            "headless": self.headless,
+            "url": self._current_url,
+            "viewport": self._viewport,
+            "user_data_dir": self.user_data_dir,
+            "screenshot_dir": self.screenshot_dir,
+            "connected": self._ws is not None,
+            "session_id": self._session_id,
+        }
     
     @classmethod
     def find_chrome(cls) -> Optional[str]:
@@ -291,6 +316,7 @@ class CDPBrowser:
         """Navigate to URL and wait for content."""
         # Navigate
         await self._send_session("Page.navigate", {"url": url})
+        self._current_url = url  # Track current URL for state capture
         
         # Wait for load
         await asyncio.sleep(wait_time_ms / 1000)

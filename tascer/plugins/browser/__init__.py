@@ -61,6 +61,118 @@ __all__ = [
     "wait_for_human_input",
     # API keys
     "APIKeyManager",
+    # Action registration
+    "register_actions",
+    "BROWSER_ACTIONS",
 ]
 
 
+# ---------------------------------------------------------------------------
+# Plugin Action Registration
+# ---------------------------------------------------------------------------
+
+def _create_browser_actions():
+    """Create browser action metadata.
+    
+    Imported lazily to avoid circular imports.
+    """
+    from tascer.action_registry import ActionMetadata, ActionCategory, RiskLevel
+    
+    return [
+        ActionMetadata(
+            id="browser.get",
+            name="Browser GET",
+            description="Navigate to URL and capture page content, screenshot, and network logs",
+            category=ActionCategory.OBSERVATION,
+            mutates_state=False,
+            risk_level=RiskLevel.LOW,
+            permissions_required=["browser", "network"],
+            evidence_produced=["html", "screenshot", "network_log", "console_log"],
+            rollback_supported=False,
+        ),
+        ActionMetadata(
+            id="browser.scrape",
+            name="Browser Scrape",
+            description="Extract data from page using CSS selectors",
+            category=ActionCategory.OBSERVATION,
+            mutates_state=False,
+            risk_level=RiskLevel.LOW,
+            permissions_required=["browser"],
+            evidence_produced=["extracted_data", "html"],
+        ),
+        ActionMetadata(
+            id="browser.scroll",
+            name="Browser Scroll",
+            description="Scroll page to load dynamic content (infinite scroll)",
+            category=ActionCategory.OBSERVATION,
+            mutates_state=False,
+            risk_level=RiskLevel.LOW,
+            permissions_required=["browser"],
+            evidence_produced=["html", "screenshot"],
+        ),
+        ActionMetadata(
+            id="browser.click",
+            name="Browser Click",
+            description="Click an element on the page",
+            category=ActionCategory.MUTATION,
+            mutates_state=True,
+            risk_level=RiskLevel.MEDIUM,
+            permissions_required=["browser"],
+            evidence_produced=["screenshot_before", "screenshot_after"],
+        ),
+        ActionMetadata(
+            id="browser.fill",
+            name="Browser Fill Form",
+            description="Fill a form field with text",
+            category=ActionCategory.MUTATION,
+            mutates_state=True,
+            risk_level=RiskLevel.MEDIUM,
+            permissions_required=["browser"],
+            evidence_produced=["screenshot"],
+        ),
+        ActionMetadata(
+            id="browser.evaluate",
+            name="Browser Evaluate JS",
+            description="Evaluate JavaScript expression in page context",
+            category=ActionCategory.OBSERVATION,
+            mutates_state=False,
+            risk_level=RiskLevel.LOW,
+            permissions_required=["browser", "javascript"],
+            evidence_produced=["result"],
+        ),
+        ActionMetadata(
+            id="browser.screenshot",
+            name="Browser Screenshot",
+            description="Take a screenshot of the current page",
+            category=ActionCategory.OBSERVATION,
+            mutates_state=False,
+            risk_level=RiskLevel.LOW,
+            permissions_required=["browser"],
+            evidence_produced=["screenshot"],
+        ),
+    ]
+
+
+# Lazy-loaded actions
+BROWSER_ACTIONS = None
+
+
+def register_actions(registry) -> None:
+    """Register browser plugin actions with the action registry.
+    
+    Call this when initializing the plugin:
+    
+        from tascer.action_registry import get_registry
+        from tascer.plugins.browser import register_actions
+        
+        registry = get_registry()
+        register_actions(registry)
+    
+    Args:
+        registry: ActionRegistry instance to register with.
+    """
+    global BROWSER_ACTIONS
+    if BROWSER_ACTIONS is None:
+        BROWSER_ACTIONS = _create_browser_actions()
+    
+    registry.register_actions(BROWSER_ACTIONS)

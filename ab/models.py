@@ -70,6 +70,9 @@ class Card:
     # Genetic blueprint for this card, stored as a serialized DNA string.
     # See ``ab/atoms.py`` for format details.
     dna: Optional[str] = None
+    # Memory track: 'awareness' (knowledge/content), 'execution' (tasc history),
+    # or 'sensory' (raw input data). Defaults to 'awareness'.
+    track: str = "awareness"
 
 
 @dataclass
