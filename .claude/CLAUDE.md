@@ -254,8 +254,40 @@ mkdocs serve
 - Screenshots saved to `.tascer/screenshots/`
 - Consider adding `.tascer/` to `.gitignore` if not already present
 
+## Output Location
+
+Major updates and documentation for other AI systems are stored in:
+
+```
+~/.claude/out/
+├── stella_update_learning_system.md    # Learning system integration guide
+└── [future updates]                     # Additional updates as needed
+```
+
+### Output Pattern
+
+When creating updates for other AI systems (like Stella):
+1. Create comprehensive wiki-style documentation
+2. Include working examples and proof of functionality
+3. Store in `~/.claude/out/[system_name]_update_[feature].md`
+4. Commit to git with detailed commit message
+5. Push to remote repository
+
+### Example Update Contents
+
+- Executive summary
+- Working code examples
+- Integration patterns
+- Proof of functionality (working demos)
+- Architecture diagrams
+- Test coverage details
+- Next steps checklist
+- Resource links
+
 ## Notes
 
-This project implements a novel approach to AI agent memory and validation. The combination of structured memory (AB), task tracking (Tasc), and proof-of-work validation (Tascer) provides a robust foundation for reliable AI agent systems.
+This project implements a novel approach to AI agent memory and validation. The combination of structured memory (AB), task tracking (Tasc), proof-of-work validation (Tascer), and the unified learning system provides a complete foundation for reliable AI agent systems.
+
+The learning system proves its capability by building mathematical knowledge from first principles (starting from just zero and nonzero) and discovering properties through formal experimentation.
 
 The browser automation capabilities via CDP enable web scraping and interaction tasks, as demonstrated by the HackerNews scraping implementations.
