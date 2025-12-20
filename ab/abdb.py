@@ -289,6 +289,10 @@ class ABMemory:
                 (card_id, buf.name, headers_json, buf.payload, buf.exe),
             )
         self.conn.commit()
+        
+        # Initialize card stats so card appears in list_cards_by_strength
+        self.init_card_stats(card_id)
+        
         return Card(
             id=card_id,
             label=label,

@@ -69,13 +69,22 @@ def cosine_similarity(vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
     if not vec1 or not vec2:
         return 0.0
 
-    # Both vectors are already normalized, so dot product = cosine
-    common_keys = set(vec1.keys()) & set(vec2.keys())
-    if not common_keys:
+    # Get all keys present in either vector
+    all_keys = set(vec1.keys()) | set(vec2.keys())
+    if not all_keys:
         return 0.0
 
-    dot_product = sum(vec1[k] * vec2[k] for k in common_keys)
-    return dot_product
+    # Compute dot product
+    dot_product = sum(vec1.get(k, 0) * vec2.get(k, 0) for k in all_keys)
+    
+    # Compute magnitudes
+    mag1 = math.sqrt(sum(v * v for v in vec1.values()))
+    mag2 = math.sqrt(sum(v * v for v in vec2.values()))
+    
+    if mag1 == 0 or mag2 == 0:
+        return 0.0
+    
+    return dot_product / (mag1 * mag2)
 
 
 def extract_card_text(card: Card) -> str:
