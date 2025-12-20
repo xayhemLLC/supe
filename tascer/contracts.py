@@ -78,6 +78,10 @@ class Context:
     # Permissions granted to action
     permissions_granted: List[str] = field(default_factory=list)
     
+    # Plugin-provided state (dynamic per-ability)
+    # Example: {"browser": {"type": "cdp", "headless": true, "url": "..."}}
+    plugin_state: Dict[str, Any] = field(default_factory=dict)
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "run_id": self.run_id,
@@ -94,6 +98,7 @@ class Context:
             "network_mode": self.network_mode,
             "hostnames_ports": self.hostnames_ports,
             "permissions_granted": self.permissions_granted,
+            "plugin_state": self.plugin_state,
         }
     
     @classmethod
@@ -114,6 +119,7 @@ class Context:
             network_mode=data.get("network_mode", "online"),
             hostnames_ports=data.get("hostnames_ports", []),
             permissions_granted=data.get("permissions_granted", []),
+            plugin_state=data.get("plugin_state", {}),
         )
     
     def to_json(self) -> str:
@@ -342,6 +348,87 @@ class TascValidation:
     def all_gates_passed(self) -> bool:
         """Check if all gates passed."""
         return all(g.passed for g in self.gate_results) if self.gate_results else self.validated
+
+
+@dataclass
+class LearningTascValidation(TascValidation):
+    """Extended validation for learning tascs.
+
+    Inherits all fields from TascValidation and adds learning-specific metrics:
+    - Confidence level achieved
+    - Question/answer statistics
+    - Experiment results
+    - Knowledge gaps identified
+    - Next review schedule
+    """
+
+    # Learning-specific fields
+    confidence_level: float = 0.0
+    questions_answered: int = 0
+    questions_total: int = 0
+    experiments_passed: int = 0
+    experiments_failed: int = 0
+    gaps_identified: List[str] = field(default_factory=list)
+    next_review_at: str = ""
+    mode: str = "INGEST"  # "INGEST" or "EXPLORE"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary including parent fields."""
+        base = super().to_dict()
+        base.update({
+            "confidence_level": self.confidence_level,
+            "questions_answered": self.questions_answered,
+            "questions_total": self.questions_total,
+            "experiments_passed": self.experiments_passed,
+            "experiments_failed": self.experiments_failed,
+            "gaps_identified": self.gaps_identified,
+            "next_review_at": self.next_review_at,
+            "mode": self.mode,
+            # Computed properties
+            "learning_success_rate": self.learning_success_rate,
+            "experiment_success_rate": self.experiment_success_rate,
+        })
+        return base
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LearningTascValidation":
+        """Create from dictionary."""
+        return cls(
+            tasc_id=data.get("tasc_id", ""),
+            validated=data.get("validated", False),
+            proof_hash=data.get("proof_hash", ""),
+            timestamp=data.get("timestamp", ""),
+            duration_ms=data.get("duration_ms", 0),
+            gate_results=[GateResult.from_dict(g) for g in data.get("gate_results", [])],
+            evidence_paths=data.get("evidence_paths", []),
+            command_executed=data.get("command_executed", ""),
+            exit_code=data.get("exit_code", 0),
+            error_message=data.get("error_message"),
+            # Learning fields
+            confidence_level=data.get("confidence_level", 0.0),
+            questions_answered=data.get("questions_answered", 0),
+            questions_total=data.get("questions_total", 0),
+            experiments_passed=data.get("experiments_passed", 0),
+            experiments_failed=data.get("experiments_failed", 0),
+            gaps_identified=data.get("gaps_identified", []),
+            next_review_at=data.get("next_review_at", ""),
+            mode=data.get("mode", "INGEST"),
+        )
+
+    @property
+    def learning_success_rate(self) -> float:
+        """Calculate learning success rate based on questions answered."""
+        if self.questions_total == 0:
+            return 0.0
+        return self.questions_answered / self.questions_total
+
+    @property
+    def experiment_success_rate(self) -> float:
+        """Calculate experiment success rate."""
+        total_experiments = self.experiments_passed + self.experiments_failed
+        if total_experiments == 0:
+            return 1.0  # No experiments = no failures
+        return self.experiments_passed / total_experiments
 
 
 @dataclass

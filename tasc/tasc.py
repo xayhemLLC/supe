@@ -49,8 +49,17 @@ class Tasc:
     proof_hash: Optional[str] = None
     validated_at: Optional[str] = None
 
+    # Learning-specific fields (for learning tascs)
+    learning_mode: Optional[str] = None  # "INGEST" or "EXPLORE"
+    confidence_score: Optional[float] = None  # 0.0-1.0
+    gaps: List[str] = field(default_factory=list)
+    unresolved_questions: List[str] = field(default_factory=list)
+    review_schedule: Optional[Dict[str, str]] = None  # Spaced repetition schedule
+    related_session_id: Optional[str] = None  # Link to LearningSession card
+
     def to_uobject(self) -> UObject:
         """Represent this Tasc as a ``UObject`` with string fields."""
+        import json
         dep_str = ",".join(self.dependencies)
         data = {
             "kind": "tasc",
@@ -67,6 +76,19 @@ class Tasc:
             data["proof_hash"] = self.proof_hash
         if self.validated_at:
             data["validated_at"] = self.validated_at
+        # Include learning fields if set
+        if self.learning_mode:
+            data["learning_mode"] = self.learning_mode
+        if self.confidence_score is not None:
+            data["confidence_score"] = str(self.confidence_score)
+        if self.gaps:
+            data["gaps"] = json.dumps(self.gaps)
+        if self.unresolved_questions:
+            data["unresolved_questions"] = json.dumps(self.unresolved_questions)
+        if self.review_schedule:
+            data["review_schedule"] = json.dumps(self.review_schedule)
+        if self.related_session_id:
+            data["related_session_id"] = self.related_session_id
         return UObject.from_dict_of_strings(data)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -81,6 +103,13 @@ class Tasc:
             "dependencies": self.dependencies,
             "proof_hash": self.proof_hash,
             "validated_at": self.validated_at,
+            # Learning fields
+            "learning_mode": self.learning_mode,
+            "confidence_score": self.confidence_score,
+            "gaps": self.gaps,
+            "unresolved_questions": self.unresolved_questions,
+            "review_schedule": self.review_schedule,
+            "related_session_id": self.related_session_id,
         }
 
     @classmethod
@@ -89,6 +118,16 @@ class Tasc:
         deps = data.get("dependencies", [])
         if isinstance(deps, str):
             deps = [d for d in deps.split(",") if d]
+        gaps = data.get("gaps", [])
+        if isinstance(gaps, list):
+            gaps = gaps
+        else:
+            gaps = []
+        unresolved = data.get("unresolved_questions", [])
+        if isinstance(unresolved, list):
+            unresolved = unresolved
+        else:
+            unresolved = []
         return cls(
             id=data.get("id", ""),
             status=data.get("status", "pending"),
@@ -99,6 +138,13 @@ class Tasc:
             dependencies=deps,
             proof_hash=data.get("proof_hash"),
             validated_at=data.get("validated_at"),
+            # Learning fields
+            learning_mode=data.get("learning_mode"),
+            confidence_score=data.get("confidence_score"),
+            gaps=gaps,
+            unresolved_questions=unresolved,
+            review_schedule=data.get("review_schedule"),
+            related_session_id=data.get("related_session_id"),
         )
 
     def to_atom(self) -> Atom:
@@ -112,6 +158,7 @@ class Tasc:
     @classmethod
     def from_atom(cls, atom: Atom) -> "Tasc":
         """Decode a Tasc from a ``tasc`` Atom."""
+        import json
         tasc_type = registry.get_by_name("tasc")
         if atom.pindex != tasc_type.pindex:
             raise ValueError("Atom is not of atomtype 'tasc'")
@@ -124,6 +171,36 @@ class Tasc:
             raise ValueError("Decoded object kind is not 'tasc'")
         deps_str = data.get("dependencies", "")
         deps = [d for d in deps_str.split(",") if d]
+
+        # Parse learning fields (stored as JSON strings in UObject)
+        gaps = []
+        if data.get("gaps"):
+            try:
+                gaps = json.loads(data["gaps"])
+            except:
+                gaps = []
+
+        unresolved = []
+        if data.get("unresolved_questions"):
+            try:
+                unresolved = json.loads(data["unresolved_questions"])
+            except:
+                unresolved = []
+
+        review_schedule = None
+        if data.get("review_schedule"):
+            try:
+                review_schedule = json.loads(data["review_schedule"])
+            except:
+                review_schedule = None
+
+        confidence_score = None
+        if data.get("confidence_score"):
+            try:
+                confidence_score = float(data["confidence_score"])
+            except:
+                confidence_score = None
+
         return cls(
             id=data.get("id", ""),
             status=data.get("status", ""),
@@ -134,6 +211,13 @@ class Tasc:
             dependencies=deps,
             proof_hash=data.get("proof_hash"),
             validated_at=data.get("validated_at"),
+            # Learning fields
+            learning_mode=data.get("learning_mode"),
+            confidence_score=confidence_score,
+            gaps=gaps,
+            unresolved_questions=unresolved,
+            review_schedule=review_schedule,
+            related_session_id=data.get("related_session_id"),
         )
     
     @property

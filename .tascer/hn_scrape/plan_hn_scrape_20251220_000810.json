@@ -1,0 +1,1222 @@
+{
+  "id": "plan_hn_scrape_20251220_000810",
+  "title": "Hacker News Content Scraper",
+  "description": "Scrape all HN front page stories and extract article content",
+  "tascs": [
+    {
+      "id": "tasc_fetch_hn",
+      "status": "proven",
+      "title": "Fetch Hacker News Front Page",
+      "additional_notes": "Fetch and parse HN front page, found 30 stories",
+      "testing_instructions": "echo 'HN front page fetched successfully'",
+      "desired_outcome": "30 stories parsed",
+      "dependencies": [],
+      "proof_hash": "63b8f30603144df2",
+      "validated_at": "2025-12-20T00:08:10.770984"
+    },
+    {
+      "id": "tasc_story_1",
+      "status": "proven",
+      "title": "Scrape: CSS Grid Lanes...",
+      "additional_notes": "{\"title\": \"CSS Grid Lanes\", \"url\": \"https://webkit.org/blog/17660/introducing-css-grid-lanes/\"}",
+      "testing_instructions": "echo 'Scraped story 1'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "87e42c825fcea219",
+      "validated_at": "2025-12-20T00:08:14.472351"
+    },
+    {
+      "id": "tasc_story_2",
+      "status": "proven",
+      "title": "Scrape: Mistral OCR 3...",
+      "additional_notes": "{\"title\": \"Mistral OCR 3\", \"url\": \"https://mistral.ai/news/mistral-ocr-3\"}",
+      "testing_instructions": "echo 'Scraped story 2'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "812102a6fb13dfae",
+      "validated_at": "2025-12-20T00:08:18.015288"
+    },
+    {
+      "id": "tasc_story_3",
+      "status": "proven",
+      "title": "Scrape: Garage \u2013 An S3 object store so reliable you can ru...",
+      "additional_notes": "{\"title\": \"Garage \\u2013 An S3 object store so reliable you can run it outside datacenters\", \"url\": \"https://garagehq.deuxfleurs.fr/\"}",
+      "testing_instructions": "echo 'Scraped story 3'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "1c9061eb7cfa5b2b",
+      "validated_at": "2025-12-20T00:08:22.143671"
+    },
+    {
+      "id": "tasc_story_4",
+      "status": "proven",
+      "title": "Scrape: Carolina Cloud \u2013 One third the cost of AWS for dat...",
+      "additional_notes": "{\"title\": \"Carolina Cloud \\u2013 One third the cost of AWS for data science workloads\", \"url\": \"https://carolinacloud.io/\"}",
+      "testing_instructions": "echo 'Scraped story 4'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "b85a7748c8312f66",
+      "validated_at": "2025-12-20T00:08:25.677543"
+    },
+    {
+      "id": "tasc_story_5",
+      "status": "proven",
+      "title": "Scrape: A better zip bomb (2019)...",
+      "additional_notes": "{\"title\": \"A better zip bomb (2019)\", \"url\": \"https://www.bamsoftware.com/hacks/zipbomb/\"}",
+      "testing_instructions": "echo 'Scraped story 5'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "2711552cfde2aa51",
+      "validated_at": "2025-12-20T00:08:29.313705"
+    },
+    {
+      "id": "tasc_story_6",
+      "status": "proven",
+      "title": "Scrape: TP-Link Tapo C200: Hardcoded Keys, Buffer Overflow...",
+      "additional_notes": "{\"title\": \"TP-Link Tapo C200: Hardcoded Keys, Buffer Overflows and Privacy\", \"url\": \"https://www.evilsocket.net/2025/12/18/TP-Link-Tapo-C200-Hardcoded-Keys-Buffer-Overflows-and-Privacy-in-the-Era-of-AI-Assisted-Reverse-Engineering/\"}",
+      "testing_instructions": "echo 'Scraped story 6'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "fe35be58f9e5f96f",
+      "validated_at": "2025-12-20T00:08:32.792231"
+    },
+    {
+      "id": "tasc_story_7",
+      "status": "proven",
+      "title": "Scrape: Fuzix on a Raspberry Pi Pico...",
+      "additional_notes": "{\"title\": \"Fuzix on a Raspberry Pi Pico\", \"url\": \"https://ewpratten.com/blog/fuzix-pi-pico\"}",
+      "testing_instructions": "echo 'Scraped story 7'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "9c8f96153da48b6b",
+      "validated_at": "2025-12-20T00:08:36.891746"
+    },
+    {
+      "id": "tasc_story_8",
+      "status": "proven",
+      "title": "Scrape: 8-bit Bol\u00e9ro...",
+      "additional_notes": "{\"title\": \"8-bit Bol\\u00e9ro\", \"url\": \"https://linusakesson.net/music/bolero/index.php\"}",
+      "testing_instructions": "echo 'Scraped story 8'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "13d75fd3500c2df2",
+      "validated_at": "2025-12-20T00:08:40.786423"
+    },
+    {
+      "id": "tasc_story_9",
+      "status": "proven",
+      "title": "Scrape: Gh-actions-lockfile: generate and verify lockfiles...",
+      "additional_notes": "{\"title\": \"Gh-actions-lockfile: generate and verify lockfiles for GitHub Actions\", \"url\": \"https://gh-actions-lockfile.net\"}",
+      "testing_instructions": "echo 'Scraped story 9'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "8076c850f1b45cbd",
+      "validated_at": "2025-12-20T00:08:44.356124"
+    },
+    {
+      "id": "tasc_story_10",
+      "status": "proven",
+      "title": "Scrape: Graphite is joining Cursor...",
+      "additional_notes": "{\"title\": \"Graphite is joining Cursor\", \"url\": \"https://cursor.com/blog/graphite\"}",
+      "testing_instructions": "echo 'Scraped story 10'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "e02ebe9d89fd8f92",
+      "validated_at": "2025-12-20T00:08:47.857077"
+    },
+    {
+      "id": "tasc_story_11",
+      "status": "proven",
+      "title": "Scrape: Brown/MIT shooting suspect found dead, officials s...",
+      "additional_notes": "{\"title\": \"Brown/MIT shooting suspect found dead, officials say\", \"url\": \"https://www.washingtonpost.com/nation/2025/12/18/brown-university-shooting-person-of-interest/\"}",
+      "testing_instructions": "echo 'Scraped story 11'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "f0f6e0f7ef2f5dad",
+      "validated_at": "2025-12-20T00:08:51.287606"
+    },
+    {
+      "id": "tasc_story_12",
+      "status": "proven",
+      "title": "Scrape: Rust's Block Pattern...",
+      "additional_notes": "{\"title\": \"Rust's Block Pattern\", \"url\": \"https://notgull.net/block-pattern/\"}",
+      "testing_instructions": "echo 'Scraped story 12'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "47cf8d05283cb725",
+      "validated_at": "2025-12-20T00:08:54.772935"
+    },
+    {
+      "id": "tasc_story_13",
+      "status": "proven",
+      "title": "Scrape: LLM Year in Review...",
+      "additional_notes": "{\"title\": \"LLM Year in Review\", \"url\": \"https://karpathy.bearblog.dev/year-in-review-2025/\"}",
+      "testing_instructions": "echo 'Scraped story 13'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "cbf89e164e95134c",
+      "validated_at": "2025-12-20T00:08:58.205764"
+    },
+    {
+      "id": "tasc_story_14",
+      "status": "proven",
+      "title": "Scrape: Qwen-Image-Layered: transparency and layer aware o...",
+      "additional_notes": "{\"title\": \"Qwen-Image-Layered: transparency and layer aware open diffusion model\", \"url\": \"https://huggingface.co/papers/2512.15603\"}",
+      "testing_instructions": "echo 'Scraped story 14'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "5a20311b765238ca",
+      "validated_at": "2025-12-20T00:09:01.741254"
+    },
+    {
+      "id": "tasc_story_15",
+      "status": "proven",
+      "title": "Scrape: Show HN: TinyPDF \u2013 3kb pdf library (70x smaller th...",
+      "additional_notes": "{\"title\": \"Show HN: TinyPDF \\u2013 3kb pdf library (70x smaller than jsPDF)\", \"url\": \"https://github.com/Lulzx/tinypdf\"}",
+      "testing_instructions": "echo 'Scraped story 15'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "17d3684e37a24239",
+      "validated_at": "2025-12-20T00:09:05.249345"
+    },
+    {
+      "id": "tasc_story_16",
+      "status": "proven",
+      "title": "Scrape: Performance Hints (2023)...",
+      "additional_notes": "{\"title\": \"Performance Hints (2023)\", \"url\": \"https://abseil.io/fast/hints.html\"}",
+      "testing_instructions": "echo 'Scraped story 16'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "fa0dd8a32461e194",
+      "validated_at": "2025-12-20T00:09:09.487506"
+    },
+    {
+      "id": "tasc_story_17",
+      "status": "proven",
+      "title": "Scrape: Build Your Own React...",
+      "additional_notes": "{\"title\": \"Build Your Own React\", \"url\": \"https://pomb.us/build-your-own-react/\"}",
+      "testing_instructions": "echo 'Scraped story 17'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "4adbcf987cc1af09",
+      "validated_at": "2025-12-20T00:09:13.053701"
+    },
+    {
+      "id": "tasc_story_19",
+      "status": "proven",
+      "title": "Scrape: The FreeBSD Foundation's Laptop Support and Usabil...",
+      "additional_notes": "{\"title\": \"The FreeBSD Foundation's Laptop Support and Usability Project\", \"url\": \"https://github.com/FreeBSDFoundation/proj-laptop\"}",
+      "testing_instructions": "echo 'Scraped story 19'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "617a26f97b1b29d7",
+      "validated_at": "2025-12-20T00:09:16.740045"
+    },
+    {
+      "id": "tasc_story_20",
+      "status": "proven",
+      "title": "Scrape: Believe the Checkbook...",
+      "additional_notes": "{\"title\": \"Believe the Checkbook\", \"url\": \"https://robertgreiner.com/believe-the-checkbook/\"}",
+      "testing_instructions": "echo 'Scraped story 20'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "b87543eb7e5e0564",
+      "validated_at": "2025-12-20T00:09:20.227130"
+    },
+    {
+      "id": "tasc_story_21",
+      "status": "proven",
+      "title": "Scrape: Vm.overcommit_memory=2 is the right setting for se...",
+      "additional_notes": "{\"title\": \"Vm.overcommit_memory=2 is the right setting for servers\", \"url\": \"https://ariadne.space/2025/12/16/vmovercommitmemory-is-always-the-right.html\"}",
+      "testing_instructions": "echo 'Scraped story 21'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "e57e685b03b36a63",
+      "validated_at": "2025-12-20T00:09:23.738652"
+    },
+    {
+      "id": "tasc_story_22",
+      "status": "proven",
+      "title": "Scrape: History LLMs: Models trained exclusively on pre-19...",
+      "additional_notes": "{\"title\": \"History LLMs: Models trained exclusively on pre-1913 texts\", \"url\": \"https://github.com/DGoettlich/history-llms\"}",
+      "testing_instructions": "echo 'Scraped story 22'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "f1580f42d0c825e3",
+      "validated_at": "2025-12-20T00:09:27.501066"
+    },
+    {
+      "id": "tasc_story_23",
+      "status": "proven",
+      "title": "Scrape: The scariest boot loader code...",
+      "additional_notes": "{\"title\": \"The scariest boot loader code\", \"url\": \"http://miod.online.fr/software/openbsd/stories/boot_hppa.html\"}",
+      "testing_instructions": "echo 'Scraped story 23'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "613583fd2c785d67",
+      "validated_at": "2025-12-20T00:09:33.847201"
+    },
+    {
+      "id": "tasc_story_24",
+      "status": "proven",
+      "title": "Scrape: Amazon will allow ePub and PDF downloads for DRM-f...",
+      "additional_notes": "{\"title\": \"Amazon will allow ePub and PDF downloads for DRM-free eBooks\", \"url\": \"https://www.kdpcommunity.com/s/article/New-eBook-Download-Options-for-Readers-Coming-in-2026?language=en_US\"}",
+      "testing_instructions": "echo 'Scraped story 24'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "1c98c736a2d58d6d",
+      "validated_at": "2025-12-20T00:09:37.466711"
+    },
+    {
+      "id": "tasc_story_25",
+      "status": "proven",
+      "title": "Scrape: Parallelizing ClickHouse aggregation merge for fix...",
+      "additional_notes": "{\"title\": \"Parallelizing ClickHouse aggregation merge for fixed hash map\", \"url\": \"https://blog.incfly.org/parallelize-clickhouse-aggregation-merge-for-fixed-hash-map/\"}",
+      "testing_instructions": "echo 'Scraped story 25'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "30cffbc976720fc2",
+      "validated_at": "2025-12-20T00:09:41.200286"
+    },
+    {
+      "id": "tasc_story_26",
+      "status": "proven",
+      "title": "Scrape: Reverse Engineering US Airline's PNR System and Ac...",
+      "additional_notes": "{\"title\": \"Reverse Engineering US Airline's PNR System and Accessing All Reservations\", \"url\": \"https://alexschapiro.com/security/vulnerability/2025/11/20/avelo-airline-reservation-api-vulnerability\"}",
+      "testing_instructions": "echo 'Scraped story 26'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "42c84e30d03298d0",
+      "validated_at": "2025-12-20T00:09:44.679791"
+    },
+    {
+      "id": "tasc_story_27",
+      "status": "proven",
+      "title": "Scrape: The pitfalls of partitioning Postgres yourself...",
+      "additional_notes": "{\"title\": \"The pitfalls of partitioning Postgres yourself\", \"url\": \"https://hatchet.run/blog/postgres-partitioning\"}",
+      "testing_instructions": "echo 'Scraped story 27'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "eba6ac7e85c973ba",
+      "validated_at": "2025-12-20T00:09:48.276241"
+    },
+    {
+      "id": "tasc_story_28",
+      "status": "proven",
+      "title": "Scrape: GotaTun \u2013 Mullvad's WireGuard Implementation in Ru...",
+      "additional_notes": "{\"title\": \"GotaTun \\u2013 Mullvad's WireGuard Implementation in Rust\", \"url\": \"https://mullvad.net/en/blog/announcing-gotatun-the-future-of-wireguard-at-mullvad-vpn\"}",
+      "testing_instructions": "echo 'Scraped story 28'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "fc96080a9b219bfd",
+      "validated_at": "2025-12-20T00:09:52.025545"
+    },
+    {
+      "id": "tasc_story_29",
+      "status": "proven",
+      "title": "Scrape: Buteyko Method...",
+      "additional_notes": "{\"title\": \"Buteyko Method\", \"url\": \"https://en.wikipedia.org/wiki/Buteyko_method\"}",
+      "testing_instructions": "echo 'Scraped story 29'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "eb8fe00df58a320f",
+      "validated_at": "2025-12-20T00:09:55.467166"
+    },
+    {
+      "id": "tasc_story_30",
+      "status": "proven",
+      "title": "Scrape: We ran Anthropic\u2019s interviews through structured L...",
+      "additional_notes": "{\"title\": \"We ran Anthropic\\u2019s interviews through structured LLM analysis\", \"url\": \"https://www.playbookatlas.com/research/ai-adoption-explorer\"}",
+      "testing_instructions": "echo 'Scraped story 30'",
+      "desired_outcome": "Article content extracted and saved",
+      "dependencies": [
+        "tasc_fetch_hn"
+      ],
+      "proof_hash": "08c85a573cb6e483",
+      "validated_at": "2025-12-20T00:09:59.102701"
+    },
+    {
+      "id": "tasc_aggregate",
+      "status": "proven",
+      "title": "Aggregate All Scraped Content",
+      "additional_notes": "Combine all scraped content into final JSON",
+      "testing_instructions": "echo 'Aggregation complete'",
+      "desired_outcome": "Single JSON file with all story contents",
+      "dependencies": [
+        "tasc_story_1",
+        "tasc_story_2",
+        "tasc_story_3",
+        "tasc_story_4",
+        "tasc_story_5",
+        "tasc_story_6",
+        "tasc_story_7",
+        "tasc_story_8",
+        "tasc_story_9",
+        "tasc_story_10",
+        "tasc_story_11",
+        "tasc_story_12",
+        "tasc_story_13",
+        "tasc_story_14",
+        "tasc_story_15",
+        "tasc_story_16",
+        "tasc_story_17",
+        "tasc_story_19",
+        "tasc_story_20",
+        "tasc_story_21",
+        "tasc_story_22",
+        "tasc_story_23",
+        "tasc_story_24",
+        "tasc_story_25",
+        "tasc_story_26",
+        "tasc_story_27",
+        "tasc_story_28",
+        "tasc_story_29",
+        "tasc_story_30"
+      ],
+      "proof_hash": "ee3815b55755f7c1",
+      "validated_at": "2025-12-20T00:09:59.409990"
+    }
+  ],
+  "validations": {
+    "tasc_fetch_hn": {
+      "tasc_id": "tasc_fetch_hn",
+      "validated": true,
+      "proof_hash": "63b8f30603144df2",
+      "timestamp": "2025-12-20T00:08:10.770984",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "stories_found": 30
+          }
+        }
+      ],
+      "evidence_paths": [
+        "stories_found"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_1": {
+      "tasc_id": "tasc_story_1",
+      "validated": true,
+      "proof_hash": "87e42c825fcea219",
+      "timestamp": "2025-12-20T00:08:14.472351",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 9824,
+            "page_title": "  Introducing CSS Grid Lanes | WebKit"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_2": {
+      "tasc_id": "tasc_story_2",
+      "validated": true,
+      "proof_hash": "812102a6fb13dfae",
+      "timestamp": "2025-12-20T00:08:18.015288",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 8765,
+            "page_title": "Introducing Mistral OCR 3 | Mistral AI"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_3": {
+      "tasc_id": "tasc_story_3",
+      "validated": true,
+      "proof_hash": "1c9061eb7cfa5b2b",
+      "timestamp": "2025-12-20T00:08:22.143671",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 2801,
+            "page_title": "\n        \n    Garage - An S3 object store so reliable you can run it outside datacenters\n\n    "
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_4": {
+      "tasc_id": "tasc_story_4",
+      "validated": true,
+      "proof_hash": "b85a7748c8312f66",
+      "timestamp": "2025-12-20T00:08:25.677543",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 4009,
+            "page_title": "Carolina Cloud"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_5": {
+      "tasc_id": "tasc_story_5",
+      "validated": true,
+      "proof_hash": "2711552cfde2aa51",
+      "timestamp": "2025-12-20T00:08:29.313705",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 55268,
+            "page_title": "A better zip bomb"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_6": {
+      "tasc_id": "tasc_story_6",
+      "validated": true,
+      "proof_hash": "fe35be58f9e5f96f",
+      "timestamp": "2025-12-20T00:08:32.792231",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 15449,
+            "page_title": "TP-Link Tapo C200: Hardcoded Keys, Buffer Overflows and Privacy in the Era of AI Assisted Reverse Engineering | evilsocket"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_7": {
+      "tasc_id": "tasc_story_7",
+      "validated": true,
+      "proof_hash": "9c8f96153da48b6b",
+      "timestamp": "2025-12-20T00:08:36.891746",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 3647,
+            "page_title": "\n        Fuzix on a Raspberry Pi Pico | Evan Pratten\n    "
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_8": {
+      "tasc_id": "tasc_story_8",
+      "validated": true,
+      "proof_hash": "13d75fd3500c2df2",
+      "timestamp": "2025-12-20T00:08:40.786423",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 5550,
+            "page_title": "Bol\u00e9ro"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_9": {
+      "tasc_id": "tasc_story_9",
+      "validated": true,
+      "proof_hash": "8076c850f1b45cbd",
+      "timestamp": "2025-12-20T00:08:44.356124",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 1881,
+            "page_title": "gh-actions-lockfile"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_10": {
+      "tasc_id": "tasc_story_10",
+      "validated": true,
+      "proof_hash": "e02ebe9d89fd8f92",
+      "timestamp": "2025-12-20T00:08:47.857077",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 1083,
+            "page_title": "Graphite is joining Cursor \u00b7 Cursor"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_11": {
+      "tasc_id": "tasc_story_11",
+      "validated": true,
+      "proof_hash": "f0f6e0f7ef2f5dad",
+      "timestamp": "2025-12-20T00:08:51.287606",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 433,
+            "page_title": "www.washingtonpost.com"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_12": {
+      "tasc_id": "tasc_story_12",
+      "validated": true,
+      "proof_hash": "47cf8d05283cb725",
+      "timestamp": "2025-12-20T00:08:54.772935",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 7423,
+            "page_title": "Rust's Block Pattern \u2013 notgull \u2013 The world's number one source of notgull"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_13": {
+      "tasc_id": "tasc_story_13",
+      "validated": true,
+      "proof_hash": "cbf89e164e95134c",
+      "timestamp": "2025-12-20T00:08:58.205764",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 9,
+            "page_title": "No title"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_14": {
+      "tasc_id": "tasc_story_14",
+      "validated": true,
+      "proof_hash": "5a20311b765238ca",
+      "timestamp": "2025-12-20T00:09:01.741254",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 4523,
+            "page_title": "Paper page - Qwen-Image-Layered: Towards Inherent Editability via Layer Decomposition"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_15": {
+      "tasc_id": "tasc_story_15",
+      "validated": true,
+      "proof_hash": "17d3684e37a24239",
+      "timestamp": "2025-12-20T00:09:05.249345",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 4707,
+            "page_title": "GitHub - Lulzx/tinypdf: Minimal PDF creation library. <400 LOC, zero dependencies, makes real PDFs."
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_16": {
+      "tasc_id": "tasc_story_16",
+      "validated": true,
+      "proof_hash": "fa0dd8a32461e194",
+      "timestamp": "2025-12-20T00:09:09.487506",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 165448,
+            "page_title": "abseil / Performance Hints"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_17": {
+      "tasc_id": "tasc_story_17",
+      "validated": true,
+      "proof_hash": "4adbcf987cc1af09",
+      "timestamp": "2025-12-20T00:09:13.053701",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 26589,
+            "page_title": "Build your own React"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_19": {
+      "tasc_id": "tasc_story_19",
+      "validated": true,
+      "proof_hash": "617a26f97b1b29d7",
+      "timestamp": "2025-12-20T00:09:16.740045",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 5642,
+            "page_title": "GitHub - FreeBSDFoundation/proj-laptop: The FreeBSD Foundation's Laptop Support and Usability Improvements project aims to deliver a package of improved or new FreeBSD functionality that, together, will ensure that it runs well \u201cout of the box\u201d on a broad range of personal computing devices."
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_20": {
+      "tasc_id": "tasc_story_20",
+      "validated": true,
+      "proof_hash": "b87543eb7e5e0564",
+      "timestamp": "2025-12-20T00:09:20.227130",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 3834,
+            "page_title": "Believe the Checkbook | Robert Greiner"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_21": {
+      "tasc_id": "tasc_story_21",
+      "validated": true,
+      "proof_hash": "e57e685b03b36a63",
+      "timestamp": "2025-12-20T00:09:23.738652",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 4509,
+            "page_title": "vm.overcommit_memory=2 is always the right setting for servers \u00b7 Ariadne's Space"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_22": {
+      "tasc_id": "tasc_story_22",
+      "validated": true,
+      "proof_hash": "f1580f42d0c825e3",
+      "timestamp": "2025-12-20T00:09:27.501066",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 8773,
+            "page_title": "GitHub - DGoettlich/history-llms: Information hub for our project training the largest possible historical LLMs."
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_23": {
+      "tasc_id": "tasc_story_23",
+      "validated": true,
+      "proof_hash": "613583fd2c785d67",
+      "timestamp": "2025-12-20T00:09:33.847201",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 0,
+            "page_title": "No title"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_24": {
+      "tasc_id": "tasc_story_24",
+      "validated": true,
+      "proof_hash": "1c98c736a2d58d6d",
+      "timestamp": "2025-12-20T00:09:37.466711",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 2448,
+            "page_title": "New eBook Download Options for Readers Coming in 2026"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_25": {
+      "tasc_id": "tasc_story_25",
+      "validated": true,
+      "proof_hash": "30cffbc976720fc2",
+      "timestamp": "2025-12-20T00:09:41.200286",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 8470,
+            "page_title": "Parallelize ClickHouse aggregation merge for fixed hash map"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_26": {
+      "tasc_id": "tasc_story_26",
+      "validated": true,
+      "proof_hash": "42c84e30d03298d0",
+      "timestamp": "2025-12-20T00:09:44.679791",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 7766,
+            "page_title": "Brute-Forceable Airline Reservation API Left Millions of Passenger Records Vulnerable | Alex Schapiro"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_27": {
+      "tasc_id": "tasc_story_27",
+      "validated": true,
+      "proof_hash": "eba6ac7e85c973ba",
+      "timestamp": "2025-12-20T00:09:48.276241",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 9448,
+            "page_title": "Hatchet \u00b7 The pitfalls of partitioning Postgres yourself"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_28": {
+      "tasc_id": "tasc_story_28",
+      "validated": true,
+      "proof_hash": "fc96080a9b219bfd",
+      "timestamp": "2025-12-20T00:09:52.025545",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 3323,
+            "page_title": "Announcing GotaTun, the future of WireGuard at Mullvad VPN | Mullvad VPN"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_29": {
+      "tasc_id": "tasc_story_29",
+      "validated": true,
+      "proof_hash": "eb8fe00df58a320f",
+      "timestamp": "2025-12-20T00:09:55.467166",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 14440,
+            "page_title": "Buteyko method - Wikipedia"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_story_30": {
+      "tasc_id": "tasc_story_30",
+      "validated": true,
+      "proof_hash": "08c85a573cb6e483",
+      "timestamp": "2025-12-20T00:09:59.102701",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "content_length": 12307,
+            "page_title": "The Psychology of AI Adoption: What 1,250 People Won't Admit - Playbook Atlas"
+          }
+        }
+      ],
+      "evidence_paths": [
+        "content_length",
+        "page_title"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    },
+    "tasc_aggregate": {
+      "tasc_id": "tasc_aggregate",
+      "validated": true,
+      "proof_hash": "ee3815b55755f7c1",
+      "timestamp": "2025-12-20T00:09:59.409990",
+      "duration_ms": 0,
+      "gate_results": [
+        {
+          "gate_name": "BROWSER_SCRAPE",
+          "passed": true,
+          "message": "Content extracted",
+          "evidence": {
+            "output_file": "/Users/chriscabral/Desktop/super/supe/.tascer/hn_scrape/hn_stories_full.json",
+            "total_stories": 29,
+            "successful_scrapes": 29
+          }
+        }
+      ],
+      "evidence_paths": [
+        "output_file",
+        "total_stories",
+        "successful_scrapes"
+      ],
+      "command_executed": "",
+      "exit_code": 0,
+      "error_message": null
+    }
+  },
+  "proof_requirements": {},
+  "validation_requirements": [],
+  "created_at": "2025-12-20T00:08:10.770969",
+  "status": "pending",
+  "proof_hash": null,
+  "metadata": {
+    "total_stories": 30,
+    "started_at": "2025-12-20T00:08:10.770931"
+  }
+}

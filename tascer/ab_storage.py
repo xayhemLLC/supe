@@ -210,3 +210,150 @@ def find_reports_by_tasc(memory, tasc_id: str) -> list:
                 break
     
     return results
+
+
+def store_tasc_execution(
+    memory,
+    tasc_id: str,
+    validation: "TascValidation",
+    plan_id: Optional[str] = None,
+    linked_awareness_id: Optional[int] = None,
+    moment_id: Optional[int] = None,
+) -> int:
+    """Store a tasc execution record in the execution track.
+    
+    This creates a card in the 'execution' track containing the
+    tasc validation data. Optionally links to an awareness card
+    (e.g., ingested content that was produced by this execution).
+    
+    Args:
+        memory: ABMemory instance.
+        tasc_id: Tasc identifier.
+        validation: TascValidation object with proof hash.
+        plan_id: Optional plan identifier for grouping.
+        linked_awareness_id: Optional card ID in awareness track to link to.
+        moment_id: Optional moment ID.
+    
+    Returns:
+        Card ID of the stored execution record.
+    """
+    from ab.models import Buffer
+    from .contracts import TascValidation
+    
+    # Validation buffer
+    validation_json = json.dumps(validation.to_dict(), indent=2).encode("utf-8")
+    validation_buf = Buffer(
+        name="validation",
+        headers={
+            "tasc_id": tasc_id,
+            "plan_id": plan_id or "",
+            "proof_hash": validation.proof_hash,
+            "validated": validation.validated,
+            "type": "tasc_execution",
+        },
+        payload=validation_json,
+    )
+    
+    card = memory.store_card(
+        label="tasc_execution",
+        buffers=[validation_buf],
+        moment_id=moment_id,
+        master_input=tasc_id,
+        master_output=validation.proof_hash,
+        track="execution",  # Execution track!
+    )
+    
+    # Link to awareness card if provided
+    if linked_awareness_id is not None:
+        memory.create_connection(
+            source_card_id=card.id,
+            target_card_id=linked_awareness_id,
+            relation="produced",
+        )
+    
+    return card.id
+
+
+def store_plan_execution(
+    memory,
+    plan: "TascPlan",
+    moment_id: Optional[int] = None,
+) -> int:
+    """Store an entire TascPlan execution record in the execution track.
+    
+    Creates a card containing the full plan with all validations.
+    
+    Args:
+        memory: ABMemory instance.
+        plan: TascPlan with validations.
+        moment_id: Optional moment ID.
+    
+    Returns:
+        Card ID of the stored plan execution.
+    """
+    from ab.models import Buffer
+    
+    # Full plan buffer
+    plan_json = json.dumps(plan.to_dict(), indent=2).encode("utf-8")
+    plan_buf = Buffer(
+        name="plan",
+        headers={
+            "plan_id": plan.id,
+            "title": plan.title,
+            "tasc_count": len(plan.tascs),
+            "validated_count": sum(1 for v in plan.validations.values() if v.validated),
+            "type": "plan_execution",
+        },
+        payload=plan_json,
+    )
+    
+    # Summary buffer
+    validated = sum(1 for v in plan.validations.values() if v.validated)
+    summary = f"Plan: {plan.title}\nTascs: {len(plan.tascs)}, Validated: {validated}"
+    summary_buf = Buffer(
+        name="summary",
+        headers={"type": "text"},
+        payload=summary.encode("utf-8"),
+    )
+    
+    card = memory.store_card(
+        label="plan_execution",
+        buffers=[plan_buf, summary_buf],
+        moment_id=moment_id,
+        master_input=plan.title,
+        master_output=f"{validated}/{len(plan.tascs)} validated",
+        track="execution",  # Execution track!
+    )
+    
+    return card.id
+
+
+def find_executions_by_plan(memory, plan_id: str) -> list:
+    """Find all tasc executions for a given plan ID.
+    
+    Args:
+        memory: ABMemory instance.
+        plan_id: Plan identifier to search for.
+    
+    Returns:
+        List of (card_id, execution_summary) tuples.
+    """
+    cards = memory.find_cards_by_label("tasc_execution")
+    results = []
+    
+    for card in cards:
+        for buf in card.buffers:
+            if buf.name == "validation":
+                headers = buf.headers
+                if headers.get("plan_id") == plan_id:
+                    results.append((
+                        card.id,
+                        {
+                            "tasc_id": headers.get("tasc_id"),
+                            "proof_hash": headers.get("proof_hash"),
+                            "validated": headers.get("validated"),
+                        }
+                    ))
+                break
+    
+    return results

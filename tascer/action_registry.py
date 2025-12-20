@@ -204,6 +204,31 @@ class ActionRegistry:
         self.ensure_loaded()
         return [a for a in self._actions.values() if a.sandbox_only]
     
+    def register_action(self, action: ActionMetadata) -> None:
+        """Register an action dynamically (used by plugins).
+        
+        Plugins can register their own actions at runtime:
+        
+            registry.register_action(ActionMetadata(
+                id="browser.get",
+                name="Browser GET",
+                ...
+            ))
+        
+        Args:
+            action: ActionMetadata to register.
+        """
+        self._actions[action.id] = action
+    
+    def register_actions(self, actions: List[ActionMetadata]) -> None:
+        """Register multiple actions at once.
+        
+        Args:
+            actions: List of ActionMetadata to register.
+        """
+        for action in actions:
+            self.register_action(action)
+    
     def is_mutation(self, action_id: str) -> bool:
         """Check if action mutates state."""
         action = self.get(action_id)
