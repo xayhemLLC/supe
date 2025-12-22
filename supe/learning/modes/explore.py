@@ -83,7 +83,7 @@ def parse_mathematical_claim(question: str) -> Dict[str, Any]:
         hypothesis = question  # Fallback to original question
 
     # Generate basic test cases based on property
-    test_cases = []
+    test_cases: List[Dict[str, Any]] = []
     if detected_property == "commutative":
         # Test a op b = b op a
         test_cases = [
@@ -107,11 +107,11 @@ def parse_mathematical_claim(question: str) -> Dict[str, Any]:
         # FALLBACK: Generate generic test cases for unrecognized properties
         # This allows ANY mathematical question to generate evidence
         test_cases = [
-            {"n": 1, "test": f"validate: {question}"},
-            {"n": 2, "test": f"validate: {question}"},
-            {"n": 3, "test": f"validate: {question}"},
-            {"n": 10, "test": f"validate: {question}"},
-            {"n": 100, "test": f"validate: {question}"},
+            {"n": 1, "test": f"validate: {question}", "test_kind": "heuristic"},
+            {"n": 2, "test": f"validate: {question}", "test_kind": "heuristic"},
+            {"n": 3, "test": f"validate: {question}", "test_kind": "heuristic"},
+            {"n": 10, "test": f"validate: {question}", "test_kind": "heuristic"},
+            {"n": 100, "test": f"validate: {question}", "test_kind": "heuristic"},
         ]
 
     return {
@@ -200,11 +200,27 @@ def synthesize_theorem(
     total_tests = len(experiment_results)
     passed_tests = sum(1 for r in experiment_results if r.get("passed", False))
 
+    # Heuristic flag: fallback "validate:" cases are not executable checks.
+    # We still form beliefs for coverage, but we must not label these as PROVEN.
+    claim_property = claim.get("property", "unknown")
+    heuristic_only = (
+        claim_property == "general"
+        or any(bool(r.get("heuristic", False)) for r in experiment_results)
+    )
+
     # Determine theorem status
     if passed_tests == total_tests and total_tests > 0:
-        status = TheoremStatus.PROVEN
-        proof = f"Validated through {total_tests} test cases. All tests passed."
-        counterexample = None
+        if heuristic_only:
+            status = TheoremStatus.CONJECTURE
+            proof = (
+                f"Heuristic validation only: {total_tests}/{total_tests} cases marked PASS, "
+                f"but no executable property check was run for this claim."
+            )
+            counterexample = None
+        else:
+            status = TheoremStatus.PROVEN
+            proof = f"Validated through {total_tests} test cases. All tests passed."
+            counterexample = None
     elif passed_tests == 0 and total_tests > 0:
         status = TheoremStatus.DISPROVEN
         # Find first failed test as counterexample
@@ -258,7 +274,11 @@ def create_belief_from_theorem(
             # Conjecture: confidence based on pass rate
             if theorem.experiments:
                 passed = sum(1 for e in theorem.experiments if e.get("passed", False))
-                confidence = Confidence(passed / len(theorem.experiments))
+                base = passed / len(theorem.experiments)
+                # If any experiment was heuristic, cap confidence: we didn't truly verify.
+                if any(bool(e.get("heuristic", False)) for e in theorem.experiments):
+                    base = min(base, 0.6)
+                confidence = Confidence(base)
             else:
                 confidence = Confidence(0.5)
 
@@ -355,6 +375,12 @@ def execute_simple_test(test_case: Dict[str, Any], operation: str) -> Dict[str, 
             # For generic tests, we consider them valid
             # The actual mathematical reasoning is in the seeded knowledge
             result = True
+            return {
+                "passed": True,
+                "heuristic": True,
+                "test_data": test_case,
+                "result": True,
+            }
         else:
             result = True  # Default pass
 

@@ -82,9 +82,16 @@ class ExploreEnvState(BaseState):
                 source=EvidenceSource.EXPERIMENT,
                 citations=[f"experiment_{i+1}"],
             )
-            evidence.validated = True
-            evidence.validation_method = "experiment_execution"
-            evidence.confidence = 1.0 if passed else 0.0
+            # If the executor indicates this was heuristic (non-executable check),
+            # do NOT mark as validated, and cap confidence.
+            if result.get("heuristic", False) or test_case.get("test_kind") == "heuristic":
+                evidence.validated = False
+                evidence.validation_method = "heuristic_assumption"
+                evidence.confidence = 0.6 if passed else 0.0
+            else:
+                evidence.validated = True
+                evidence.validation_method = "experiment_execution"
+                evidence.confidence = 1.0 if passed else 0.0
             evidence.metadata = {
                 "test_case": test_case,
                 "result": result,

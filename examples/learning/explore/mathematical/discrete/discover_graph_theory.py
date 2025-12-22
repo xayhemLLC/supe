@@ -21,6 +21,12 @@ Let's DISCOVER graph theory through exploration! 🎨
 """
 
 import asyncio
+import json
+from dataclasses import dataclass
+from itertools import combinations
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+
 from supe import Supe
 from ab.models import Buffer
 
@@ -371,6 +377,203 @@ def draw_eulerian_path():
     """
 
 
+# -----------------------------
+# Conjecture workbench helpers
+# -----------------------------
+
+Edge = Tuple[int, int]
+Graph = Set[Edge]
+
+
+@dataclass
+class Conjecture:
+    key: str
+    statement: str
+    validator: Callable[[], Tuple[bool, Optional[Dict[str, Any]]]]
+
+
+def enumerate_graphs(vertices: int) -> Iterable[Graph]:
+    """Enumerate all simple undirected graphs for a given vertex count."""
+    edge_list = list(combinations(range(vertices), 2))
+    total = 1 << len(edge_list)
+    for mask in range(total):
+        edges: Graph = set()
+        for idx, edge in enumerate(edge_list):
+            if mask & (1 << idx):
+                edges.add(edge)
+        yield edges
+
+
+def build_adjacency(vertices: int, edges: Graph) -> List[List[int]]:
+    adj: List[List[int]] = [[] for _ in range(vertices)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    return adj
+
+
+def is_connected(vertices: int, edges: Graph) -> bool:
+    if vertices == 0:
+        return True
+    adj = build_adjacency(vertices, edges)
+    visited = {0}
+    stack = [0]
+    while stack:
+        node = stack.pop()
+        for nbr in adj[node]:
+            if nbr not in visited:
+                visited.add(nbr)
+                stack.append(nbr)
+    return len(visited) == vertices
+
+
+def is_bipartite(vertices: int, edges: Graph) -> bool:
+    """Two-color test; returns False if any odd cycle exists."""
+    adj = build_adjacency(vertices, edges)
+    color: Dict[int, int] = {}
+    for start in range(vertices):
+        if start in color:
+            continue
+        color[start] = 0
+        queue = [start]
+        while queue:
+            node = queue.pop()
+            for nbr in adj[node]:
+                if nbr not in color:
+                    color[nbr] = 1 - color[node]
+                    queue.append(nbr)
+                elif color[nbr] == color[node]:
+                    return False
+    return True
+
+
+def count_odd_degree_vertices(vertices: int, edges: Graph) -> int:
+    adj = build_adjacency(vertices, edges)
+    return sum(1 for deg in map(len, adj) if deg % 2 == 1)
+
+
+def format_counterexample(vertices: int, edges: Graph, note: str) -> Dict[str, Any]:
+    return {
+        "vertices": vertices,
+        "edges": sorted(list(edges)),
+        "note": note,
+    }
+
+
+def validate_connected_min_edges() -> Tuple[bool, Optional[Dict[str, Any]]]:
+    """Check 'connected graph with n vertices has at least n-1 edges'."""
+    for n in range(2, 6):
+        for edges in enumerate_graphs(n):
+            if not is_connected(n, edges):
+                continue
+            if len(edges) < n - 1:
+                return False, format_counterexample(
+                    n, edges, "Connected but edges < n-1"
+                )
+    return True, None
+
+
+def validate_connected_at_most_n_edges() -> Tuple[bool, Optional[Dict[str, Any]]]:
+    """Deliberately false conjecture; should find counterexample quickly."""
+    for n in range(3, 6):
+        for edges in enumerate_graphs(n):
+            if not is_connected(n, edges):
+                continue
+            if len(edges) > n:
+                return False, format_counterexample(
+                    n, edges, "Connected and denser than n edges"
+                )
+    return True, None
+
+
+def validate_bipartite_no_odd_cycles() -> Tuple[bool, Optional[Dict[str, Any]]]:
+    for n in range(2, 6):
+        for edges in enumerate_graphs(n):
+            if not is_bipartite(n, edges):
+                continue
+            # If graph is bipartite, it must not have an odd cycle
+            # Two-coloring already guarantees this.
+    return True, None
+
+
+def validate_odd_degree_even_count() -> Tuple[bool, Optional[Dict[str, Any]]]:
+    for n in range(1, 6):
+        for edges in enumerate_graphs(n):
+            if count_odd_degree_vertices(n, edges) % 2 == 1:
+                return False, format_counterexample(
+                    n, edges, "Found odd number of odd-degree vertices"
+                )
+    return True, None
+
+
+CONJECTURES: List[Conjecture] = [
+    Conjecture(
+        key="connected_min_edges",
+        statement="Every connected simple graph with n >= 2 vertices has at least n-1 edges.",
+        validator=validate_connected_min_edges,
+    ),
+    Conjecture(
+        key="connected_at_most_n_edges",
+        statement="Every connected simple graph with n vertices has at most n edges.",
+        validator=validate_connected_at_most_n_edges,
+    ),
+    Conjecture(
+        key="bipartite_no_odd_cycles",
+        statement="A graph is bipartite only if it has no odd cycles.",
+        validator=validate_bipartite_no_odd_cycles,
+    ),
+    Conjecture(
+        key="odd_degree_even_count",
+        statement="In any simple graph, the number of vertices with odd degree is even.",
+        validator=validate_odd_degree_even_count,
+    ),
+]
+
+
+async def run_conjecture_suite(supe: Supe) -> List[Dict[str, Any]]:
+    """Generate, test, and log conjectures with Supe + brute-force checks."""
+    results: List[Dict[str, Any]] = []
+    print("=" * 80)
+    print("🤖 CONJECTURE WORKBENCH: Generating and testing new statements")
+    print("=" * 80)
+    for conj in CONJECTURES:
+        print(f"\nConjecture [{conj.key}]: {conj.statement}")
+        truth, counterexample = conj.validator()
+        supe_result = await supe.learn(f"Is it true that {conj.statement}", mode="explore")
+
+        status = "PROVEN (exhaustive on n<=5)" if truth else "DISPROVEN (counterexample found)"
+        print(f"Local check: {status}")
+        if counterexample:
+            print(f"Counterexample: V={counterexample['vertices']}, E={counterexample['edges']}")
+
+        belief_summary = "none"
+        if supe_result["beliefs_count"] > 0:
+            belief = supe_result["beliefs"][0]["content"]
+            belief_summary = f"{belief.get('status', 'unknown')} @ {supe_result['confidence']:.2f}"
+        print(f"Supe result: beliefs={supe_result['beliefs_count']} ({belief_summary}), proof_hash={supe_result['proof_hash'][:12]}...")
+
+        results.append(
+            {
+                "conjecture": conj.key,
+                "statement": conj.statement,
+                "local_truth": truth,
+                "counterexample": counterexample,
+                "supe_beliefs": supe_result.get("beliefs_count", 0),
+                "supe_confidence": supe_result.get("confidence", 0.0),
+                "proof_hash": supe_result.get("proof_hash", ""),
+                "mode": supe_result.get("mode", "explore"),
+            }
+        )
+    return results
+
+
+def log_conjecture_results(results: List[Dict[str, Any]], log_path: Path) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as fh:
+        for entry in results:
+            fh.write(json.dumps(entry) + "\n")
+
+
 async def main():
     print("=" * 80)
     print("🕸️  MATHEMATICAL DISCOVERY: Graph Theory - Mathematics of Networks")
@@ -625,6 +828,9 @@ Classic Problems:
     print()
 
     # Summary
+    conjecture_results = await run_conjecture_suite(supe)
+    log_conjecture_results(conjecture_results, Path("examples/logs/graph_conjectures.jsonl"))
+
     print("=" * 80)
     print("🎓 GRAPH THEORY DISCOVERIES")
     print("=" * 80)

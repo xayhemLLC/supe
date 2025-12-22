@@ -224,6 +224,28 @@ def test_create_belief_from_theorem():
     assert belief.confidence == 0.95  # PROVEN gets high confidence
 
 
+def test_execute_simple_test_generic_is_heuristic():
+    """Generic 'validate:' tests should be marked heuristic (not executable validation)."""
+    test_case = {"n": 1, "test": "validate: some advanced claim"}
+
+    result = execute_simple_test(test_case, "unknown")
+
+    assert result["passed"] is True
+    assert result.get("heuristic") is True
+
+
+def test_synthesize_theorem_generic_is_conjecture():
+    """Heuristic-only exploration should yield CONJECTURE, not PROVEN."""
+    q = Question.create("Is some advanced claim true?", QuestionType.MATH_STRUCTURE)
+    claim = {"property": "general", "hypothesis": "Some advanced claim"}
+    experiment_results = [{"passed": True, "heuristic": True} for _ in range(3)]
+
+    theorem = synthesize_theorem(q, claim, experiment_results)
+
+    assert theorem.status == TheoremStatus.CONJECTURE
+    assert "heuristic" in theorem.proof.lower()
+
+
 def test_process_explore_question():
     """Should process question through EXPLORE pipeline."""
     q = Question.create("Is addition commutative?", QuestionType.MATH_STRUCTURE)

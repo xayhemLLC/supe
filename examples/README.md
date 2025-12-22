@@ -1,280 +1,353 @@
-# Supe Learning System Examples
+# Supe Examples
 
-Practical examples demonstrating the unified learning system.
+Comprehensive examples demonstrating Supe's browser automation and learning system capabilities.
+
+## Directory Structure
+
+```
+examples/
+├── browser/              # Browser automation (CDP - no Playwright!)
+│   ├── demos/            # Ready-to-run browser demos
+│   ├── mcp/              # MCP browser protocol examples
+│   └── recording/        # Video/terminal recording scripts
+└── learning/             # Learning system (INGEST + EXPLORE)
+    ├── ingest/           # Learn from documentation
+    ├── explore/          # Discover properties through experimentation
+    │   └── mathematical/ # 20+ mathematical discovery examples
+    └── tools/            # Learning system utilities
+```
 
 ## Quick Start
 
-All examples can be run directly:
+### Browser Automation (No Playwright Required!)
 
 ```bash
-# Learn mathematics from first principles
-python examples/discover_math_from_zero.py
+# Run basic CDP browser demo
+cd browser/demos
+python basic_demo.py
 
-# Learn React Hooks from documentation
-python examples/learn_react_hooks.py
+# Run beautiful terminal demo with colors
+python terminal_demo.py
 
-# Compare both modes
-python examples/compare_modes.py
+# Record a demo video
+cd ../recording
+./record_demo_easy.sh
 ```
 
-## Examples
+**📖 Full Guide:** [browser/README.md](browser/README.md)
 
-### 1. Mathematical Discovery (EXPLORE Mode)
+### Learning System
 
-**File**: `discover_math_from_zero.py`
+```bash
+# INGEST mode - Learn from documentation
+cd learning/ingest
+python learn_react_hooks.py
 
-Demonstrates learning from first principles by starting with just two concepts:
-- Zero (additive identity)
-- Nonzero (everything else)
+# EXPLORE mode - Discover mathematical properties
+cd ../explore/mathematical/foundations
+python discover_from_zero.py
+```
 
-The system discovers:
-- ✅ Addition is commutative (PROVEN with experiments)
-- ✅ Addition is associative (PROVEN)
-- ❌ Subtraction is NOT commutative (DISPROVEN with counterexample)
-- ✅ Multiplication is associative (PROVEN)
+**📖 Full Guide:** [learning/README.md](learning/README.md)
 
-**Output**: Complete proofs with confidence scores and cryptographic validation.
+---
 
-### 2. Documentation Learning (INGEST Mode)
+## Browser Automation (`/browser`)
 
-**File**: `learn_react_hooks.py`
+Direct Chrome control via **Chrome DevTools Protocol (CDP)** - lightweight alternative to Playwright!
 
-Demonstrates learning from documentation:
-1. Stores React documentation in memory
-2. Extracts key concepts
-3. Creates Cornell-style notes
-4. Identifies knowledge gaps
-5. Schedules spaced repetition
+### Features
 
-**Output**: Structured notes with conceptual and operational summaries.
+- ✅ Page navigation & content extraction
+- ✅ JavaScript execution
+- ✅ Form interaction & filling
+- ✅ Screenshot capture
+- ✅ Infinite scroll handling
+- ✅ Cookie management
+- ✅ **No Playwright dependency!**
 
-### 3. Mode Comparison
+### Demos Available
 
-**File**: `compare_modes.py`
+| Demo | Description | Duration |
+|------|-------------|----------|
+| `basic_demo.py` | All CDP features | ~30s |
+| `terminal_demo.py` | Beautiful colored output | ~20s |
+| `quick_demo.py` | Quick demonstration | ~30s |
 
-Side-by-side comparison of INGEST and EXPLORE modes showing:
-- Different use cases
-- Evidence types
-- Confidence scoring
-- Output formats
+### Recording Scripts
 
-## Key Concepts Demonstrated
+Create video demos automatically:
+- `auto_record.py` - Automatic screen recording with ffmpeg
+- `record_demo_easy.sh` - Interactive recording helper
+- `record_terminal_demo.sh` - Terminal recording with asciinema
 
-### EXPLORE Mode
+**Requirements:** `pip install websockets beautifulsoup4`
 
-- **Purpose**: Discover properties through experimentation
-- **Input**: Testable questions ("Is X commutative?")
-- **Process**: Generate experiments, run tests, synthesize theorems
-- **Output**: Formal proofs with PROVEN/DISPROVEN/CONJECTURE status
-- **Confidence**: Based on experiment pass rate
-- **Use Cases**:
-  - Mathematical property discovery
-  - Algorithm behavior validation
-  - System property testing
-  - API contract verification
+---
 
-### INGEST Mode
+## Learning System (`/learning`)
 
-- **Purpose**: Learn from existing documentation
-- **Input**: General questions ("How does X work?")
-- **Process**: Search memory, extract concepts, synthesize notes
-- **Output**: Cornell notes with cue/notes/examples/summaries
-- **Confidence**: Based on evidence quality and self-test
-- **Use Cases**:
-  - Learning from documentation
-  - Understanding codebases
-  - API usage patterns
-  - Conceptual knowledge
+Unified learning system with two complementary modes:
+
+### INGEST Mode - Learn from Documentation
+
+Extract knowledge from existing sources:
+- Cornell-style notes (cue/notes/examples/summary)
+- Concept extraction
+- Question generation (4 types)
+- Evidence collection with citations
+- Self-testing validation
+
+**Example:** `learning/ingest/learn_react_hooks.py`
+
+### EXPLORE Mode - Discover Properties
+
+Validate properties through formal experimentation:
+- Parse testable claims
+- Generate experiments
+- Execute and validate
+- Synthesize formal theorems
+- Proof-of-work validation
+
+**Example:** `learning/explore/mathematical/foundations/discover_from_zero.py`
+
+### Mathematical Discovery Examples (20+)
+
+Organized by mathematical domain:
+
+```
+explore/mathematical/
+├── foundations/        # First principles, Peano axioms (4 examples)
+├── arithmetic/         # Primes, modular arithmetic, number theory (3)
+├── algebra/            # Abstract, linear, complex numbers (3)
+├── geometry/           # Euclidean, trigonometry, topology (3)
+├── analysis/           # Calculus, fractals (2)
+├── discrete/           # Sets, graphs, information theory (3)
+├── probability/        # Probability and statistics (1)
+└── advanced/           # Higher-order patterns (1)
+```
+
+**Result Types:**
+- **PROVEN** - High confidence (0.8-1.0)
+- **CONJECTURE** - Likely true (0.5-0.8)
+- **DISPROVEN** - Counterexample found
+- **UNKNOWN** - Insufficient evidence
+
+---
+
+## Documentation
+
+### Guides
+
+| Guide | Description |
+|-------|-------------|
+| [Browser Automation](../docs/guides/browser_automation.md) | Complete CDP browser guide |
+| [Terminal Recording](../docs/guides/terminal_recording.md) | Create terminal demos |
+| [Mathematical Journey](../docs/guides/mathematical_journey.md) | Math discovery overview |
+| [Geometry Guide](../docs/guides/geometry_guide.md) | Geometry exploration |
+| [Modular Arithmetic](../docs/guides/modular_arithmetic_guide.md) | Modular math patterns |
+
+### API Documentation
+
+- [Learning System](../docs/learning_system.md) - Complete system docs
+- [AB Memory](../docs/api/abmemory.md) - Memory system API
+- [Tasc](../docs/api/tasc.md) - Task management
+
+### System Overview
+
+- [Learning System Summary](../LEARNING_SYSTEM_SUMMARY.md) - Quick overview
+- [Main README](../README.md) - Project overview
+
+---
+
+## Installation
+
+```bash
+# Full installation with all dependencies
+pip install -e .
+
+# Or use uv (recommended)
+uv pip install -e .
+
+# Browser automation only
+pip install websockets beautifulsoup4
+```
+
+---
+
+## Example Output
+
+### Browser Demo (Terminal)
+
+```
+══════════════════════════════════════════════════════════
+                    CDP BROWSER DEMO
+          Browser Automation Without Playwright!
+══════════════════════════════════════════════════════════
+
+[STEP 1] Navigate & Extract Content
+  → Loading example.com...
+  ✓ Page loaded successfully
+  URL: https://example.com
+  Title: Example Domain
+
+[STEP 2] Execute JavaScript
+  → Running document.title...
+  ✓ Result: Example Domain
+  ✓ Window: {"width":1200,"height":830}
+```
+
+### Learning Demo (EXPLORE Mode)
+
+```python
+Theorem: Addition is Commutative
+Status: PROVEN
+Confidence: 1.00
+
+Proof:
+  For all tested pairs (a, b) in domain N:
+    a + b = b + a
+
+  Verified through 50 experiments
+  No counterexamples found
+
+Evidence:
+  - 1 + 2 = 2 + 1 = 3
+  - 5 + 7 = 7 + 5 = 12
+  - 100 + 200 = 200 + 100 = 300
+```
+
+---
 
 ## Running Examples
 
-### Prerequisites
+### Individual Example
 
 ```bash
-# Install Supe
-pip install -e .
-
-# Or use uv
-uv pip install -e .
+python examples/browser/demos/terminal_demo.py
 ```
 
-### Execute Examples
+### Category
 
 ```bash
-# Make executable (Unix/Mac)
-chmod +x examples/*.py
-
-# Run directly
-./examples/discover_math_from_zero.py
-
-# Or with python
-python examples/discover_math_from_zero.py
+# Run all foundational math examples
+cd examples/learning/explore/mathematical/foundations
+for f in *.py; do python "$f"; done
 ```
 
-### Custom Examples
+### With Testing
 
-Create your own:
+```bash
+pytest examples/ -v
+```
+
+---
+
+## Custom Examples
+
+### Browser Automation
 
 ```python
-#!/usr/bin/env python3
-import asyncio
+from tascer.plugins.browser import CDPBrowser
+
+async with CDPBrowser(headless=True) as browser:
+    result = await browser.get("https://example.com")
+    print(result.soup.title.string)
+
+    # Execute JavaScript
+    title = await browser.evaluate("document.title")
+
+    # Take screenshot
+    await browser.get("https://example.com", take_screenshot=True)
+```
+
+### Learning System
+
+```python
 from supe import Supe
 
-async def main():
-    supe = Supe(db_path=":memory:")
+supe = Supe()
 
-    # INGEST: Learn from docs
-    result = await supe.learn(
-        "What is Python's GIL?",
-        mode="ingest"
-    )
-    print(f"Learned {result['beliefs_count']} beliefs")
-
-    # EXPLORE: Test properties
-    result = await supe.learn(
-        "Is Python dict lookup O(1)?",
-        mode="explore"
-    )
-    print(f"Proven: {result['validated']}")
-
-asyncio.run(main())
-```
-
-## Output Interpretation
-
-### Belief Structure
-
-```python
-{
-    "id": "belief_abc123",
-    "question_id": "question_xyz789",
-    "confidence": 0.85,  # 0.0-1.0
-    "mode": "INGEST",    # or "EXPLORE"
-    "content": {
-        # INGEST mode: CornellNote
-        "cue": "Question prompt",
-        "notes": "Detailed notes",
-        "examples": ["Example 1", "Example 2"],
-        "conceptual_summary": "High-level understanding",
-        "operational_summary": "How to use it"
-
-        # EXPLORE mode: Theorem
-        "statement": "Property description",
-        "proof": "Formal proof",
-        "status": "PROVEN",  # or DISPROVEN, CONJECTURE
-        "properties_validated": ["commutative"],
-        "counterexample": None  # or dict if disproven
-    }
-}
-```
-
-### Confidence Scores
-
-| Range | Meaning | Action |
-|-------|---------|--------|
-| 0.9-1.0 | Proven/Excellent | Review in 14-30 days |
-| 0.8-0.9 | High confidence | Review in 7 days |
-| 0.6-0.8 | Medium confidence | Review in 3-5 days |
-| 0.4-0.6 | Low confidence | Review in 2 days |
-| 0.0-0.4 | Very low/Disproven | Review tomorrow |
-
-### Validation Status
-
-- **validated: true**: All gates passed (confidence, gaps, experiments)
-- **validated: false**: One or more gates failed
-- **proof_hash**: Cryptographic proof (SHA-256)
-
-## Advanced Usage
-
-### Storing Source Material
-
-```python
-# Store documentation
-supe.memory.store_card(
-    label="documentation",
-    master_input="React Hooks",
-    master_output="Documentation text...",
-    track="awareness",
+# INGEST: Learn from docs
+result = await supe.learn(
+    "How do React hooks work?",
+    mode="ingest"
 )
 
-# Store code examples
-supe.memory.store_card(
-    label="code_example",
-    master_input="useState example",
-    master_output="const [state, setState] = useState(0)",
-    track="awareness",
+# EXPLORE: Test properties
+result = await supe.learn(
+    "Is addition commutative?",
+    mode="explore"
 )
 ```
 
-### Accessing Results
+---
 
-```python
-result = await supe.learn("Question", mode="ingest")
+## Contributing Examples
 
-# Get beliefs
-for belief in result['beliefs']:
-    print(f"Confidence: {belief['confidence']}")
-    print(f"Content: {belief['content']}")
+When adding new examples:
 
-# Get metadata
-print(f"Session: {result['session_id']}")
-print(f"Proof: {result['proof_hash']}")
-print(f"Gaps: {result['gaps_count']}")
-```
+1. **Place** in appropriate directory (`browser/` or `learning/`)
+2. **Document** with docstring explaining purpose
+3. **Include** usage example in file header
+4. **Update** relevant README.md
+5. **Test** that it runs successfully
 
-### Building Curricula
-
-```python
-# Sequential learning
-topics = [
-    ("What is a React component?", "ingest"),
-    ("What are props?", "ingest"),
-    ("What are hooks?", "ingest"),
-    ("Is useState synchronous?", "explore"),
-]
-
-for question, mode in topics:
-    result = await supe.learn(question, mode=mode)
-    print(f"✓ {question}: {result['confidence']:.2f}")
-```
+---
 
 ## Troubleshooting
 
-### No beliefs created
+### Browser: Black screen recordings
+
+macOS requires Screen Recording permission. Use built-in recorder:
+1. Press **Cmd+Shift+5**
+2. Select recording area
+3. Click Record
+4. Run the demo
+5. Stop recording
+
+### Learning: No beliefs created
 
 ```python
 # Check evidence collection
-result = await supe.learn("Question", mode="ingest")
 if result['evidence_count'] == 0:
-    print("No relevant content found in memory")
-    # Solution: Store source material first
+    # Store source material first
+    supe.memory.store_card(...)
 ```
 
-### Low confidence
+### EXPLORE: Not finding properties
 
-```python
-# Check gaps
-if result['gaps_count'] > 5:
-    print("Many knowledge gaps identified")
-    # Solution: Learn prerequisites first
-```
+Ensure question is testable:
+- ✅ Good: "Is addition commutative?"
+- ❌ Bad: "Tell me about addition"
 
-### EXPLORE mode not finding properties
-
-```python
-# Ensure question is testable
-# Good: "Is addition commutative?"
-# Bad: "Tell me about addition"
-```
+---
 
 ## Next Steps
 
-1. **Read the docs**: `docs/learning_system.md`
-2. **Run the tests**: `pytest tests/test_learning*.py -v`
-3. **Create your own examples**: Use these as templates
-4. **Build a curriculum**: Chain learning sessions
-5. **Integrate with your app**: Use `supe.learn()` API
+1. 🌐 **Try browser automation** - `cd browser/demos && python terminal_demo.py`
+2. 📚 **Explore learning** - `cd learning/explore/mathematical/foundations`
+3. 🎥 **Record a demo** - `cd browser/recording && ./record_demo_easy.sh`
+4. 📖 **Read the docs** - See [docs/learning_system.md](../docs/learning_system.md)
+5. 🧪 **Run tests** - `pytest tests/test_learning*.py -v`
+6. 🔨 **Build your own** - Use these examples as templates
 
-## Contributing
+---
 
-Found a bug or have an idea? Open an issue or PR!
+## Key Features Summary
+
+### Browser Automation
+- ✅ No Playwright - Direct CDP control
+- ✅ Lightweight - Minimal dependencies
+- ✅ Fast - Direct WebSocket communication
+- ✅ Full-featured - Navigation, JS, forms, screenshots
+
+### Learning System
+- ✅ Evidence-based - All beliefs require validation
+- ✅ Cryptographic proof - Tascer validation
+- ✅ Spaced repetition - SM-2 algorithm
+- ✅ Cross-session - Persistent AB Memory
+- ✅ Confidence scoring - Multi-factor (0.0-1.0)
+- ✅ Formal proofs - Mathematical notation
+
+Happy exploring! 🚀

@@ -14,6 +14,8 @@ from ..types import LearningState, EvidenceSource
 from ..modes.ingest import process_ingest_content
 from ..storage import store_evidence
 from .base import BaseState
+import re
+from typing import Dict, List, Tuple
 
 
 class IngestDocState(BaseState):
@@ -95,34 +97,140 @@ class IngestDocState(BaseState):
         Returns:
             List of (card_id, content) tuples.
         """
-        # Search for cards in awareness track
         try:
-            # Use semantic search if available
-            cards = self.machine.memory.search_cards(
-                query_text=query,
-                track="awareness",
-                limit=5,
-            )
+            queries = self._build_search_queries(query)
+            if not queries:
+                queries = [query]
+
+            # Collect and score results across multiple query strings.
+            scored: Dict[int, float] = {}
+            cards_by_id: Dict[int, object] = {}
+
+            for qi, q in enumerate(queries):
+                # ABMemory.search_cards() is LIKE-based; short focused queries work best.
+                cards = self.machine.memory.search_cards(
+                    q,
+                    limit=8,
+                    track="awareness",
+                )
+                for rank, card in enumerate(cards):
+                    cards_by_id[card.id] = card
+                    # Higher score for earlier query + higher rank.
+                    score = (len(queries) - qi) * 10.0 + (8 - rank)
+                    scored[card.id] = scored.get(card.id, 0.0) + score
+
+            # Sort by score desc, then by recency (higher id tends to be newer)
+            ordered_ids = sorted(scored.keys(), key=lambda cid: (scored[cid], cid), reverse=True)
 
             results = []
-            for card in cards:
-                # Extract text content from buffers
-                content_parts = []
-                for buffer in card.buffers:
-                    try:
-                        text = buffer.payload.decode('utf-8')
-                        content_parts.append(text[:1000])  # First 1000 chars
-                    except:
-                        continue
-
-                if content_parts:
-                    results.append((card.id, "\n".join(content_parts)))
+            for cid in ordered_ids[:8]:
+                card = cards_by_id[cid]
+                content = self._extract_card_text(card)
+                if content:
+                    results.append((cid, content))
 
             return results
 
         except Exception as e:
             self._log(f"Memory search failed: {e}")
             return []
+
+    def _build_search_queries(self, question: str) -> List[str]:
+        """Build small, high-signal queries from a natural-language question.
+
+        ABMemory search is LIKE-based over master fields, so shorter keyword
+        queries are much more effective than full sentences.
+        """
+        q = (question or "").strip().lower()
+        if not q:
+            return []
+
+        # Pull tokens and drop common stopwords.
+        tokens = re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)?", q)
+        stop = {
+            "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "without",
+            "is", "are", "was", "were", "be", "been", "being", "does", "do", "did",
+            "how", "what", "why", "when", "where", "explain", "describe",
+            "work", "works", "working",
+        }
+        tokens = [t for t in tokens if t not in stop and len(t) >= 3]
+
+        # Prefer known Discord doc anchors if present.
+        keywords_priority = [
+            "oauth2", "gateway", "intents", "identify", "resume", "heartbeat",
+            "rate", "limits", "rate-limits", "opcodes", "status", "permissions",
+            "interactions", "interaction", "application", "commands",
+            "webhook", "webhooks", "channels", "channel", "guild", "guilds",
+            "user", "users",
+        ]
+
+        phrases: List[str] = []
+        if "rate" in tokens and "limits" in tokens:
+            phrases.append("rate limits")
+        if "gateway" in tokens and "events" in tokens:
+            phrases.append("gateway events")
+        if "application" in tokens and "commands" in tokens:
+            phrases.append("application commands")
+
+        # Build ordered query list (unique, stable).
+        queries: List[str] = []
+        seen = set()
+
+        def add(s: str):
+            s = s.strip()
+            if not s or s in seen:
+                return
+            seen.add(s)
+            queries.append(s)
+
+        for p in phrases:
+            add(p)
+
+        for k in keywords_priority:
+            if k in tokens:
+                add(k)
+
+        # Add a few longest remaining tokens (often specific nouns).
+        for t in sorted(tokens, key=len, reverse=True)[:6]:
+            add(t)
+
+        return queries[:12]
+
+    def _extract_card_text(self, card) -> str:
+        """Extract readable, searchable text from a card (prioritize docs buffers)."""
+        parts: List[str] = []
+
+        # Include master fields (ABMemory search uses these; they often include a snippet).
+        if getattr(card, "master_output", None):
+            parts.append(str(card.master_output)[:4000])
+        if getattr(card, "master_input", None):
+            parts.append(str(card.master_input)[:500])
+
+        # Prefer these buffers for docs ingestion.
+        preferred = {"text", "raw", "content", "md", "markdown", "title"}
+        for buf in getattr(card, "buffers", []) or []:
+            if buf.name not in preferred:
+                continue
+            try:
+                txt = buf.payload.decode("utf-8", errors="ignore")
+            except Exception:
+                continue
+            if not txt:
+                continue
+            parts.append(txt[:8000])
+
+        # Fallback: take a small slice of any buffer.
+        if not parts:
+            for buf in getattr(card, "buffers", []) or []:
+                try:
+                    txt = buf.payload.decode("utf-8", errors="ignore")
+                except Exception:
+                    continue
+                if txt:
+                    parts.append(txt[:2000])
+                    break
+
+        return "\n\n".join(parts).strip()
 
     def _create_synthetic_evidence(self, question: str) -> Evidence:
         """Create synthetic evidence for demonstration.
