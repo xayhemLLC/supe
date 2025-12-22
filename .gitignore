@@ -44,6 +44,9 @@ htmlcov/
 .tox/
 .nox/
 
+# Tascer runtime outputs
+.tascer/
+
 # Documentation
 site/
 
@@ -58,3 +61,14 @@ Thumbs.db
 *.log
 .env
 .env.local
+
+# Browser recordings & media
+*.mov
+*.mp4
+*.gif
+*.cast
+*.tty
+
+# Temporary output
+/tmp/
+*.tmp
