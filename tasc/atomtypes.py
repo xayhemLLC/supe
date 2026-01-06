@@ -308,6 +308,38 @@ def init_default_atomtypes() -> None:
             decoder=_decode_passthrough_bytes,
         )
     )
+    # Evidence validation types
+    registry.register(
+        AtomType(
+            pindex=10,
+            name="evidence",
+            kind="composite",
+            params={},
+            encoder=_encode_passthrough_bytes,
+            decoder=_decode_passthrough_bytes,
+        )
+    )
+    registry.register(
+        AtomType(
+            pindex=11,
+            name="evidence_collection",
+            kind="composite",
+            params={},
+            encoder=_encode_passthrough_bytes,
+            decoder=_decode_passthrough_bytes,
+        )
+    )
+    # Relation types for semantic network capabilities
+    registry.register(
+        AtomType(
+            pindex=12,
+            name="relation",
+            kind="composite",
+            params={},
+            encoder=_encode_passthrough_bytes,
+            decoder=_decode_passthrough_bytes,
+        )
+    )
 
 
 # Invoke initialisation on import so the default types are available

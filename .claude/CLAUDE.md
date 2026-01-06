@@ -1,5 +1,10 @@
 # Supe Project - Claude Memory
 
+---
+## 📚 **[→ MASTER DOCUMENTATION ←](../MASTER_DOCS.md)**
+**Complete guide to all features:** [MASTER_DOCS.md](../MASTER_DOCS.md)
+---
+
 ## Project Overview
 
 Supe is a cognitive memory system for AI agents with task management, learning, and proof-of-work validation. It combines structured memory (AB), task management (Tasc), safe command execution (Tascer), and a unified learning system into a complete AI agent framework.

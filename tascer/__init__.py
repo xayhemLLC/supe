@@ -114,6 +114,7 @@ from .llm_planner import (
     calculate_plan_metrics,
     cite_tasc,
     CitationStore,
+    generate_plan,  # Main entry point - uses Claude by default
 )
 
 # Agent Session Tracking
@@ -211,6 +212,7 @@ __all__ = [
     "calculate_plan_metrics",
     "cite_tasc",
     "CitationStore",
+    "generate_plan",
     # Agent Session
     "StepLog",
     "AgentSession",

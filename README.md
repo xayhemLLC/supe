@@ -6,6 +6,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
+---
+
+## 📚 **[→ MASTER DOCUMENTATION ←](MASTER_DOCS.md)**
+
+**Feeling overwhelmed?** Start here: [**MASTER_DOCS.md**](MASTER_DOCS.md) - Your complete guide to everything in Supe.
+
+---
+
 ## Features
 
 - 🧠 **AB Memory** - Structured storage with moments, cards, and buffers

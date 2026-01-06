@@ -57,6 +57,12 @@ class Tasc:
     review_schedule: Optional[Dict[str, str]] = None  # Spaced repetition schedule
     related_session_id: Optional[str] = None  # Link to LearningSession card
 
+    # Evidence-based validation fields
+    evidence_collection_id: Optional[str] = None  # Reference to EvidenceCollection atom
+    validation_confidence: Optional[float] = None  # Overall validation confidence (0.0-1.0)
+    required_evidence_types: List[str] = field(default_factory=list)  # Required evidence sources
+    validation_status: Optional[str] = None  # "pending", "partial", "complete", "failed"
+
     def to_uobject(self) -> UObject:
         """Represent this Tasc as a ``UObject`` with string fields."""
         import json
@@ -89,6 +95,15 @@ class Tasc:
             data["review_schedule"] = json.dumps(self.review_schedule)
         if self.related_session_id:
             data["related_session_id"] = self.related_session_id
+        # Include evidence validation fields if set
+        if self.evidence_collection_id:
+            data["evidence_collection_id"] = self.evidence_collection_id
+        if self.validation_confidence is not None:
+            data["validation_confidence"] = str(self.validation_confidence)
+        if self.required_evidence_types:
+            data["required_evidence_types"] = json.dumps(self.required_evidence_types)
+        if self.validation_status:
+            data["validation_status"] = self.validation_status
         return UObject.from_dict_of_strings(data)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -110,6 +125,11 @@ class Tasc:
             "unresolved_questions": self.unresolved_questions,
             "review_schedule": self.review_schedule,
             "related_session_id": self.related_session_id,
+            # Evidence validation fields
+            "evidence_collection_id": self.evidence_collection_id,
+            "validation_confidence": self.validation_confidence,
+            "required_evidence_types": self.required_evidence_types,
+            "validation_status": self.validation_status,
         }
 
     @classmethod
@@ -145,6 +165,11 @@ class Tasc:
             unresolved_questions=unresolved,
             review_schedule=data.get("review_schedule"),
             related_session_id=data.get("related_session_id"),
+            # Evidence validation fields
+            evidence_collection_id=data.get("evidence_collection_id"),
+            validation_confidence=data.get("validation_confidence"),
+            required_evidence_types=data.get("required_evidence_types", []),
+            validation_status=data.get("validation_status"),
         )
 
     def to_atom(self) -> Atom:
@@ -201,6 +226,21 @@ class Tasc:
             except:
                 confidence_score = None
 
+        # Parse evidence validation fields
+        required_evidence_types = []
+        if data.get("required_evidence_types"):
+            try:
+                required_evidence_types = json.loads(data["required_evidence_types"])
+            except:
+                required_evidence_types = []
+
+        validation_confidence = None
+        if data.get("validation_confidence"):
+            try:
+                validation_confidence = float(data["validation_confidence"])
+            except:
+                validation_confidence = None
+
         return cls(
             id=data.get("id", ""),
             status=data.get("status", ""),
@@ -218,6 +258,11 @@ class Tasc:
             unresolved_questions=unresolved,
             review_schedule=review_schedule,
             related_session_id=data.get("related_session_id"),
+            # Evidence validation fields
+            evidence_collection_id=data.get("evidence_collection_id"),
+            validation_confidence=validation_confidence,
+            required_evidence_types=required_evidence_types,
+            validation_status=data.get("validation_status"),
         )
     
     @property

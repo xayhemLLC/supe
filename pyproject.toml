@@ -24,6 +24,7 @@ dependencies = [
     "click>=8.0",
     "rich>=13.0",
     "PyYAML>=6.0",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
