@@ -4,7 +4,9 @@ description: How LLMs generate validatable TascPlans from natural language goals
 
 # LLM Plan Generation Workflow
 
-How AI agents (Claude Code, Cursor, Codex, Gemini) should generate executable, validatable plans.
+How AI agents generate executable, validatable plans using Claude (Anthropic API).
+
+**Claude is the recommended LLM for plan generation** due to its strong reasoning capabilities and long context window.
 
 ---
 
@@ -13,6 +15,34 @@ How AI agents (Claude Code, Cursor, Codex, Gemini) should generate executable, v
 ```
 Goal (natural language) → Analyze Context → Decompose → Create TascPlan → Request Approval → Execute
 ```
+
+---
+
+## Quick Start with Claude
+
+The simplest way to generate a plan:
+
+```python
+from tascer import generate_plan
+
+# Set ANTHROPIC_API_KEY environment variable
+plan_result = generate_plan(
+    goal="Fix the 500 error on the login endpoint",
+    context="FastAPI app with JWT authentication",
+    constraints=["Must maintain backwards compatibility"],
+)
+
+print(f"Plan: {plan_result.plan.title}")
+print(f"Confidence: {plan_result.confidence:.0%}")
+
+for tasc in plan_result.plan.tascs:
+    print(f"  - {tasc.title}")
+```
+
+**Requirements:**
+- Install: `pip install anthropic`
+- Set `ANTHROPIC_API_KEY` environment variable
+- Claude handles all the prompt engineering and parsing automatically
 
 ---
 

@@ -166,6 +166,26 @@ class ABMemory:
             )
             """
         )
+
+        # Table for typed semantic relations between cards. Unlike the generic
+        # 'connections' table, this stores formal typed relations (CAUSES, IMPLIES,
+        # SUPPORTS, etc.) with confidence scores and structured metadata for enabling
+        # sophisticated reasoning capabilities.
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS relations (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                source_card_id INTEGER NOT NULL,
+                target_card_id INTEGER NOT NULL,
+                confidence REAL DEFAULT 1.0,
+                metadata TEXT,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (source_card_id) REFERENCES cards (id),
+                FOREIGN KEY (target_card_id) REFERENCES cards (id)
+            )
+            """
+        )
         self.conn.commit()
 
         # Schema Migration: Add 'dna' column if missing
@@ -849,6 +869,195 @@ class ABMemory:
                 }
             )
         return conns
+
+    # ------------------------------------------------------------------
+    # Typed semantic relations management
+    # ------------------------------------------------------------------
+    def add_relation(
+        self,
+        relation_id: str,
+        relation_type: str,
+        source_card_id: int,
+        target_card_id: int,
+        confidence: float = 1.0,
+        metadata: Optional[dict] = None,
+    ) -> None:
+        """Store a typed semantic relation between two cards.
+
+        Args:
+            relation_id: Unique identifier for this relation
+            relation_type: Type of relation (e.g., "causes", "implies", "supports")
+            source_card_id: Source card ID
+            target_card_id: Target card ID
+            confidence: Confidence in this relation (0.0-1.0)
+            metadata: Additional context as dictionary
+        """
+        created_at = int(datetime.now().timestamp() * 1000)
+        metadata_json = json.dumps(metadata) if metadata else None
+
+        cur = self.conn.cursor()
+        cur.execute(
+            "INSERT OR REPLACE INTO relations (id, type, source_card_id, target_card_id, confidence, metadata, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (relation_id, relation_type, source_card_id, target_card_id, confidence, metadata_json, created_at),
+        )
+        self.conn.commit()
+
+    def get_relations(
+        self,
+        source_card_id: Optional[int] = None,
+        target_card_id: Optional[int] = None,
+        relation_type: Optional[str] = None,
+    ) -> List[dict]:
+        """Get relations matching the specified filters.
+
+        Args:
+            source_card_id: Filter by source card (optional)
+            target_card_id: Filter by target card (optional)
+            relation_type: Filter by relation type (optional)
+
+        Returns:
+            List of relation dictionaries
+        """
+        cur = self.conn.cursor()
+
+        # Build query dynamically based on filters
+        conditions = []
+        params = []
+
+        if source_card_id is not None:
+            conditions.append("source_card_id = ?")
+            params.append(source_card_id)
+
+        if target_card_id is not None:
+            conditions.append("target_card_id = ?")
+            params.append(target_card_id)
+
+        if relation_type is not None:
+            conditions.append("type = ?")
+            params.append(relation_type)
+
+        if conditions:
+            where_clause = " WHERE " + " AND ".join(conditions)
+        else:
+            where_clause = ""
+
+        query = f"SELECT * FROM relations{where_clause} ORDER BY created_at DESC"
+        cur.execute(query, tuple(params))
+
+        rows = cur.fetchall()
+        relations = []
+        for row in rows:
+            metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+            relations.append(
+                {
+                    "id": row["id"],
+                    "type": row["type"],
+                    "source_card_id": row["source_card_id"],
+                    "target_card_id": row["target_card_id"],
+                    "confidence": row["confidence"],
+                    "metadata": metadata,
+                    "created_at": row["created_at"],
+                }
+            )
+        return relations
+
+    def get_inverse_relations(
+        self,
+        card_id: int,
+        relation_type: Optional[str] = None,
+    ) -> List[dict]:
+        """Get relations where the specified card is the target.
+
+        Args:
+            card_id: Target card ID
+            relation_type: Optional filter by relation type
+
+        Returns:
+            List of relation dictionaries
+        """
+        return self.get_relations(target_card_id=card_id, relation_type=relation_type)
+
+    def delete_relation(self, relation_id: str) -> None:
+        """Delete a relation by ID.
+
+        Args:
+            relation_id: The relation ID to delete
+        """
+        cur = self.conn.cursor()
+        cur.execute("DELETE FROM relations WHERE id = ?", (relation_id,))
+        self.conn.commit()
+
+    def get_relation_by_id(self, relation_id: str) -> Optional[dict]:
+        """Get a specific relation by ID.
+
+        Args:
+            relation_id: The relation ID
+
+        Returns:
+            Relation dictionary or None if not found
+        """
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM relations WHERE id = ?", (relation_id,))
+        row = cur.fetchone()
+
+        if row is None:
+            return None
+
+        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+        return {
+            "id": row["id"],
+            "type": row["type"],
+            "source_card_id": row["source_card_id"],
+            "target_card_id": row["target_card_id"],
+            "confidence": row["confidence"],
+            "metadata": metadata,
+            "created_at": row["created_at"],
+        }
+
+    def count_relations(
+        self,
+        source_card_id: Optional[int] = None,
+        target_card_id: Optional[int] = None,
+        relation_type: Optional[str] = None,
+    ) -> int:
+        """Count relations matching the specified filters.
+
+        Args:
+            source_card_id: Filter by source card (optional)
+            target_card_id: Filter by target card (optional)
+            relation_type: Filter by relation type (optional)
+
+        Returns:
+            Number of matching relations
+        """
+        cur = self.conn.cursor()
+
+        conditions = []
+        params = []
+
+        if source_card_id is not None:
+            conditions.append("source_card_id = ?")
+            params.append(source_card_id)
+
+        if target_card_id is not None:
+            conditions.append("target_card_id = ?")
+            params.append(target_card_id)
+
+        if relation_type is not None:
+            conditions.append("type = ?")
+            params.append(relation_type)
+
+        if conditions:
+            where_clause = " WHERE " + " AND ".join(conditions)
+        else:
+            where_clause = ""
+
+        query = f"SELECT COUNT(*) as count FROM relations{where_clause}"
+        cur.execute(query, tuple(params))
+
+        row = cur.fetchone()
+        return row["count"] if row else 0
 
     # ------------------------------------------------------------------
     # Card stats (memory physics) management

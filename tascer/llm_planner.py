@@ -1,6 +1,9 @@
 """LLM Planner - Generate TascPlans from natural language goals.
 
 Provides utilities for LLMs to generate validatable plans and track performance.
+
+Uses Claude (Anthropic) by default for plan generation. Supports other LLMs through
+the same interface.
 """
 
 import json
@@ -448,7 +451,7 @@ def cite_tasc(
     proof_hash: Optional[str] = None,
 ) -> TascCitation:
     """Create a citation from one tasc to another.
-    
+
     Example:
         # Cite a prior successful solution
         cite_tasc(
@@ -466,9 +469,91 @@ def cite_tasc(
         description=description,
         proof_hash=proof_hash,
     )
-    
+
     # Store citation
     store = CitationStore()
     store.add(citation)
-    
+
     return citation
+
+
+# ---------------------------------------------------------------------------
+# Convenience: Generate plan with Claude (recommended)
+# ---------------------------------------------------------------------------
+
+def generate_plan(
+    goal: str,
+    context: str = "",
+    constraints: List[str] = None,
+    max_tascs: int = 10,
+    require_approval: bool = True,
+    prior_tasc_ids: List[str] = None,
+    use_claude: bool = True,
+    **llm_kwargs,
+) -> GeneratedPlan:
+    """Generate a TascPlan from a natural language goal.
+
+    Uses Claude (Anthropic) by default for best results.
+
+    Args:
+        goal: Natural language description of what to accomplish
+        context: Additional context (codebase info, constraints, etc.)
+        constraints: List of constraints to enforce
+        max_tascs: Maximum number of tascs in the plan
+        require_approval: Whether to add a manual approval gate at the end
+        prior_tasc_ids: IDs of previous tascs to potentially cite
+        use_claude: Whether to use Claude API (requires ANTHROPIC_API_KEY)
+        **llm_kwargs: Additional arguments for the LLM (e.g., temperature, api_key, model)
+
+    Returns:
+        GeneratedPlan with plan, reasoning, confidence, and citations
+
+    Example:
+        >>> from tascer import generate_plan
+        >>>
+        >>> plan = generate_plan(
+        ...     goal="Fix the 500 error on the login endpoint",
+        ...     context="FastAPI app with JWT authentication",
+        ...     constraints=["Must maintain backwards compatibility"],
+        ... )
+        >>>
+        >>> print(f"Plan: {plan.plan.title}")
+        >>> print(f"Confidence: {plan.confidence:.0%}")
+        >>> for tasc in plan.plan.tascs:
+        ...     print(f"  - {tasc.title}")
+    """
+    if use_claude:
+        try:
+            from .claude_planner import generate_plan_with_claude
+            return generate_plan_with_claude(
+                goal=goal,
+                context=context,
+                constraints=constraints,
+                max_tascs=max_tascs,
+                require_approval=require_approval,
+                prior_tasc_ids=prior_tasc_ids,
+                **llm_kwargs,
+            )
+        except ImportError:
+            raise ImportError(
+                "Claude planner not available. Install anthropic: pip install anthropic\n"
+                "Or set use_claude=False to use manual plan generation."
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to generate plan with Claude: {e}")
+    else:
+        # Fall back to manual prompt generation (user provides their own LLM)
+        request = PlanGenerationRequest(
+            goal=goal,
+            context=context,
+            constraints=constraints or [],
+            max_tascs=max_tascs,
+            require_approval=require_approval,
+            prior_tasc_ids=prior_tasc_ids or [],
+        )
+
+        prompt = generate_plan_prompt(request)
+        raise NotImplementedError(
+            f"Manual LLM integration not implemented. Use use_claude=True or implement your own.\n\n"
+            f"Prompt:\n{prompt}"
+        )

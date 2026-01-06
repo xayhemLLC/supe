@@ -13,6 +13,7 @@ Usage:
     tascer metrics                 Show current metrics
     tascer benchmark               Run capability benchmarks
     tascer audit <run_id>          Export audit report
+    tascer plan <goal>             Generate a TascPlan using Claude
 """
 
 import argparse
@@ -299,6 +300,80 @@ def cmd_audit(args):
     return 0
 
 
+def cmd_plan(args):
+    """Generate a TascPlan using Claude."""
+    try:
+        from tascer import generate_plan
+    except ImportError as e:
+        print(f"❌ Error: {e}")
+        print("\n💡 Install anthropic: pip install anthropic")
+        return 1
+
+    goal = " ".join(args.goal)
+
+    print(f"🤖 Generating plan with Claude...")
+    print(f"📋 Goal: {goal}\n")
+
+    try:
+        # Generate plan
+        result = generate_plan(
+            goal=goal,
+            context=args.context or "",
+            constraints=args.constraint or [],
+            max_tascs=args.max_tascs,
+            require_approval=not args.no_approval,
+            temperature=args.temperature,
+        )
+
+        # Display results
+        print(f"✅ Plan generated: {result.plan.title}")
+        print(f"📊 Confidence: {result.confidence:.0%}")
+        if result.reasoning:
+            print(f"💭 Reasoning: {result.reasoning}\n")
+
+        print(f"📋 Tascs ({len(result.plan.tascs)}):")
+        for i, tasc in enumerate(result.plan.tascs, 1):
+            deps = f" [after: {', '.join(tasc.dependencies)}]" if tasc.dependencies else ""
+            print(f"  {i}. {tasc.title}{deps}")
+            if args.verbose and tasc.testing_instructions:
+                print(f"     Test: {tasc.testing_instructions}")
+
+        # Save plan if requested
+        if args.save:
+            from tascer import save_plan
+            plan_file = save_plan(result.plan, output_dir=args.output or ".tascer/plans")
+            print(f"\n💾 Plan saved: {plan_file}")
+            print(f"   Plan ID: {result.plan.id}")
+            print(f"\n📝 To execute: tascer execute {result.plan.id}")
+
+        # Show JSON output if requested
+        if args.json:
+            plan_dict = {
+                "title": result.plan.title,
+                "confidence": result.confidence,
+                "reasoning": result.reasoning,
+                "tascs": [
+                    {
+                        "id": t.id,
+                        "title": t.title,
+                        "testing_instructions": t.testing_instructions,
+                        "dependencies": t.dependencies,
+                    }
+                    for t in result.plan.tascs
+                ],
+            }
+            print(f"\n{json.dumps(plan_dict, indent=2)}")
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error generating plan: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Tasc - Task Automation and Safety Certification",
@@ -353,7 +428,20 @@ def main():
     audit_parser.add_argument("run_id", help="Run ID for the report")
     audit_parser.add_argument("--output", "-o", help="Output directory")
     audit_parser.add_argument("--hypothesis", help="Hypothesis description")
-    
+
+    # plan
+    plan_parser = subparsers.add_parser("plan", help="Generate a TascPlan using Claude")
+    plan_parser.add_argument("goal", nargs="+", help="Goal description")
+    plan_parser.add_argument("--context", "-c", help="Additional context")
+    plan_parser.add_argument("--constraint", action="append", help="Constraints (can specify multiple times)")
+    plan_parser.add_argument("--max-tascs", type=int, default=10, help="Maximum number of tascs")
+    plan_parser.add_argument("--no-approval", action="store_true", help="Skip approval gate")
+    plan_parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for Claude (0.0-1.0)")
+    plan_parser.add_argument("--save", action="store_true", help="Save plan to file")
+    plan_parser.add_argument("--output", "-o", help="Output directory for saved plan")
+    plan_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    plan_parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed output")
+
     args = parser.parse_args()
     
     if not args.command:
@@ -370,6 +458,7 @@ def main():
         "metrics": cmd_metrics,
         "benchmark": cmd_benchmark,
         "audit": cmd_audit,
+        "plan": cmd_plan,
     }
     
     if args.command == "sandbox":

@@ -453,5 +453,3 @@ tascer/abilities/
 3. **DocumentationAbility** - Uses existing INGEST mode
 4. **CodeGeneratorAbility** - High value, uses ClaudeOrgan
 5. **ScaffoldAbility** - File generation patterns
-6. **TestingAbility** - Uses EXPLORE mode
-7. **Secondary abilities** - One at a time, building on patterns
