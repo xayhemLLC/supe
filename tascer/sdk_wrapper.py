@@ -23,9 +23,18 @@ import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Tuple
 
 from .contracts import Context, GateResult, GitState
+
+# Optional recall imports
+try:
+    from ab.recall import recall_cards
+    from ab.search import search_cards
+    from ab.neural_memory import NeuralMemory
+    RECALL_AVAILABLE = True
+except ImportError:
+    RECALL_AVAILABLE = False
 
 # Optional AB Memory integration
 try:
@@ -142,6 +151,68 @@ class ToolExecutionRecord:
 
 
 @dataclass
+class RecallConfig:
+    """Configuration for recall behavior."""
+
+    enabled: bool = True                      # Enable recall features
+    auto_context: bool = False                # Auto-inject context in pre-hook
+    auto_context_limit: int = 3               # Max auto-context items
+    index_on_store: bool = True               # Index cards for neural recall
+    default_top_k: int = 5                    # Default result limit
+    include_failed: bool = False              # Include failed executions
+    verify_proofs: bool = True                # Verify proofs on recall
+
+
+@dataclass
+class RecallQuery:
+    """Query parameters for recall."""
+
+    query: str                                # Search text
+    tool_name: Optional[str] = None           # Filter by tool
+    session_id: Optional[str] = None          # Filter by session
+    start_time: Optional[str] = None          # Time range start
+    end_time: Optional[str] = None            # Time range end
+    top_k: int = 5                            # Max results
+    include_buffers: List[str] = field(       # Which buffers to return
+        default_factory=lambda: ["input", "output"]
+    )
+    use_neural: bool = True                   # Enable spreading activation
+    min_score: float = 0.0                    # Minimum relevance score
+
+
+@dataclass
+class RecallResult:
+    """Single recall result with metadata."""
+
+    card_id: int                              # Card ID in AB Memory
+    score: float                              # Relevance score (0-1)
+    tool_name: str                            # Extracted tool name
+    tool_input: Dict[str, Any]                # Tool input data
+    tool_output: Optional[Any]                # Tool output data
+    timestamp: str                            # When executed
+    session_id: Optional[str]                 # Session it belongs to
+    proof_valid: bool                         # Proof verification status
+    proof_hash: str                           # The proof hash
+    highlights: Dict[str, str] = field(       # Matched snippets per buffer
+        default_factory=dict
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "card_id": self.card_id,
+            "score": self.score,
+            "tool_name": self.tool_name,
+            "tool_input": self.tool_input,
+            "tool_output": self.tool_output,
+            "timestamp": self.timestamp,
+            "session_id": self.session_id,
+            "proof_valid": self.proof_valid,
+            "proof_hash": self.proof_hash,
+            "highlights": self.highlights,
+        }
+
+
+@dataclass
 class TascerAgentOptions:
     """Options for Tascer-validated agent execution."""
 
@@ -166,6 +237,9 @@ class TascerAgentOptions:
     # Proof settings
     generate_proofs: bool = True
     proof_algorithm: str = "sha256"
+
+    # Recall settings
+    recall_config: RecallConfig = field(default_factory=RecallConfig)
 
 
 # Type alias for gate functions
@@ -212,6 +286,11 @@ class TascerAgent:
         # AB Memory integration
         self._ab_memory = ab_memory
         self._session_moment_id: Optional[int] = None
+
+        # Neural memory for spreading activation recall
+        self._neural_memory: Optional["NeuralMemory"] = None
+        if RECALL_AVAILABLE and self.tascer_options.recall_config.enabled:
+            self._neural_memory = NeuralMemory()
 
         # Register built-in gates
         self._register_builtin_gates()
@@ -642,8 +721,398 @@ class TascerAgent:
             json.dump(report, f, indent=2)
 
     # ---------------------------------------------------------------------------
+    # Recall API
+    # ---------------------------------------------------------------------------
+
+    def recall(
+        self,
+        query: str,
+        top_k: Optional[int] = None,
+        tool_name: Optional[str] = None,
+        session_id: Optional[str] = None,
+        use_neural: bool = True,
+    ) -> List[RecallResult]:
+        """Recall past executions matching query.
+
+        Primary recall interface that searches stored execution cards
+        using keyword matching and optional neural spreading activation.
+
+        Args:
+            query: Search text (keywords or natural language)
+            top_k: Maximum results to return (defaults to recall_config.default_top_k)
+            tool_name: Filter to specific tool (e.g., "Read", "Bash")
+            session_id: Filter to specific session
+            use_neural: Enable spreading activation for semantic matching
+
+        Returns:
+            List of RecallResult sorted by relevance score descending
+
+        Example:
+            results = agent.recall("struct player", top_k=5)
+            for r in results:
+                print(f"{r.tool_name}: {r.tool_input}")
+        """
+        if not self._ab_memory or not AB_AVAILABLE:
+            return []
+
+        if not RECALL_AVAILABLE:
+            return []
+
+        config = self.tascer_options.recall_config
+        top_k = top_k or config.default_top_k
+
+        # Build label filter for tascer cards
+        label_filter = "tascer:"
+        if tool_name:
+            label_filter = f"tascer:{tool_name}:"
+
+        # Use ab.recall for keyword + connection traversal
+        raw_results = recall_cards(
+            self._ab_memory,
+            query=query,
+            top_k=top_k * 2,  # Get extra for filtering
+            strengthen=True,
+            use_card_stats=True,
+        )
+
+        # Convert to RecallResults with filtering
+        results: List[RecallResult] = []
+        for card, score in raw_results:
+            # Filter by label pattern
+            if not card.label.startswith(label_filter):
+                continue
+
+            # Extract data from buffers
+            tool_input = {}
+            tool_output = None
+            proof_hash = ""
+            timestamp = ""
+
+            for buf in card.buffers:
+                if buf.name == "input":
+                    try:
+                        tool_input = json.loads(buf.payload.decode())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass
+                elif buf.name == "output":
+                    try:
+                        tool_output = json.loads(buf.payload.decode())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        tool_output = buf.payload.decode() if buf.payload else None
+                elif buf.name == "proof":
+                    proof_hash = buf.payload.decode() if buf.payload else ""
+
+            # Extract tool name from label (tascer:ToolName:id)
+            parts = card.label.split(":")
+            extracted_tool = parts[1] if len(parts) >= 2 else "unknown"
+
+            # Filter by tool name if specified
+            if tool_name and extracted_tool != tool_name:
+                continue
+
+            # Get timestamp from moment
+            moment = self._ab_memory.get_moment(card.moment_id)
+            timestamp = moment.timestamp if moment else ""
+
+            # Filter by session if specified (stored in moment master_input)
+            if session_id and moment:
+                if session_id not in (moment.master_input or ""):
+                    continue
+
+            # Verify proof if configured
+            proof_valid = True
+            if config.verify_proofs and proof_hash:
+                # Re-verify by checking the hash exists and matches format
+                proof_valid = len(proof_hash) == 16 and all(
+                    c in "0123456789abcdef" for c in proof_hash
+                )
+
+            results.append(RecallResult(
+                card_id=card.id,
+                score=score,
+                tool_name=extracted_tool,
+                tool_input=tool_input,
+                tool_output=tool_output,
+                timestamp=timestamp,
+                session_id=session_id,
+                proof_valid=proof_valid,
+                proof_hash=proof_hash,
+            ))
+
+            if len(results) >= top_k:
+                break
+
+        # Apply neural spreading activation for semantic boost
+        if use_neural and self._neural_memory and results:
+            neural_scores = self._neural_memory.recall(query, top_k=len(results))
+            score_map = {card_id: score for card_id, score in neural_scores}
+            for r in results:
+                if r.card_id in score_map:
+                    r.score = (r.score + score_map[r.card_id]) / 2
+
+            # Re-sort by combined score
+            results.sort(key=lambda x: x.score, reverse=True)
+
+        return results[:top_k]
+
+    def recall_tool(
+        self,
+        tool_name: str,
+        top_k: Optional[int] = None,
+    ) -> List[RecallResult]:
+        """Get recent executions of a specific tool.
+
+        Useful for: "Show me all my Read operations"
+
+        Args:
+            tool_name: Tool to filter by (e.g., "Read", "Bash", "Edit")
+            top_k: Maximum results to return
+
+        Returns:
+            List of RecallResult for that tool, sorted by recency
+        """
+        if not self._ab_memory or not AB_AVAILABLE or not RECALL_AVAILABLE:
+            return []
+
+        config = self.tascer_options.recall_config
+        top_k = top_k or config.default_top_k
+
+        # Search cards with keyword that will match the label pattern
+        cards = search_cards(
+            self._ab_memory,
+            keyword=f"tascer:{tool_name}",
+        )
+        # Filter to only cards that match the label prefix
+        cards = [c for c in cards if c.label.startswith(f"tascer:{tool_name}:")]
+
+        # Convert to results (newest first)
+        results: List[RecallResult] = []
+        for card in reversed(cards[-top_k * 2:]):
+            tool_input = {}
+            tool_output = None
+            proof_hash = ""
+
+            for buf in card.buffers:
+                if buf.name == "input":
+                    try:
+                        tool_input = json.loads(buf.payload.decode())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass
+                elif buf.name == "output":
+                    try:
+                        tool_output = json.loads(buf.payload.decode())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        tool_output = buf.payload.decode() if buf.payload else None
+                elif buf.name == "proof":
+                    proof_hash = buf.payload.decode() if buf.payload else ""
+
+            moment = self._ab_memory.get_moment(card.moment_id)
+            timestamp = moment.timestamp if moment else ""
+
+            results.append(RecallResult(
+                card_id=card.id,
+                score=1.0,  # No relevance scoring for tool filter
+                tool_name=tool_name,
+                tool_input=tool_input,
+                tool_output=tool_output,
+                timestamp=timestamp,
+                session_id=None,
+                proof_valid=True,
+                proof_hash=proof_hash,
+            ))
+
+            if len(results) >= top_k:
+                break
+
+        return results
+
+    def recall_session(
+        self,
+        session_id: Optional[str] = None,
+    ) -> List[RecallResult]:
+        """Get full execution history for a session.
+
+        Args:
+            session_id: Session to retrieve (defaults to current session)
+
+        Returns:
+            All executions from that session in chronological order
+        """
+        target_session = session_id or self._session_id
+        if not target_session:
+            return []
+
+        if not self._ab_memory or not AB_AVAILABLE or not RECALL_AVAILABLE:
+            return []
+
+        # Search for cards in this session's moment
+        cards = search_cards(
+            self._ab_memory,
+            keyword=target_session,
+        )
+
+        # Filter to tascer cards and convert
+        results: List[RecallResult] = []
+        for card in cards:
+            if not card.label.startswith("tascer:"):
+                continue
+
+            tool_input = {}
+            tool_output = None
+            proof_hash = ""
+
+            for buf in card.buffers:
+                if buf.name == "input":
+                    try:
+                        tool_input = json.loads(buf.payload.decode())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass
+                elif buf.name == "output":
+                    try:
+                        tool_output = json.loads(buf.payload.decode())
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        tool_output = buf.payload.decode() if buf.payload else None
+                elif buf.name == "proof":
+                    proof_hash = buf.payload.decode() if buf.payload else ""
+
+            parts = card.label.split(":")
+            extracted_tool = parts[1] if len(parts) >= 2 else "unknown"
+
+            moment = self._ab_memory.get_moment(card.moment_id)
+            timestamp = moment.timestamp if moment else ""
+
+            results.append(RecallResult(
+                card_id=card.id,
+                score=1.0,
+                tool_name=extracted_tool,
+                tool_input=tool_input,
+                tool_output=tool_output,
+                timestamp=timestamp,
+                session_id=target_session,
+                proof_valid=True,
+                proof_hash=proof_hash,
+            ))
+
+        return results
+
+    def recall_similar(
+        self,
+        tool_input: Dict[str, Any],
+        top_k: int = 3,
+    ) -> List[RecallResult]:
+        """Find executions similar to given input.
+
+        Useful for: "Have I run this command before?"
+
+        Args:
+            tool_input: Input to find similar executions for
+            top_k: Maximum results to return
+
+        Returns:
+            List of RecallResult with similar inputs
+        """
+        # Build query from input values
+        query_parts = []
+        for key, value in tool_input.items():
+            if isinstance(value, str):
+                query_parts.append(value)
+            elif isinstance(value, (list, dict)):
+                query_parts.append(json.dumps(value))
+
+        query = " ".join(query_parts)
+        return self.recall(query, top_k=top_k, use_neural=True)
+
+    def get_context_for(
+        self,
+        tool_name: str,
+        tool_input: Dict[str, Any],
+        max_context: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """Auto-retrieve relevant context for a tool call.
+
+        Called internally during _pre_tool_hook to inject
+        historical context into agent decisions.
+
+        Args:
+            tool_name: Tool about to be executed
+            tool_input: Input for the tool
+            max_context: Maximum context items to return
+
+        Returns:
+            List of relevant past executions as dicts
+        """
+        # Build query from tool input
+        query_parts = [tool_name]
+        for value in tool_input.values():
+            if isinstance(value, str):
+                query_parts.append(value)
+
+        query = " ".join(query_parts)
+
+        # Recall similar executions
+        results = self.recall(query, top_k=max_context, use_neural=True)
+
+        # Convert to context dicts
+        return [
+            {
+                "tool_name": r.tool_name,
+                "tool_input": r.tool_input,
+                "tool_output": r.tool_output,
+                "timestamp": r.timestamp,
+            }
+            for r in results
+        ]
+
+    # ---------------------------------------------------------------------------
     # AB Memory Integration
     # ---------------------------------------------------------------------------
+
+    def _extract_concepts(self, record: ToolExecutionRecord) -> List[str]:
+        """Extract concepts from execution record for neural indexing.
+
+        Pulls keywords from tool name, input values, and output to
+        enable semantic recall via spreading activation.
+
+        Args:
+            record: The execution record
+
+        Returns:
+            List of concept strings for indexing
+        """
+        concepts = [record.tool_name.lower()]
+
+        # Extract from input
+        for key, value in record.tool_input.items():
+            # Add the key itself
+            concepts.append(key.lower())
+
+            # Extract words from string values
+            if isinstance(value, str):
+                # Split on common delimiters
+                words = value.replace("/", " ").replace(".", " ").replace("_", " ").split()
+                for word in words:
+                    if len(word) > 3:  # Skip short words
+                        concepts.append(word.lower())
+
+        # Extract from output if it's a string or dict
+        if isinstance(record.tool_output, str):
+            words = record.tool_output[:500].split()
+            for word in words:
+                if len(word) > 4:  # Skip short words in output
+                    concepts.append(word.lower())
+        elif isinstance(record.tool_output, dict):
+            for key in record.tool_output.keys():
+                concepts.append(key.lower())
+
+        # Deduplicate while preserving order
+        seen = set()
+        unique = []
+        for c in concepts:
+            if c not in seen:
+                seen.add(c)
+                unique.append(c)
+
+        return unique[:20]  # Limit to 20 concepts
 
     def _store_to_ab(self, record: ToolExecutionRecord) -> Optional[int]:
         """Store execution record to AB Memory as a Card.
@@ -724,6 +1193,23 @@ class TascerAgent:
                 master_output=str(record.tool_output)[:500] if record.tool_output else None,
                 track="execution",
             )
+
+            # Index for neural recall if enabled
+            if (
+                self._neural_memory
+                and self.tascer_options.recall_config.index_on_store
+                and card.id is not None
+            ):
+                # Extract concepts from input/output for neural indexing
+                concepts = self._extract_concepts(record)
+                if concepts:
+                    # Build buffers dict for neural memory
+                    buffers_dict = {
+                        "input": json.dumps(record.tool_input, default=str),
+                        "output": str(record.tool_output) if record.tool_output else "",
+                        "concepts": " ".join(concepts),
+                    }
+                    self._neural_memory.add_card(card.id, buffers_dict)
 
             return card.id
 
