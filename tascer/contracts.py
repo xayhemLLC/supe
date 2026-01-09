@@ -8,7 +8,7 @@ These dataclasses define the canonical schemas for:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 import json
 
@@ -53,7 +53,7 @@ class Context:
     
     run_id: str
     tasc_id: str
-    timestamp_start: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp_start: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     timestamp_end: Optional[str] = None
     
     # Environment

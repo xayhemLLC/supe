@@ -22,10 +22,17 @@ import json
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 from .contracts import Context, GateResult, GitState
+
+# Optional AB Memory integration
+try:
+    from ab import ABMemory, Moment, Card, Buffer
+    AB_AVAILABLE = True
+except ImportError:
+    AB_AVAILABLE = False
 
 
 # ---------------------------------------------------------------------------
@@ -189,16 +196,22 @@ class TascerAgent:
     def __init__(
         self,
         tascer_options: Optional[TascerAgentOptions] = None,
+        ab_memory: Optional["ABMemory"] = None,
     ):
         """Initialize TascerAgent.
 
         Args:
             tascer_options: Tascer validation configuration
+            ab_memory: Optional ABMemory instance for storing execution records
         """
         self.tascer_options = tascer_options or TascerAgentOptions()
         self._execution_records: List[ToolExecutionRecord] = []
         self._gates: Dict[str, GateFunction] = {}
         self._session_id: Optional[str] = None
+
+        # AB Memory integration
+        self._ab_memory = ab_memory
+        self._session_moment_id: Optional[int] = None
 
         # Register built-in gates
         self._register_builtin_gates()
@@ -321,7 +334,7 @@ class TascerAgent:
         record = ToolExecutionRecord(
             tool_use_id=tool_use_id,
             tool_name=tool_name,
-            timestamp_start=datetime.utcnow().isoformat(),
+            timestamp_start=datetime.now(timezone.utc).isoformat(),
             tool_input=tool_input,
         )
 
@@ -374,7 +387,7 @@ class TascerAgent:
             return {}
 
         # Update record
-        record.timestamp_end = datetime.utcnow().isoformat()
+        record.timestamp_end = datetime.now(timezone.utc).isoformat()
         record.tool_output = input_data.get("tool_result")
 
         # Get tool config
@@ -398,6 +411,10 @@ class TascerAgent:
             record.status = "validated"
         else:
             record.status = "failed"
+
+        # Store to AB Memory
+        if self.tascer_options.store_to_ab:
+            self._store_to_ab(record)
 
         return {}
 
@@ -615,7 +632,7 @@ class TascerAgent:
         """
         report = {
             "session_id": self._session_id,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "proofs_valid": self.verify_proofs(),
             "records": [r.to_dict() for r in self._execution_records],
         }
@@ -623,6 +640,97 @@ class TascerAgent:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w") as f:
             json.dump(report, f, indent=2)
+
+    # ---------------------------------------------------------------------------
+    # AB Memory Integration
+    # ---------------------------------------------------------------------------
+
+    def _store_to_ab(self, record: ToolExecutionRecord) -> Optional[int]:
+        """Store execution record to AB Memory as a Card.
+
+        Creates a Card on the 'execution' track with buffers for:
+        - input: Tool input as JSON
+        - output: Tool output as JSON
+        - context: Execution context
+        - gates: Gate results
+        - proof: Proof hash and verification data
+
+        Args:
+            record: The execution record to store
+
+        Returns:
+            Card ID if stored, None otherwise
+        """
+        if not self._ab_memory or not AB_AVAILABLE:
+            return None
+
+        try:
+            # Create or get session moment
+            if self._session_moment_id is None:
+                moment = self._ab_memory.create_moment(
+                    master_input=f"TascerAgent session: {self._session_id or 'unknown'}",
+                )
+                self._session_moment_id = moment.id
+
+            # Create buffers for the card
+            buffers = [
+                Buffer(
+                    name="input",
+                    headers={"tool": record.tool_name, "type": "tool_input"},
+                    payload=json.dumps(record.tool_input, default=str).encode(),
+                ),
+                Buffer(
+                    name="output",
+                    headers={"type": "tool_output"},
+                    payload=json.dumps(record.tool_output, default=str).encode()
+                    if record.tool_output else b"",
+                ),
+                Buffer(
+                    name="proof",
+                    headers={
+                        "algorithm": self.tascer_options.proof_algorithm,
+                        "status": record.status,
+                    },
+                    payload=record.proof_hash.encode(),
+                ),
+            ]
+
+            # Add context buffer if available
+            if record.context:
+                buffers.append(Buffer(
+                    name="context",
+                    headers={"type": "execution_context"},
+                    payload=json.dumps(record.context.to_dict(), default=str).encode(),
+                ))
+
+            # Add gate results buffer
+            gate_data = {
+                "pre_gates": [g.to_dict() for g in record.pre_gate_results],
+                "post_gates": [g.to_dict() for g in record.post_gate_results],
+            }
+            buffers.append(Buffer(
+                name="gates",
+                headers={"type": "validation_gates"},
+                payload=json.dumps(gate_data).encode(),
+            ))
+
+            # Store the card using ABMemory's API
+            card = self._ab_memory.store_card(
+                label=f"tascer:{record.tool_name}:{record.tool_use_id[:8]}",
+                buffers=buffers,
+                owner_self="tascer_agent",
+                moment_id=self._session_moment_id,
+                master_input=json.dumps(record.tool_input, default=str)[:500],
+                master_output=str(record.tool_output)[:500] if record.tool_output else None,
+                track="execution",
+            )
+
+            return card.id
+
+        except Exception as e:
+            # Don't fail validation if storage fails
+            print(f"Warning: Failed to store to AB Memory: {e}")
+            return None
 
     # ---------------------------------------------------------------------------
     # Built-in Gates
