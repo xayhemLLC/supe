@@ -144,7 +144,7 @@ class Relation:
             Atom containing serialized relation data
         """
         payload = json.dumps(self.to_dict()).encode('utf-8')
-        return Atom.encode("relation", payload)
+        return Atom(pindex=12, payload=payload)
 
     @classmethod
     def from_atom(cls, atom: Atom) -> "Relation":

@@ -325,6 +325,14 @@ def infer_domain_from_title(title: str) -> TaskDomain:
     """
     title_lower = title.lower()
 
+    # Refactoring keywords (check early - "auth" in refactoring isn't security)
+    if any(kw in title_lower for kw in ["refactor", "clean up", "reorganize", "simplify"]):
+        return TaskDomain.REFACTORING
+
+    # Security keywords (high priority but after refactoring)
+    if any(kw in title_lower for kw in ["security", "vulnerability", "encrypt"]):
+        return TaskDomain.SECURITY
+
     # Debugging keywords
     if any(kw in title_lower for kw in ["fix", "bug", "crash", "error", "debug"]):
         return TaskDomain.DEBUGGING
@@ -337,17 +345,9 @@ def infer_domain_from_title(title: str) -> TaskDomain:
     if any(kw in title_lower for kw in ["research", "investigate", "explore", "learn"]):
         return TaskDomain.RESEARCH
 
-    # Refactoring keywords
-    if any(kw in title_lower for kw in ["refactor", "clean up", "reorganize", "simplify"]):
-        return TaskDomain.REFACTORING
-
     # Feature keywords
     if any(kw in title_lower for kw in ["add", "implement", "feature", "new", "create"]):
         return TaskDomain.FEATURE
-
-    # Security keywords
-    if any(kw in title_lower for kw in ["security", "vulnerability", "auth", "encrypt"]):
-        return TaskDomain.SECURITY
 
     # Performance keywords
     if any(kw in title_lower for kw in ["performance", "optimize", "speed", "slow"]):
