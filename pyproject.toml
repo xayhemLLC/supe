@@ -66,6 +66,7 @@ ignore = ["E501"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["ab", "tasc"]
