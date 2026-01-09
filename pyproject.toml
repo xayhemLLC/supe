@@ -1,6 +1,6 @@
 [project]
 name = "supe"
-version = "0.1.0"
+version = "0.1.1"
 description = "Cognitive memory for AI agents with validation and proof-of-work"
 readme = "README.md"
 requires-python = ">=3.10"
