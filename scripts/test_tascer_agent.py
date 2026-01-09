@@ -196,6 +196,54 @@ async def main():
         restored_valid = agent.verify_proofs()
         print(f"   After restoring: proofs_valid = {restored_valid}")
 
+    # Recall demonstration
+    print("\n9. Recall Demo:")
+    print("-" * 40)
+
+    # Recall by keyword
+    print("\n   Searching for 'config'...")
+    results = agent.recall("config", top_k=3)
+    if results:
+        for r in results:
+            print(f"   - [{r.score:.2f}] {r.tool_name}: {r.tool_input}")
+    else:
+        print("   (No results - recall requires ab.recall module)")
+
+    # Recall by tool
+    print("\n   Getting all Read executions...")
+    read_results = agent.recall_tool("Read", top_k=5)
+    if read_results:
+        for r in read_results:
+            print(f"   - {r.tool_name}: {r.tool_input.get('file_path', 'N/A')}")
+    else:
+        print("   (No results)")
+
+    # Recall similar
+    print("\n   Finding similar to '/app/auth.py'...")
+    similar = agent.recall_similar({"file_path": "/app/auth.py"}, top_k=3)
+    if similar:
+        for r in similar:
+            print(f"   - [{r.score:.2f}] {r.tool_name}: {r.tool_input}")
+    else:
+        print("   (No results)")
+
+    # Get context for upcoming tool
+    print("\n   Getting context for Read('/app/settings.py')...")
+    context = agent.get_context_for("Read", {"file_path": "/app/settings.py"})
+    if context:
+        for c in context:
+            print(f"   - Previous: {c['tool_name']} @ {c['timestamp'][:19] if c['timestamp'] else 'N/A'}")
+    else:
+        print("   (No relevant context)")
+
+    # Session recall
+    print("\n   Recalling current session history...")
+    session_history = agent.recall_session()
+    if session_history:
+        print(f"   Found {len(session_history)} executions in session")
+    else:
+        print("   (No session history)")
+
     print("\n" + "=" * 60)
     print("Test Complete!")
     print("=" * 60)

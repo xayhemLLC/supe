@@ -656,3 +656,206 @@ class TestExportReport:
         assert data["proofs_valid"] is True
         assert len(data["records"]) == 1
         assert data["records"][0]["tool_name"] == "Read"
+
+
+class TestRecallDataClasses:
+    """Tests for recall-related data classes."""
+
+    def test_recall_config_defaults(self):
+        """RecallConfig should have sensible defaults."""
+        from tascer.sdk_wrapper import RecallConfig
+
+        config = RecallConfig()
+
+        assert config.enabled is True
+        assert config.auto_context is False
+        assert config.auto_context_limit == 3
+        assert config.index_on_store is True
+        assert config.default_top_k == 5
+        assert config.include_failed is False
+        assert config.verify_proofs is True
+
+    def test_recall_query_defaults(self):
+        """RecallQuery should have sensible defaults."""
+        from tascer.sdk_wrapper import RecallQuery
+
+        query = RecallQuery(query="test search")
+
+        assert query.query == "test search"
+        assert query.tool_name is None
+        assert query.session_id is None
+        assert query.top_k == 5
+        assert query.use_neural is True
+        assert query.min_score == 0.0
+
+    def test_recall_result_to_dict(self):
+        """RecallResult should serialize correctly."""
+        from tascer.sdk_wrapper import RecallResult
+
+        result = RecallResult(
+            card_id=42,
+            score=0.95,
+            tool_name="Read",
+            tool_input={"file_path": "/test.py"},
+            tool_output="content here",
+            timestamp="2026-01-09T12:00:00",
+            session_id="sess_001",
+            proof_valid=True,
+            proof_hash="abc123def456",
+        )
+
+        data = result.to_dict()
+
+        assert data["card_id"] == 42
+        assert data["score"] == 0.95
+        assert data["tool_name"] == "Read"
+        assert data["proof_valid"] is True
+
+
+class TestRecallConfig:
+    """Tests for recall configuration in TascerAgentOptions."""
+
+    def test_options_include_recall_config(self):
+        """TascerAgentOptions should include recall_config."""
+        from tascer.sdk_wrapper import RecallConfig
+
+        options = TascerAgentOptions()
+
+        assert hasattr(options, "recall_config")
+        assert isinstance(options.recall_config, RecallConfig)
+
+    def test_custom_recall_config(self):
+        """Should accept custom recall config."""
+        from tascer.sdk_wrapper import RecallConfig
+
+        custom = RecallConfig(
+            enabled=True,
+            auto_context=True,
+            default_top_k=10,
+        )
+        options = TascerAgentOptions(recall_config=custom)
+
+        assert options.recall_config.auto_context is True
+        assert options.recall_config.default_top_k == 10
+
+
+class TestExtractConcepts:
+    """Tests for concept extraction for neural indexing."""
+
+    def test_extracts_tool_name(self):
+        """Should extract tool name as concept."""
+        agent = TascerAgent()
+        record = ToolExecutionRecord(
+            tool_use_id="tu_001",
+            tool_name="Read",
+            timestamp_start="2026-01-09T12:00:00",
+            tool_input={},
+        )
+
+        concepts = agent._extract_concepts(record)
+
+        assert "read" in concepts
+
+    def test_extracts_from_file_path(self):
+        """Should extract words from file paths."""
+        agent = TascerAgent()
+        record = ToolExecutionRecord(
+            tool_use_id="tu_002",
+            tool_name="Read",
+            timestamp_start="2026-01-09T12:00:00",
+            tool_input={"file_path": "/app/player/structs.h"},
+        )
+
+        concepts = agent._extract_concepts(record)
+
+        assert "player" in concepts
+        assert "structs" in concepts
+
+    def test_extracts_from_command(self):
+        """Should extract words from commands."""
+        agent = TascerAgent()
+        record = ToolExecutionRecord(
+            tool_use_id="tu_003",
+            tool_name="Bash",
+            timestamp_start="2026-01-09T12:00:00",
+            tool_input={"command": "ghidra_headless analyze binary.exe"},
+        )
+
+        concepts = agent._extract_concepts(record)
+
+        assert "ghidra_headless" in concepts or "ghidra" in concepts
+        assert "analyze" in concepts
+        assert "binary" in concepts
+
+    def test_limits_concept_count(self):
+        """Should limit concepts to 20."""
+        agent = TascerAgent()
+        record = ToolExecutionRecord(
+            tool_use_id="tu_004",
+            tool_name="Bash",
+            timestamp_start="2026-01-09T12:00:00",
+            tool_input={"command": " ".join([f"word{i}" for i in range(50)])},
+        )
+
+        concepts = agent._extract_concepts(record)
+
+        assert len(concepts) <= 20
+
+    def test_deduplicates_concepts(self):
+        """Should deduplicate concepts."""
+        agent = TascerAgent()
+        record = ToolExecutionRecord(
+            tool_use_id="tu_005",
+            tool_name="Read",
+            timestamp_start="2026-01-09T12:00:00",
+            tool_input={"file_path": "/player/player.py"},
+        )
+
+        concepts = agent._extract_concepts(record)
+        player_count = sum(1 for c in concepts if c == "player")
+
+        assert player_count == 1
+
+
+class TestRecallWithoutABMemory:
+    """Tests for recall when AB Memory is not available."""
+
+    def test_recall_returns_empty_without_ab(self):
+        """recall() should return empty list without AB Memory."""
+        agent = TascerAgent()  # No ab_memory passed
+
+        results = agent.recall("test query")
+
+        assert results == []
+
+    def test_recall_tool_returns_empty_without_ab(self):
+        """recall_tool() should return empty list without AB Memory."""
+        agent = TascerAgent()
+
+        results = agent.recall_tool("Read")
+
+        assert results == []
+
+    def test_recall_session_returns_empty_without_session(self):
+        """recall_session() should return empty without session."""
+        agent = TascerAgent()
+
+        results = agent.recall_session()
+
+        assert results == []
+
+    def test_recall_similar_returns_empty_without_ab(self):
+        """recall_similar() should return empty without AB Memory."""
+        agent = TascerAgent()
+
+        results = agent.recall_similar({"file_path": "/test.py"})
+
+        assert results == []
+
+    def test_get_context_for_returns_empty_without_ab(self):
+        """get_context_for() should return empty without AB Memory."""
+        agent = TascerAgent()
+
+        results = agent.get_context_for("Read", {"file_path": "/test.py"})
+
+        assert results == []
