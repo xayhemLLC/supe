@@ -53,9 +53,6 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-tasc = "tasc.cli:main"
-t = "tasc.cli:main"
-tascer = "tascer.cli:main"
 supe = "supe.cli:main"
 
 [tool.hatch.build.targets.wheel]
