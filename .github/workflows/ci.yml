@@ -35,8 +35,9 @@ jobs:
       - name: Test CLI commands
         run: |
           supe --help
-          tasc --help
-          tascer --help
+          supe tasc --help
+          supe plan --help
+          supe sandbox --help
           supe status || true
 
   lint:
