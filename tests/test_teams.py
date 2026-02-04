@@ -335,3 +335,101 @@ class TestTeamExecution:
         assert status["name"] == "startup-team"
         assert status["style"] == "startup"
         assert status["tasks"]["total"] == 2
+
+
+class TestAutoDiscovery:
+    """Test task auto-discovery methods."""
+
+    def test_discover_from_plan(self, tmp_path):
+        """Test loading tasks from a plan JSON file."""
+        import json
+
+        # Create a plan file
+        plan = {
+            "tascs": [
+                {"title": "Setup project", "description": "Initialize repo"},
+                {"title": "Add auth", "description": "JWT authentication"},
+                {"title": "Deploy", "description": "Setup CI/CD"},
+            ]
+        }
+        plan_path = tmp_path / "plan.json"
+        plan_path.write_text(json.dumps(plan))
+
+        team = StartupTeam()
+        tasks = team.discover_from_plan(str(plan_path))
+
+        assert len(tasks) == 3
+        assert tasks[0].title == "Setup project"
+        assert tasks[1].title == "Add auth"
+        assert tasks[2].title == "Deploy"
+        assert len(team.tasks) == 3
+
+    def test_discover_from_codebase(self, tmp_path):
+        """Test discovering TODOs from code."""
+        # Create test files with TODOs
+        code = tmp_path / "test.py"
+        code.write_text("""
+# TODO: Add error handling
+def foo():
+    pass
+
+# FIXME: Memory leak here
+def bar():
+    pass
+""")
+
+        team = StartupTeam()
+        tasks = team.discover_from_codebase(path=str(tmp_path))
+
+        # Should find at least the TODO and FIXME
+        assert len(tasks) >= 2
+        titles = [t.title for t in tasks]
+        assert any("TODO" in t or "error handling" in t for t in titles)
+        assert any("FIXME" in t or "Memory leak" in t for t in titles)
+
+    def test_discover_from_diff_no_changes(self):
+        """Test diff discovery with no changes."""
+        team = StartupTeam()
+        # This should not crash even if no git changes
+        tasks = team.discover_from_diff(base="HEAD")
+        assert isinstance(tasks, list)
+
+    @pytest.mark.asyncio
+    async def test_discover_from_goal_fallback(self):
+        """Test goal discovery falls back gracefully without API."""
+        team = StartupTeam()
+
+        # Without API key, should create single task from goal
+        tasks = await team.discover_from_goal("Add user authentication")
+
+        assert len(tasks) >= 1
+        assert "authentication" in tasks[0].title.lower() or "authentication" in tasks[0].description.lower()
+
+    def test_discover_from_issues_no_gh(self):
+        """Test issue discovery handles missing gh CLI gracefully."""
+        team = StartupTeam()
+
+        # Should not crash even without gh CLI or auth
+        tasks = team.discover_from_issues(repo="nonexistent/repo")
+        assert isinstance(tasks, list)
+
+
+class TestResearchDiscovery:
+    """Test research-specific discovery."""
+
+    @pytest.mark.asyncio
+    async def test_discover_from_problem_fallback(self):
+        """Test problem discovery falls back gracefully without API."""
+        team = ResearchTeam()
+
+        # Without API key, should create single question
+        tasks = await team.discover_from_problem("API latency increased")
+
+        assert len(tasks) >= 1
+        assert "latency" in tasks[0].title.lower() or "latency" in tasks[0].description.lower()
+
+    def test_research_team_has_discover_method(self):
+        """Ensure ResearchTeam has the discover_from_problem method."""
+        team = ResearchTeam()
+        assert hasattr(team, "discover_from_problem")
+        assert callable(team.discover_from_problem)

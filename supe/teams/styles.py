@@ -296,6 +296,76 @@ class ResearchTeam(BaseTeam):
             })
         return task
 
+    async def discover_from_problem(
+        self,
+        problem: str,
+        max_questions: int = 5,
+    ) -> List[TaskAssignment]:
+        """Auto-discover research questions from a problem statement.
+
+        Uses LLM to generate hypotheses and research questions.
+
+        Args:
+            problem: Problem statement like "CTR dropped 15%"
+            max_questions: Max questions to generate
+
+        Returns:
+            List of created TaskAssignment objects
+
+        Example:
+            tasks = await team.discover_from_problem(
+                "API latency increased after last deploy"
+            )
+        """
+        try:
+            import anthropic
+            import os
+        except ImportError:
+            # Fallback: single question from problem
+            return [self.add_research_question(f"Investigate: {problem}")]
+
+        api_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEYY")
+        if not api_key:
+            return [self.add_research_question(f"Investigate: {problem}")]
+
+        client = anthropic.Anthropic(api_key=api_key)
+
+        prompt = f"""Given this problem, generate {max_questions} research questions with hypotheses.
+
+Problem: {problem}
+
+For each question, provide:
+1. A specific, testable research question
+2. A hypothesis that could explain it
+3. Priority (1=critical, 5=nice-to-have)
+
+Format as JSON array:
+[{{"question": "...", "hypothesis": "...", "priority": 1}}]
+
+Only output the JSON array, nothing else."""
+
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            import json
+            questions = json.loads(response.content[0].text)
+        except Exception:
+            return [self.add_research_question(f"Investigate: {problem}")]
+
+        created = []
+        for q in questions[:max_questions]:
+            task = self.add_research_question(
+                question=q.get("question", problem),
+                hypothesis=q.get("hypothesis"),
+                priority=q.get("priority", 5),
+            )
+            created.append(task)
+
+        return created
+
     def record_finding(
         self,
         task_id: str,
