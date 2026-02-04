@@ -220,6 +220,251 @@ class BaseTeam(ABC):
         self.tasks[task.id] = task
         return task
 
+    # =========================================================================
+    # AUTO-DISCOVERY METHODS
+    # =========================================================================
+
+    async def discover_from_goal(
+        self,
+        goal: str,
+        max_tasks: int = 8,
+        context: str = None,
+    ) -> List[TaskAssignment]:
+        """Auto-discover tasks from a goal description using LLM.
+
+        Args:
+            goal: High-level goal like "Add user authentication"
+            max_tasks: Maximum tasks to generate
+            context: Optional context about the codebase
+
+        Returns:
+            List of created TaskAssignment objects
+
+        Example:
+            tasks = await team.discover_from_goal("Add dark mode support")
+        """
+        try:
+            from tascer import generate_plan
+        except ImportError:
+            # Fallback: create single task from goal
+            return [self.add_task(goal, description=goal, priority=1)]
+
+        try:
+            result = generate_plan(
+                goal=goal,
+                max_tascs=max_tasks,
+                context=context,
+                require_approval=False,
+            )
+
+            created = []
+            for i, tasc in enumerate(result.plan.tascs):
+                task = self.add_task(
+                    title=tasc.title,
+                    description=tasc.testing_instructions or tasc.title,
+                    priority=i + 1,
+                )
+                created.append(task)
+
+            return created
+        except Exception:
+            # Fallback if API not available
+            return [self.add_task(goal, description=goal, priority=1)]
+
+    def discover_from_issues(
+        self,
+        repo: str = None,
+        labels: List[str] = None,
+        limit: int = 10,
+    ) -> List[TaskAssignment]:
+        """Auto-discover tasks from GitHub issues.
+
+        Args:
+            repo: GitHub repo (owner/name). Defaults to current repo.
+            labels: Filter by labels like ["bug", "enhancement"]
+            limit: Max issues to fetch
+
+        Returns:
+            List of created TaskAssignment objects
+
+        Example:
+            tasks = team.discover_from_issues(labels=["good-first-issue"])
+        """
+        import subprocess
+        import json
+
+        cmd = ["gh", "issue", "list", "--json", "number,title,body,labels", "--limit", str(limit)]
+
+        if repo:
+            cmd.extend(["--repo", repo])
+        if labels:
+            for label in labels:
+                cmd.extend(["--label", label])
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            issues = json.loads(result.stdout)
+        except (subprocess.CalledProcessError, json.JSONDecodeError):
+            return []
+
+        created = []
+        for i, issue in enumerate(issues):
+            # Priority based on labels
+            priority = 5
+            label_names = [l.get("name", "") for l in issue.get("labels", [])]
+            if "critical" in label_names or "urgent" in label_names:
+                priority = 1
+            elif "bug" in label_names:
+                priority = 2
+            elif "enhancement" in label_names:
+                priority = 3
+
+            task = self.add_task(
+                title=f"#{issue['number']}: {issue['title']}",
+                description=issue.get("body", "")[:500],
+                priority=priority,
+            )
+            created.append(task)
+
+        return created
+
+    def discover_from_codebase(
+        self,
+        path: str = ".",
+        patterns: List[str] = None,
+    ) -> List[TaskAssignment]:
+        """Auto-discover tasks from codebase TODOs, FIXMEs, etc.
+
+        Args:
+            path: Directory to scan
+            patterns: Patterns to search for. Defaults to TODO, FIXME, HACK, XXX
+
+        Returns:
+            List of created TaskAssignment objects
+
+        Example:
+            tasks = team.discover_from_codebase(path="src/")
+        """
+        import subprocess
+
+        patterns = patterns or ["TODO", "FIXME", "HACK", "XXX"]
+        pattern_regex = "|".join(patterns)
+
+        try:
+            result = subprocess.run(
+                ["grep", "-rn", "-E", f"({pattern_regex}):", path,
+                 "--include=*.py", "--include=*.ts", "--include=*.js",
+                 "--include=*.go", "--include=*.rs", "--include=*.java"],
+                capture_output=True,
+                text=True,
+            )
+            lines = result.stdout.strip().split("\n") if result.stdout else []
+        except subprocess.CalledProcessError:
+            return []
+
+        created = []
+        seen = set()
+
+        for line in lines[:50]:  # Limit to 50 items
+            if not line or line in seen:
+                continue
+            seen.add(line)
+
+            # Parse: file:line:content
+            parts = line.split(":", 2)
+            if len(parts) < 3:
+                continue
+
+            file_path, line_num, content = parts
+            content = content.strip()
+
+            # Determine priority from pattern
+            priority = 5
+            if "FIXME" in content:
+                priority = 2
+            elif "HACK" in content or "XXX" in content:
+                priority = 3
+            elif "TODO" in content:
+                priority = 4
+
+            task = self.add_task(
+                title=content[:80],
+                description=f"{file_path}:{line_num}\n{content}",
+                priority=priority,
+            )
+            created.append(task)
+
+        return created
+
+    def discover_from_plan(self, plan_path: str) -> List[TaskAssignment]:
+        """Load tasks from a supe plan JSON file.
+
+        Args:
+            plan_path: Path to plan JSON file
+
+        Returns:
+            List of created TaskAssignment objects
+
+        Example:
+            tasks = team.discover_from_plan(".supe/plans/feature.json")
+        """
+        import json
+
+        with open(plan_path) as f:
+            plan = json.load(f)
+
+        created = []
+        tascs = plan.get("tascs", plan.get("tasks", []))
+
+        for i, tasc in enumerate(tascs):
+            title = tasc.get("title", tasc.get("name", f"Task {i+1}"))
+            desc = tasc.get("description", tasc.get("testing_instructions", ""))
+
+            task = self.add_task(
+                title=title,
+                description=desc,
+                priority=i + 1,
+            )
+            created.append(task)
+
+        return created
+
+    def discover_from_diff(self, base: str = "main") -> List[TaskAssignment]:
+        """Auto-discover review tasks from git diff.
+
+        Args:
+            base: Base branch to diff against
+
+        Returns:
+            List of created TaskAssignment objects (one per changed file)
+
+        Example:
+            tasks = team.discover_from_diff(base="main")
+        """
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", base],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            files = [f for f in result.stdout.strip().split("\n") if f]
+        except subprocess.CalledProcessError:
+            return []
+
+        created = []
+        for i, file_path in enumerate(files):
+            task = self.add_task(
+                title=f"Review: {file_path}",
+                description=f"Review changes in {file_path}",
+                priority=i + 1,
+            )
+            created.append(task)
+
+        return created
+
     def get_pending_tasks(self) -> List[TaskAssignment]:
         """Get tasks waiting to be worked on."""
         pending = [t for t in self.tasks.values() if t.status == "pending"]
