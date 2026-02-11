@@ -13,10 +13,10 @@ an Atom from a byte buffer and return the remaining offset.
 """
 
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any
 
-from .atomtypes import registry, AtomType
-from .varint import encode_varint, decode_varint
+from .atomtypes import AtomType, registry
+from .varint import decode_varint, encode_varint
 
 
 @dataclass
@@ -84,7 +84,7 @@ class Atom:
         return cls(pindex=atom_type.pindex, payload=payload)
 
 
-def decode_atom(buf: bytes, offset: int = 0) -> Tuple[Atom, int]:
+def decode_atom(buf: bytes, offset: int = 0) -> tuple[Atom, int]:
     """Decode an Atom from a byte buffer starting at ``offset``.
 
     Args:

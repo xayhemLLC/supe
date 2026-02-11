@@ -6,11 +6,11 @@ for loading public datasets and generating benchmark reports.
 
 Usage:
     from ab.benchmark import Benchmark, load_wikipedia_sample
-    
+
     # Load sample data
     memory = ABMemory(":memory:")
     load_wikipedia_sample(memory, n=100)
-    
+
     # Run benchmarks
     bench = Benchmark(memory)
     results = bench.run_all()
@@ -19,19 +19,17 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import random
 import time
-import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .abdb import ABMemory
 
-from .models import Buffer
 from .debug import Colors, colored
-
+from .models import Buffer
 
 # ---------------------------------------------------------------------------
 # Timing Utilities
@@ -47,7 +45,7 @@ class TimingResult:
     max_ms: float
     avg_ms: float
     ops_per_sec: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def time_operation(
@@ -58,21 +56,21 @@ def time_operation(
     **metadata
 ) -> TimingResult:
     """Time an operation over multiple iterations.
-    
+
     Args:
         name: Name of the operation.
         func: Function to time (takes no arguments).
         iterations: Number of iterations to run.
         warmup: Number of warmup iterations (not counted).
         **metadata: Additional metadata to include in result.
-    
+
     Returns:
         TimingResult with statistics.
     """
     # Warmup
     for _ in range(warmup):
         func()
-    
+
     # Timed runs
     times = []
     for _ in range(iterations):
@@ -80,11 +78,11 @@ def time_operation(
         func()
         elapsed = (time.perf_counter() - start) * 1000  # ms
         times.append(elapsed)
-    
+
     total = sum(times)
     avg = total / iterations
     ops_per_sec = 1000 / avg if avg > 0 else float('inf')
-    
+
     return TimingResult(
         name=name,
         iterations=iterations,
@@ -113,7 +111,7 @@ SAMPLE_NEWS = [
     "Electric vehicle sales surge as battery costs decline",
     "Cybersecurity experts warn of new phishing attack wave",
     "Renewable energy now cheaper than fossil fuels in most regions",
-    "Gene therapy offers hope for rare genetic disorders",
+    "Targeted therapy offers hope for rare disorders",
     "Quantum computer solves problem in seconds that would take years",
     "Social media platform faces antitrust investigation",
     "Autonomous vehicles begin testing on public roads",
@@ -135,13 +133,13 @@ SAMPLE_WIKIPEDIA = [
 ]
 
 
-def load_sample_news(memory: "ABMemory", n: int = 50) -> List[int]:
+def load_sample_news(memory: ABMemory, n: int = 50) -> list[int]:
     """Load sample news headlines into memory.
-    
+
     Args:
         memory: The ABMemory instance.
         n: Number of articles to create.
-    
+
     Returns:
         List of created card IDs.
     """
@@ -150,7 +148,7 @@ def load_sample_news(memory: "ABMemory", n: int = 50) -> List[int]:
         headline = SAMPLE_NEWS[i % len(SAMPLE_NEWS)]
         # Add some variation
         headline = f"{headline} (Article {i+1})"
-        
+
         card = memory.store_card(
             label="news",
             buffers=[
@@ -159,24 +157,24 @@ def load_sample_news(memory: "ABMemory", n: int = 50) -> List[int]:
             ]
         )
         card_ids.append(card.id)
-    
+
     return card_ids
 
 
-def load_sample_wikipedia(memory: "ABMemory", n: int = 20) -> List[int]:
+def load_sample_wikipedia(memory: ABMemory, n: int = 20) -> list[int]:
     """Load sample Wikipedia-style articles into memory.
-    
+
     Args:
         memory: The ABMemory instance.
         n: Number of articles to create.
-    
+
     Returns:
         List of created card IDs.
     """
     card_ids = []
     for i in range(n):
         title, content = SAMPLE_WIKIPEDIA[i % len(SAMPLE_WIKIPEDIA)]
-        
+
         card = memory.store_card(
             label="wikipedia",
             buffers=[
@@ -185,7 +183,7 @@ def load_sample_wikipedia(memory: "ABMemory", n: int = 20) -> List[int]:
             ]
         )
         card_ids.append(card.id)
-    
+
     # Create some connections between related articles
     if len(card_ids) >= 10:
         # Python -> Machine Learning
@@ -196,23 +194,23 @@ def load_sample_wikipedia(memory: "ABMemory", n: int = 20) -> List[int]:
         memory.create_connection(card_ids[2], card_ids[7], "applied_in", strength=1.8)
         # Machine Learning -> Reinforcement Learning
         memory.create_connection(card_ids[1], card_ids[9], "includes", strength=2.0)
-    
+
     return card_ids
 
 
-def create_relationship_graph(memory: "ABMemory", n_nodes: int = 50, n_edges: int = 100) -> Dict[str, Any]:
+def create_relationship_graph(memory: ABMemory, n_nodes: int = 50, n_edges: int = 100) -> dict[str, Any]:
     """Create a random relationship graph for benchmarking traversal.
-    
+
     Args:
         memory: The ABMemory instance.
         n_nodes: Number of nodes (cards) to create.
         n_edges: Number of edges (connections) to create.
-    
+
     Returns:
         Dict with node_ids and edge_count.
     """
     relations = ["relates_to", "depends_on", "references", "contains", "follows"]
-    
+
     # Create nodes
     node_ids = []
     for i in range(n_nodes):
@@ -221,7 +219,7 @@ def create_relationship_graph(memory: "ABMemory", n_nodes: int = 50, n_edges: in
             buffers=[Buffer(name="data", payload=f"Node {i}".encode(), headers={})]
         )
         node_ids.append(card.id)
-    
+
     # Create random edges
     for _ in range(n_edges):
         source = random.choice(node_ids)
@@ -233,7 +231,7 @@ def create_relationship_graph(memory: "ABMemory", n_nodes: int = 50, n_edges: in
                 memory.create_connection(source, target, relation, strength)
             except Exception:
                 pass  # Ignore duplicate connections
-    
+
     return {"node_ids": node_ids, "edge_count": n_edges}
 
 
@@ -243,35 +241,35 @@ def create_relationship_graph(memory: "ABMemory", n_nodes: int = 50, n_edges: in
 
 class Benchmark:
     """Benchmark suite for AB memory operations."""
-    
-    def __init__(self, memory: "ABMemory"):
+
+    def __init__(self, memory: ABMemory):
         self.memory = memory
-        self.results: List[TimingResult] = []
-    
+        self.results: list[TimingResult] = []
+
     def benchmark_card_creation(self, n: int = 100) -> TimingResult:
         """Benchmark card creation speed."""
         i = [0]  # Use list for closure
-        
+
         def create_card():
             self.memory.store_card(
                 label="bench",
                 buffers=[Buffer(name="data", payload=f"Test {i[0]}".encode(), headers={})]
             )
             i[0] += 1
-        
+
         result = time_operation("Card Creation", create_card, iterations=n, warmup=5)
         self.results.append(result)
         return result
-    
-    def benchmark_card_retrieval(self, card_ids: List[int], n: int = 100) -> TimingResult:
+
+    def benchmark_card_retrieval(self, card_ids: list[int], n: int = 100) -> TimingResult:
         """Benchmark card retrieval speed."""
         idx = [0]
-        
+
         def get_card():
             card_id = card_ids[idx[0] % len(card_ids)]
             self.memory.get_card(card_id)
             idx[0] += 1
-        
+
         result = time_operation(
             "Card Retrieval",
             get_card,
@@ -281,18 +279,18 @@ class Benchmark:
         )
         self.results.append(result)
         return result
-    
-    def benchmark_keyword_search(self, keywords: List[str], n: int = 50) -> TimingResult:
+
+    def benchmark_keyword_search(self, keywords: list[str], n: int = 50) -> TimingResult:
         """Benchmark keyword search speed."""
         from .search import search_cards
-        
+
         idx = [0]
-        
+
         def search():
             keyword = keywords[idx[0] % len(keywords)]
             search_cards(self.memory, keyword=keyword)
             idx[0] += 1
-        
+
         result = time_operation(
             "Keyword Search",
             search,
@@ -302,18 +300,18 @@ class Benchmark:
         )
         self.results.append(result)
         return result
-    
-    def benchmark_semantic_search(self, queries: List[str], n: int = 30) -> TimingResult:
+
+    def benchmark_semantic_search(self, queries: list[str], n: int = 30) -> TimingResult:
         """Benchmark semantic search speed."""
         from .vector_search import semantic_search
-        
+
         idx = [0]
-        
+
         def search():
             query = queries[idx[0] % len(queries)]
             semantic_search(self.memory, query, top_k=5)
             idx[0] += 1
-        
+
         result = time_operation(
             "Semantic Search",
             search,
@@ -323,18 +321,18 @@ class Benchmark:
         )
         self.results.append(result)
         return result
-    
-    def benchmark_rfs_recall(self, start_ids: List[int], n: int = 30) -> TimingResult:
+
+    def benchmark_rfs_recall(self, start_ids: list[int], n: int = 30) -> TimingResult:
         """Benchmark RFS recall with multi-hop traversal."""
         from .rfs_recall import rfs_recall
-        
+
         idx = [0]
-        
+
         def recall():
             start_id = start_ids[idx[0] % len(start_ids)]
             rfs_recall(self.memory, start_id, max_hops=3, max_results=10, strengthen_path=False)
             idx[0] += 1
-        
+
         result = time_operation(
             "RFS Recall (3 hops)",
             recall,
@@ -344,16 +342,16 @@ class Benchmark:
         )
         self.results.append(result)
         return result
-    
-    def benchmark_card_stats(self, card_ids: List[int], n: int = 100) -> TimingResult:
+
+    def benchmark_card_stats(self, card_ids: list[int], n: int = 100) -> TimingResult:
         """Benchmark card stats operations."""
         idx = [0]
-        
+
         def recall_card():
             card_id = card_ids[idx[0] % len(card_ids)]
             self.memory.recall_card(card_id)
             idx[0] += 1
-        
+
         result = time_operation(
             "Card Recall (stats update)",
             recall_card,
@@ -363,16 +361,16 @@ class Benchmark:
         )
         self.results.append(result)
         return result
-    
-    def benchmark_connection_traversal(self, card_ids: List[int], n: int = 50) -> TimingResult:
+
+    def benchmark_connection_traversal(self, card_ids: list[int], n: int = 50) -> TimingResult:
         """Benchmark connection listing and traversal."""
         idx = [0]
-        
+
         def list_connections():
             card_id = card_ids[idx[0] % len(card_ids)]
             self.memory.list_connections(card_id=card_id)
             idx[0] += 1
-        
+
         result = time_operation(
             "Connection Listing",
             list_connections,
@@ -382,89 +380,89 @@ class Benchmark:
         )
         self.results.append(result)
         return result
-    
-    def run_all(self, dataset_size: int = 100) -> List[TimingResult]:
+
+    def run_all(self, dataset_size: int = 100) -> list[TimingResult]:
         """Run all benchmarks with sample data.
-        
+
         Args:
             dataset_size: Base size for sample data.
-        
+
         Returns:
             List of all benchmark results.
         """
         print(f"{colored('Running AB Benchmarks', Colors.BOLD + Colors.CYAN)}")
         print(f"Dataset size: {dataset_size}\n")
-        
+
         # Load sample data
         print("Loading sample data...")
         news_ids = load_sample_news(self.memory, n=dataset_size)
         wiki_ids = load_sample_wikipedia(self.memory, n=min(dataset_size // 5, 20))
         graph = create_relationship_graph(self.memory, n_nodes=dataset_size // 2, n_edges=dataset_size)
         all_ids = news_ids + wiki_ids + graph["node_ids"]
-        
+
         print(f"Created {len(all_ids)} cards, {graph['edge_count']} connections\n")
-        
+
         # Run benchmarks
         print("Running benchmarks...")
-        
+
         self.benchmark_card_creation(n=100)
         self._print_result(self.results[-1])
-        
+
         self.benchmark_card_retrieval(all_ids, n=200)
         self._print_result(self.results[-1])
-        
+
         self.benchmark_keyword_search(["Python", "machine", "data", "network", "Article"], n=50)
         self._print_result(self.results[-1])
-        
+
         self.benchmark_semantic_search(["artificial intelligence", "programming language", "neural networks"], n=20)
         self._print_result(self.results[-1])
-        
+
         if graph["node_ids"]:
             self.benchmark_rfs_recall(graph["node_ids"][:10], n=20)
             self._print_result(self.results[-1])
-        
+
         self.benchmark_card_stats(all_ids[:50], n=100)
         self._print_result(self.results[-1])
-        
+
         self.benchmark_connection_traversal(graph["node_ids"][:20], n=50)
         self._print_result(self.results[-1])
-        
+
         return self.results
-    
+
     def _print_result(self, result: TimingResult) -> None:
         """Print a single benchmark result."""
         color = Colors.GREEN if result.ops_per_sec > 1000 else Colors.YELLOW if result.ops_per_sec > 100 else Colors.RED
-        
+
         print(f"  {colored('✓', color)} {result.name}")
         print(f"      Avg: {result.avg_ms:.3f}ms  Min: {result.min_ms:.3f}ms  Max: {result.max_ms:.3f}ms")
         print(f"      {colored(f'{result.ops_per_sec:.0f} ops/sec', color)}")
-    
+
     def print_report(self) -> None:
         """Print a summary report of all benchmarks."""
         print(f"\n{colored('═' * 60, Colors.CYAN)}")
         print(f"{colored(' Benchmark Report', Colors.BOLD + Colors.CYAN)}")
         print(f"{colored('═' * 60, Colors.CYAN)}\n")
-        
+
         print(f"{'Operation':<30} {'Avg (ms)':<12} {'Ops/sec':<12}")
         print(f"{'-' * 54}")
-        
+
         for result in self.results:
             color = Colors.GREEN if result.ops_per_sec > 1000 else Colors.YELLOW if result.ops_per_sec > 100 else Colors.RED
             print(f"{result.name:<30} {result.avg_ms:<12.3f} {colored(f'{result.ops_per_sec:<12.0f}', color)}")
-        
+
         print(f"\n{colored('Legend:', Colors.DIM)}")
         print(f"  {colored('■', Colors.GREEN)} >1000 ops/sec (fast)")
         print(f"  {colored('■', Colors.YELLOW)} >100 ops/sec (moderate)")
         print(f"  {colored('■', Colors.RED)} <100 ops/sec (slow)")
 
 
-def run_benchmarks(memory: "ABMemory", dataset_size: int = 100) -> List[TimingResult]:
+def run_benchmarks(memory: ABMemory, dataset_size: int = 100) -> list[TimingResult]:
     """Convenience function to run all benchmarks.
-    
+
     Args:
         memory: The ABMemory instance.
         dataset_size: Base size for sample data.
-    
+
     Returns:
         List of benchmark results.
     """

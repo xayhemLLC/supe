@@ -4,38 +4,36 @@ Builds context for LLM prompts with action metadata,
 constraints, and current state.
 """
 
-from typing import Any, Dict, List, Optional
 
-import yaml
 
-from ..action_registry import get_registry, ActionMetadata, ActionCategory
+from ..action_registry import ActionCategory, get_registry
 
 
 def build_action_context(
-    available_actions: Optional[List[str]] = None,
-    permissions: Optional[List[str]] = None,
+    available_actions: list[str] | None = None,
+    permissions: list[str] | None = None,
     has_checkpoint: bool = False,
     in_sandbox: bool = False,
 ) -> str:
     """Build action context block for LLM prompt.
-    
+
     This context helps the LLM understand:
     - What actions are available
     - Which are mutations vs observations
     - What permissions/constraints exist
     - What evidence each action produces
-    
+
     Args:
         available_actions: Filter to these actions only.
         permissions: Current permission set.
         has_checkpoint: Whether checkpoint is active.
         in_sandbox: Whether in sandbox mode.
-    
+
     Returns:
         Formatted context string for prompt injection.
     """
     registry = get_registry()
-    
+
     lines = [
         "# Available Actions",
         "",
@@ -45,7 +43,7 @@ def build_action_context(
         f"- Permissions: {', '.join(permissions or ['none'])}",
         "",
     ]
-    
+
     # Get actions by category
     try:
         all_actions = registry.list_all()
@@ -53,16 +51,16 @@ def build_action_context(
         # Registry not loaded
         lines.append("*(Action registry not available)*")
         return "\n".join(lines)
-    
+
     # Filter if specified
     if available_actions:
         all_actions = [a for a in all_actions if a.id in available_actions]
-    
+
     # Group by category
     observations = [a for a in all_actions if a.category == ActionCategory.OBSERVATION]
     mutations = [a for a in all_actions if a.category == ActionCategory.MUTATION]
     controls = [a for a in all_actions if a.category == ActionCategory.CONTROL]
-    
+
     # Observations
     lines.append("## Observation Actions (read-only)")
     lines.append("")
@@ -71,7 +69,7 @@ def build_action_context(
         lines.append(f"{action.description}")
         lines.append(f"- Produces: {', '.join(action.evidence_produced)}")
         lines.append("")
-    
+
     # Mutations
     lines.append("## Mutation Actions (state-changing)")
     lines.append("")
@@ -85,18 +83,18 @@ def build_action_context(
             requires.append("sandbox")
         if action.gated:
             requires.append("approval")
-        
+
         req_str = f" [requires: {', '.join(requires)}]" if requires else ""
         risk_icon = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(
             action.risk_level.value, "⚪"
         )
-        
+
         lines.append(f"### `{action.id}` {risk_icon}{req_str}")
         lines.append(f"{action.description}")
         lines.append(f"- Risk: {action.risk_level.value}")
         lines.append(f"- Rollback: {'yes' if action.rollback_supported else 'no'}")
         lines.append("")
-    
+
     # Controls
     lines.append("## Control Actions")
     lines.append("")
@@ -104,7 +102,7 @@ def build_action_context(
         lines.append(f"### `{action.id}`")
         lines.append(f"{action.description}")
         lines.append("")
-    
+
     return "\n".join(lines)
 
 
@@ -112,23 +110,23 @@ def inject_action_metadata(
     action_id: str,
 ) -> str:
     """Get formatted metadata for a specific action.
-    
+
     Args:
         action_id: Action to get metadata for.
-    
+
     Returns:
         Formatted metadata string.
     """
     registry = get_registry()
-    
+
     try:
         action = registry.get(action_id)
     except Exception:
         return f"*Unknown action: {action_id}*"
-    
+
     if not action:
         return f"*Unknown action: {action_id}*"
-    
+
     return f"""## Action: `{action.id}`
 
 **{action.name}**
@@ -176,15 +174,15 @@ Stopping is a **decision**, not a failure. Emit:
 
 
 def build_full_overlord_context(
-    permissions: Optional[List[str]] = None,
+    permissions: list[str] | None = None,
     has_checkpoint: bool = False,
     in_sandbox: bool = False,
-    current_hypothesis: Optional[str] = None,
+    current_hypothesis: str | None = None,
     actions_taken: int = 0,
     max_actions: int = 100,
 ) -> str:
     """Build complete Overlord context for LLM prompt.
-    
+
     Args:
         permissions: Current permission set.
         has_checkpoint: Whether checkpoint is active.
@@ -192,7 +190,7 @@ def build_full_overlord_context(
         current_hypothesis: Current working hypothesis.
         actions_taken: Number of actions taken.
         max_actions: Maximum actions allowed.
-    
+
     Returns:
         Complete formatted context for Overlord prompt.
     """
@@ -206,10 +204,10 @@ def build_full_overlord_context(
         f"- Checkpoint Active: {has_checkpoint}",
         f"- Sandbox Mode: {in_sandbox}",
     ]
-    
+
     if current_hypothesis:
         lines.append(f"- Hypothesis: {current_hypothesis}")
-    
+
     lines.append("")
     lines.append(build_action_context(
         permissions=permissions,
@@ -218,5 +216,5 @@ def build_full_overlord_context(
     ))
     lines.append("")
     lines.append(build_stop_conditions_context())
-    
+
     return "\n".join(lines)

@@ -14,28 +14,25 @@ Each style is optimized for specific scenarios:
 | Agency      | Client work, deliverable-focused  | 3-5    | Sprint    |
 """
 
-import asyncio
-from dataclasses import field
-from typing import Dict, List, Optional, Any
+from typing import Any
 
+from .agents import (
+    ArchitectAgent,
+    DeveloperAgent,
+    LeadAgent,
+    QAAgent,
+    ResearcherAgent,
+    ReviewerAgent,
+)
 from .base import (
-    BaseTeam,
-    TeamConfig,
-    TeamStyle,
     AgentRole,
+    BaseTeam,
     CeremonyConfig,
     CeremonyType,
-    ValidationConfig,
     TaskAssignment,
-)
-from .agents import (
-    ValidatedAgent,
-    LeadAgent,
-    DeveloperAgent,
-    ReviewerAgent,
-    QAAgent,
-    ArchitectAgent,
-    ResearcherAgent,
+    TeamConfig,
+    TeamStyle,
+    ValidationConfig,
 )
 
 
@@ -259,8 +256,8 @@ class ResearchTeam(BaseTeam):
             decision_timeout_hours=72,  # Research takes time
         )
         super().__init__(config)
-        self.hypotheses: List[Dict[str, Any]] = []
-        self.findings: List[Dict[str, Any]] = []
+        self.hypotheses: list[dict[str, Any]] = []
+        self.findings: list[dict[str, Any]] = []
         self._create_agents()
 
     def _create_agents(self) -> None:
@@ -300,7 +297,7 @@ class ResearchTeam(BaseTeam):
         self,
         problem: str,
         max_questions: int = 5,
-    ) -> List[TaskAssignment]:
+    ) -> list[TaskAssignment]:
         """Auto-discover research questions from a problem statement.
 
         Uses LLM to generate hypotheses and research questions.
@@ -318,8 +315,9 @@ class ResearchTeam(BaseTeam):
             )
         """
         try:
-            import anthropic
             import os
+
+            import anthropic
         except ImportError:
             # Fallback: single question from problem
             return [self.add_research_question(f"Investigate: {problem}")]
@@ -370,7 +368,7 @@ Only output the JSON array, nothing else."""
         self,
         task_id: str,
         finding: str,
-        evidence: List[str] = None,
+        evidence: list[str] = None,
     ) -> None:
         """Record a research finding."""
         self.findings.append({
@@ -473,8 +471,8 @@ class PairTeam(BaseTeam):
             async_first=False,  # Synchronous
         )
         super().__init__(config)
-        self.driver: Optional[str] = None
-        self.navigator: Optional[str] = None
+        self.driver: str | None = None
+        self.navigator: str | None = None
         self._create_agents()
 
     def _create_agents(self) -> None:
@@ -667,7 +665,7 @@ class AgencyTeam(BaseTeam):
             decision_timeout_hours=24,  # Fast client response
         )
         super().__init__(config)
-        self.milestones: Dict[str, Dict[str, Any]] = {}
+        self.milestones: dict[str, dict[str, Any]] = {}
         self._create_agents()
 
     def _create_agents(self) -> None:
@@ -685,7 +683,7 @@ class AgencyTeam(BaseTeam):
         self,
         name: str,
         deadline: str = None,
-        deliverables: List[str] = None,
+        deliverables: list[str] = None,
     ) -> None:
         """Add a project milestone."""
         self.milestones[name] = {

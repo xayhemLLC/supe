@@ -18,8 +18,7 @@ Transform chains are supported using pipe-delimited names:
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional
-
+from collections.abc import Callable
 
 # Type for transform functions: bytes -> bytes
 TransformFunc = Callable[[bytes], bytes]
@@ -33,7 +32,7 @@ class TransformRegistry:
     """
 
     def __init__(self) -> None:
-        self._transforms: Dict[str, TransformFunc] = {}
+        self._transforms: dict[str, TransformFunc] = {}
         self._register_builtins()
 
     def _register_builtins(self) -> None:
@@ -53,7 +52,7 @@ class TransformRegistry:
         """
         self._transforms[name] = func
 
-    def get(self, name: str) -> Optional[TransformFunc]:
+    def get(self, name: str) -> TransformFunc | None:
         """Look up a transform by name.
 
         Returns:
@@ -156,7 +155,7 @@ def transform_strip(payload: bytes) -> bytes:
 registry = TransformRegistry()
 
 
-def apply_transform(exe: Optional[str], payload: bytes) -> bytes:
+def apply_transform(exe: str | None, payload: bytes) -> bytes:
     """Convenience function to apply transforms using the global registry.
 
     Args:

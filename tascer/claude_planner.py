@@ -3,9 +3,7 @@
 Uses Claude (Anthropic API) to generate executable, validatable plans from natural language goals.
 """
 
-import json
 import os
-from typing import Optional
 
 try:
     import anthropic
@@ -14,8 +12,8 @@ except ImportError:
     ANTHROPIC_AVAILABLE = False
 
 from .llm_planner import (
-    PlanGenerationRequest,
     GeneratedPlan,
+    PlanGenerationRequest,
     generate_plan_prompt,
     parse_generated_plan,
 )
@@ -26,7 +24,7 @@ class ClaudePlanner:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = "claude-sonnet-4-5-20250929",
     ):
         """Initialize Claude planner.
@@ -160,7 +158,7 @@ def generate_plan_with_claude(
     max_tascs: int = 10,
     require_approval: bool = True,
     prior_tasc_ids: list = None,
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     model: str = "claude-sonnet-4-5-20250929",
     temperature: float = 0.7,
 ) -> GeneratedPlan:

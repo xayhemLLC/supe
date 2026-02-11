@@ -14,7 +14,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MomentType(Enum):
@@ -31,14 +31,14 @@ class MomentType(Enum):
 @dataclass
 class EvidenceRef:
     """Reference to an evidence artifact."""
-    
+
     artifact_type: str  # file, screenshot, log, hash, etc.
-    path: Optional[str] = None
-    content_hash: Optional[str] = None
-    inline_content: Optional[str] = None  # For small artifacts
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    path: str | None = None
+    content_hash: str | None = None
+    inline_content: str | None = None  # For small artifacts
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "artifact_type": self.artifact_type,
             "path": self.path,
@@ -46,9 +46,9 @@ class EvidenceRef:
             "inline_content": self.inline_content,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EvidenceRef":
+    def from_dict(cls, data: dict[str, Any]) -> "EvidenceRef":
         return cls(
             artifact_type=data["artifact_type"],
             path=data.get("path"),
@@ -61,33 +61,33 @@ class EvidenceRef:
 @dataclass
 class MomentEntry:
     """A single entry in the Moments Ledger.
-    
+
     Each entry is immutable and captures a specific observation
     or result at a point in time.
     """
-    
+
     # Identity
     moment_id: str
     run_id: str
     sequence_num: int
-    
+
     # Timing
     timestamp: datetime
-    
+
     # Type and content
     moment_type: MomentType
-    action_id: Optional[str] = None  # For action-related moments
-    
+    action_id: str | None = None  # For action-related moments
+
     # Payload
-    data: Dict[str, Any] = field(default_factory=dict)
-    
+    data: dict[str, Any] = field(default_factory=dict)
+
     # Evidence references
-    evidence: List[EvidenceRef] = field(default_factory=list)
-    
+    evidence: list[EvidenceRef] = field(default_factory=list)
+
     # Hash chain for integrity
-    previous_hash: Optional[str] = None
-    entry_hash: Optional[str] = None
-    
+    previous_hash: str | None = None
+    entry_hash: str | None = None
+
     def compute_hash(self) -> str:
         """Compute hash of this entry for chain integrity."""
         content = {
@@ -102,8 +102,8 @@ class MomentEntry:
         }
         serialized = json.dumps(content, sort_keys=True)
         return hashlib.sha256(serialized.encode()).hexdigest()[:16]
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "moment_id": self.moment_id,
             "run_id": self.run_id,
@@ -116,9 +116,9 @@ class MomentEntry:
             "previous_hash": self.previous_hash,
             "entry_hash": self.entry_hash,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MomentEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "MomentEntry":
         return cls(
             moment_id=data["moment_id"],
             run_id=data["run_id"],
@@ -135,46 +135,46 @@ class MomentEntry:
 
 class MomentsLedger:
     """Immutable append-only log of reality.
-    
+
     The Moments Ledger is the authoritative record of what happened.
     Entries cannot be modified or deleted after being appended.
     A hash chain ensures integrity.
     """
-    
+
     def __init__(self, run_id: str):
         """Initialize ledger for a run.
-        
+
         Args:
             run_id: Unique identifier for this run.
         """
         self.run_id = run_id
-        self._entries: List[MomentEntry] = []
+        self._entries: list[MomentEntry] = []
         self._sequence = 0
-    
+
     def append(
         self,
         moment_type: MomentType,
-        data: Dict[str, Any],
-        action_id: Optional[str] = None,
-        evidence: Optional[List[EvidenceRef]] = None,
+        data: dict[str, Any],
+        action_id: str | None = None,
+        evidence: list[EvidenceRef] | None = None,
     ) -> MomentEntry:
         """Append a new moment to the ledger.
-        
+
         Args:
             moment_type: Type of moment.
             data: Moment data/payload.
             action_id: Associated action ID if applicable.
             evidence: Evidence references.
-        
+
         Returns:
             The created MomentEntry.
         """
         self._sequence += 1
-        
+
         previous_hash = None
         if self._entries:
             previous_hash = self._entries[-1].entry_hash
-        
+
         entry = MomentEntry(
             moment_id=f"{self.run_id}_m{self._sequence}",
             run_id=self.run_id,
@@ -186,21 +186,21 @@ class MomentsLedger:
             evidence=evidence or [],
             previous_hash=previous_hash,
         )
-        
+
         # Compute and set hash
         entry.entry_hash = entry.compute_hash()
-        
+
         self._entries.append(entry)
         return entry
-    
-    def record_context(self, context_data: Dict[str, Any]) -> MomentEntry:
+
+    def record_context(self, context_data: dict[str, Any]) -> MomentEntry:
         """Record a context snapshot."""
         return self.append(MomentType.CONTEXT_SNAPSHOT, context_data)
-    
+
     def record_action_start(
         self,
         action_id: str,
-        inputs: Dict[str, Any]
+        inputs: dict[str, Any]
     ) -> MomentEntry:
         """Record action start."""
         return self.append(
@@ -208,12 +208,12 @@ class MomentsLedger:
             {"inputs": inputs},
             action_id=action_id,
         )
-    
+
     def record_action_result(
         self,
         action_id: str,
-        result: Dict[str, Any],
-        evidence: Optional[List[EvidenceRef]] = None,
+        result: dict[str, Any],
+        evidence: list[EvidenceRef] | None = None,
     ) -> MomentEntry:
         """Record action result with evidence."""
         return self.append(
@@ -222,12 +222,12 @@ class MomentsLedger:
             action_id=action_id,
             evidence=evidence,
         )
-    
+
     def record_error(
         self,
         error_type: str,
         message: str,
-        action_id: Optional[str] = None,
+        action_id: str | None = None,
     ) -> MomentEntry:
         """Record an error."""
         return self.append(
@@ -235,26 +235,26 @@ class MomentsLedger:
             {"error_type": error_type, "message": message},
             action_id=action_id,
         )
-    
-    def get_all(self) -> List[MomentEntry]:
+
+    def get_all(self) -> list[MomentEntry]:
         """Get all entries (read-only copy)."""
         return list(self._entries)
-    
-    def get_by_action(self, action_id: str) -> List[MomentEntry]:
+
+    def get_by_action(self, action_id: str) -> list[MomentEntry]:
         """Get all entries for a specific action."""
         return [e for e in self._entries if e.action_id == action_id]
-    
-    def get_by_type(self, moment_type: MomentType) -> List[MomentEntry]:
+
+    def get_by_type(self, moment_type: MomentType) -> list[MomentEntry]:
         """Get all entries of a specific type."""
         return [e for e in self._entries if e.moment_type == moment_type]
-    
-    def get_latest(self, n: int = 1) -> List[MomentEntry]:
+
+    def get_latest(self, n: int = 1) -> list[MomentEntry]:
         """Get the latest N entries."""
         return self._entries[-n:] if self._entries else []
-    
-    def verify_integrity(self) -> tuple[bool, Optional[str]]:
+
+    def verify_integrity(self) -> tuple[bool, str | None]:
         """Verify hash chain integrity.
-        
+
         Returns:
             Tuple of (is_valid, error_message).
         """
@@ -263,29 +263,29 @@ class MomentsLedger:
             computed_hash = entry.compute_hash()
             if entry.entry_hash != computed_hash:
                 return False, f"Hash mismatch at entry {i}: {entry.moment_id}"
-            
+
             # Verify chain
             if i > 0:
                 expected_prev = self._entries[i - 1].entry_hash
                 if entry.previous_hash != expected_prev:
                     return False, f"Chain broken at entry {i}: {entry.moment_id}"
-        
+
         return True, None
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Serialize ledger to dictionary."""
         return {
             "run_id": self.run_id,
             "entries": [e.to_dict() for e in self._entries],
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MomentsLedger":
+    def from_dict(cls, data: dict[str, Any]) -> "MomentsLedger":
         """Deserialize ledger from dictionary."""
         ledger = cls(run_id=data["run_id"])
         ledger._entries = [MomentEntry.from_dict(e) for e in data["entries"]]
         ledger._sequence = len(ledger._entries)
         return ledger
-    
+
     def __len__(self) -> int:
         return len(self._entries)

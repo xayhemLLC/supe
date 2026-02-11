@@ -23,12 +23,11 @@ implementations with actual hardware integrations.
 from __future__ import annotations
 
 import random
-from typing import Dict, Optional
 
 from .abdb import ABMemory
 
 
-def get_raw_input_data(memory: Optional[ABMemory] = None) -> Dict[str, str]:
+def get_raw_input_data(memory: ABMemory | None = None) -> dict[str, str]:
     """Gather raw sensory and internal state data.
 
     Args:
@@ -42,7 +41,7 @@ def get_raw_input_data(memory: Optional[ABMemory] = None) -> Dict[str, str]:
     Returns:
         A dictionary mapping sensor names to their string values.
     """
-    data: Dict[str, str] = {}
+    data: dict[str, str] = {}
     # Simulate a camera light sensor returning an integer brightness
     data["sensory_camera"] = str(random.randint(0, 100))
     # Internal state: could include CPU usage, free memory, etc.

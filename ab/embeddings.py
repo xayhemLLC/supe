@@ -13,13 +13,12 @@ Supports multiple embedding backends:
 
 import hashlib
 import json
+import math
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-import math
-
+from typing import Any
 
 # =============================================================================
 # Embedding Cache
@@ -31,13 +30,13 @@ class EmbeddingCache:
     def __init__(self, cache_dir: str = "~/.cache/supe/embeddings"):
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self._memory_cache: Dict[str, List[float]] = {}
+        self._memory_cache: dict[str, list[float]] = {}
 
     def _hash_text(self, text: str) -> str:
         """Create hash key for text."""
         return hashlib.sha256(text.encode()).hexdigest()[:16]
 
-    def get(self, text: str) -> Optional[List[float]]:
+    def get(self, text: str) -> list[float] | None:
         """Get cached embedding."""
         key = self._hash_text(text)
 
@@ -53,12 +52,12 @@ class EmbeddingCache:
                     embedding = json.load(f)
                     self._memory_cache[key] = embedding
                     return embedding
-            except:
+            except Exception:
                 pass
 
         return None
 
-    def set(self, text: str, embedding: List[float]) -> None:
+    def set(self, text: str, embedding: list[float]) -> None:
         """Cache embedding."""
         key = self._hash_text(text)
         self._memory_cache[key] = embedding
@@ -68,7 +67,7 @@ class EmbeddingCache:
         try:
             with open(cache_file, 'w') as f:
                 json.dump(embedding, f)
-        except:
+        except Exception:
             pass
 
 
@@ -80,12 +79,12 @@ class EmbeddingProvider(ABC):
     """Abstract base for embedding providers."""
 
     @abstractmethod
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate embedding for text."""
         pass
 
     @abstractmethod
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
         pass
 
@@ -106,15 +105,15 @@ class TFIDFEmbedder(EmbeddingProvider):
     def __init__(self, dimension: int = 384, vocab_size: int = 10000):
         self._dimension = dimension
         self.vocab_size = vocab_size
-        self.idf: Dict[str, float] = {}
-        self.vocab: Dict[str, int] = {}
+        self.idf: dict[str, float] = {}
+        self.vocab: dict[str, int] = {}
         self._doc_count = 0
 
     @property
     def dimension(self) -> int:
         return self._dimension
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Simple tokenization."""
         text = text.lower()
         tokens = re.findall(r'[a-z0-9]+', text)
@@ -126,14 +125,14 @@ class TFIDFEmbedder(EmbeddingProvider):
         """Hash token to dimension index."""
         return int(hashlib.md5(token.encode()).hexdigest(), 16) % self._dimension
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate TF-IDF-like embedding."""
         tokens = self._tokenize(text)
         if not tokens:
             return [0.0] * self._dimension
 
         # Count term frequencies
-        tf: Dict[str, int] = {}
+        tf: dict[str, int] = {}
         for token in tokens:
             tf[token] = tf.get(token, 0) + 1
 
@@ -158,14 +157,14 @@ class TFIDFEmbedder(EmbeddingProvider):
 
         return embedding
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts."""
         return [self.embed(t) for t in texts]
 
-    def fit(self, texts: List[str]) -> None:
+    def fit(self, texts: list[str]) -> None:
         """Fit IDF weights from corpus."""
         # Count document frequencies
-        df: Dict[str, int] = {}
+        df: dict[str, int] = {}
         for text in texts:
             tokens = set(self._tokenize(text))
             for token in tokens:
@@ -209,13 +208,13 @@ class SentenceTransformerEmbedder(EmbeddingProvider):
         self._load_model()
         return self._dimension
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate embedding using sentence-transformers."""
         self._load_model()
         embedding = self._model.encode(text, convert_to_numpy=True)
         return embedding.tolist()
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Batch embed texts."""
         self._load_model()
         embeddings = self._model.encode(texts, convert_to_numpy=True)
@@ -252,7 +251,7 @@ class OpenAIEmbedder(EmbeddingProvider):
     def dimension(self) -> int:
         return self._dimensions.get(self.model, 1536)
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate embedding using OpenAI."""
         client = self._get_client()
         response = client.embeddings.create(
@@ -261,7 +260,7 @@ class OpenAIEmbedder(EmbeddingProvider):
         )
         return response.data[0].embedding
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Batch embed texts."""
         client = self._get_client()
         response = client.embeddings.create(
@@ -284,12 +283,12 @@ class CardEmbedderConfig:
     cache_dir: str = "~/.cache/supe/embeddings"
 
     # Which buffers to include in embedding text
-    include_buffers: List[str] = field(default_factory=lambda: [
+    include_buffers: list[str] = field(default_factory=lambda: [
         "title", "subtitle", "narrative", "facts", "concepts"
     ])
 
     # Weights for different buffers (title is most important)
-    buffer_weights: Dict[str, float] = field(default_factory=lambda: {
+    buffer_weights: dict[str, float] = field(default_factory=lambda: {
         "title": 3.0,
         "subtitle": 2.0,
         "narrative": 1.0,
@@ -317,7 +316,7 @@ class CardEmbedder:
         # Initialize cache
         self.cache = EmbeddingCache(self.config.cache_dir) if self.config.use_cache else None
 
-    def _extract_text(self, buffers: Dict[str, Any]) -> str:
+    def _extract_text(self, buffers: dict[str, Any]) -> str:
         """Extract weighted text from card buffers."""
         parts = []
 
@@ -339,7 +338,7 @@ class CardEmbedder:
 
         return " ".join(parts)
 
-    def embed_card(self, buffers: Dict[str, Any]) -> List[float]:
+    def embed_card(self, buffers: dict[str, Any]) -> list[float]:
         """Generate embedding for a card's buffers.
 
         Args:
@@ -368,7 +367,7 @@ class CardEmbedder:
 
         return embedding
 
-    def embed_cards_batch(self, cards_buffers: List[Dict[str, Any]]) -> List[List[float]]:
+    def embed_cards_batch(self, cards_buffers: list[dict[str, Any]]) -> list[list[float]]:
         """Batch embed multiple cards.
 
         Args:
@@ -411,7 +410,7 @@ class CardEmbedder:
 
         return results
 
-    def embed_query(self, query: str) -> List[float]:
+    def embed_query(self, query: str) -> list[float]:
         """Embed a search query.
 
         Args:
@@ -435,7 +434,7 @@ class CardEmbedder:
 # Semantic Search
 # =============================================================================
 
-def cosine_similarity(a: List[float], b: List[float]) -> float:
+def cosine_similarity(a: list[float], b: list[float]) -> float:
     """Compute cosine similarity between two vectors."""
     if len(a) != len(b):
         return 0.0
@@ -451,11 +450,11 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 def semantic_search(
-    query_embedding: List[float],
-    card_embeddings: Dict[int, List[float]],
+    query_embedding: list[float],
+    card_embeddings: dict[int, list[float]],
     top_k: int = 10,
     threshold: float = 0.0
-) -> List[Tuple[int, float]]:
+) -> list[tuple[int, float]]:
     """Search cards by semantic similarity.
 
     Args:
@@ -510,7 +509,7 @@ def create_embedder(
     return CardEmbedder(config)
 
 
-def quick_embed(text: str, provider: str = "tfidf") -> List[float]:
+def quick_embed(text: str, provider: str = "tfidf") -> list[float]:
     """Quick one-off embedding.
 
     Args:

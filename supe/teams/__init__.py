@@ -16,25 +16,25 @@ Experiment with different team compositions and working styles:
 All teams integrate with supe's validation gates and proof-of-work.
 """
 
-from .base import TeamConfig, TeamStyle, AgentRole
+from .agents import (
+    ArchitectAgent,
+    DeveloperAgent,
+    LeadAgent,
+    QAAgent,
+    ResearcherAgent,
+    ReviewerAgent,
+    ValidatedAgent,
+)
+from .base import AgentRole, TeamConfig, TeamStyle
 from .styles import (
-    StartupTeam,
+    AgencyTeam,
     EnterpriseTeam,
-    ResearchTeam,
-    SoloDevTeam,
-    PairTeam,
     MobTeam,
     OpenSourceTeam,
-    AgencyTeam,
-)
-from .agents import (
-    ValidatedAgent,
-    LeadAgent,
-    DeveloperAgent,
-    ReviewerAgent,
-    QAAgent,
-    ArchitectAgent,
-    ResearcherAgent,
+    PairTeam,
+    ResearchTeam,
+    SoloDevTeam,
+    StartupTeam,
 )
 
 __all__ = [

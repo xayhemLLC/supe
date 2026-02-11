@@ -7,9 +7,9 @@ Transforms runs into:
 """
 
 from .markdown import (
+    AuditExporter,
     export_to_markdown,
     format_tasc_report,
-    AuditExporter,
 )
 
 __all__ = [

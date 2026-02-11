@@ -1,7 +1,7 @@
 """Tests for universal pair, list and object structures."""
 
-from tasc.atomtypes import registry
 from tasc.atom import Atom
+from tasc.atomtypes import registry
 from tasc.u2 import U2
 from tasc.ulist import UList
 from tasc.uobj import UObject

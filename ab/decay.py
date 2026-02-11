@@ -11,8 +11,7 @@ configurable decay formula.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 from .abdb import ABMemory
 
@@ -47,7 +46,7 @@ def decay_formula(
 
 def apply_decay_to_all(
     memory: ABMemory,
-    reference_time: Optional[datetime] = None,
+    reference_time: datetime | None = None,
     half_life_hours: float = 168.0,
     min_strength: float = 0.01,
 ) -> int:
@@ -68,7 +67,7 @@ def apply_decay_to_all(
         Number of cards that were decayed.
     """
     if reference_time is None:
-        reference_time = datetime.utcnow()
+        reference_time = datetime.now(timezone.utc).replace(tzinfo=None)
 
     cur = memory.conn.cursor()
     cur.execute("SELECT card_id, strength, last_recalled FROM card_stats WHERE last_recalled IS NOT NULL")
@@ -95,7 +94,7 @@ def apply_decay_to_all(
 def get_stale_cards(
     memory: ABMemory,
     days_threshold: int = 7,
-    reference_time: Optional[datetime] = None,
+    reference_time: datetime | None = None,
 ) -> list:
     """Find cards that haven't been recalled in a while.
 
@@ -108,7 +107,7 @@ def get_stale_cards(
         List of card_ids that are stale.
     """
     if reference_time is None:
-        reference_time = datetime.utcnow()
+        reference_time = datetime.now(timezone.utc).replace(tzinfo=None)
 
     threshold_time = reference_time - timedelta(days=days_threshold)
     threshold_str = threshold_time.isoformat()

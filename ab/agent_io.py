@@ -34,7 +34,7 @@ summaries from recall.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .abdb import ABMemory
 
@@ -52,7 +52,7 @@ def _decode_buffer_payload(buf_row: Any) -> str:
         return "<binary>"
 
 
-def build_agent_input(memory: ABMemory, tasc_card_id: int) -> Dict[str, Any]:
+def build_agent_input(memory: ABMemory, tasc_card_id: int) -> dict[str, Any]:
     """Assemble a context packet for an agent to execute a Tasc.
 
     Args:
@@ -64,7 +64,7 @@ def build_agent_input(memory: ABMemory, tasc_card_id: int) -> Dict[str, Any]:
         A dictionary containing the agent input fields. Missing
         optional fields will be omitted to keep the packet concise.
     """
-    env: Dict[str, Any] = {"tasc_id": tasc_card_id}
+    env: dict[str, Any] = {"tasc_id": tasc_card_id}
     # Fetch tasc card buffers to extract desired outcome or other
     # metadata (e.g. from additional_notes or desired_outcome)
     tasc_card = memory.get_card(tasc_card_id)
@@ -82,8 +82,8 @@ def build_agent_input(memory: ABMemory, tasc_card_id: int) -> Dict[str, Any]:
                 env["additional_notes"] = buf.payload.decode("utf-8")
     # Identify spec and plan cards via connections
     # spec_for relation: spec card → tasc card
-    spec_id: Optional[int] = None
-    plan_id: Optional[int] = None
+    spec_id: int | None = None
+    plan_id: int | None = None
     conns = memory.list_connections(tasc_card_id)
     for conn in conns:
         # connection relation names: 'spec_for' means source->tasc, but list_connections returns both directions

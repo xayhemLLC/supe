@@ -8,7 +8,6 @@ Features:
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from ..contracts import GateResult
 
@@ -16,7 +15,7 @@ from ..contracts import GateResult
 @dataclass
 class PatternMatch:
     """A matched pattern in output."""
-    
+
     pattern: str
     line_number: int
     line: str
@@ -26,13 +25,13 @@ class PatternMatch:
 @dataclass
 class PatternGate:
     """Gate that validates stdout/stderr against pattern rules.
-    
+
     Denylist patterns must NOT appear (unless in allowlist exceptions).
     Allowlist patterns override denylist matches.
     """
-    
+
     # Patterns that must NOT appear in output
-    denylist: List[str] = field(default_factory=lambda: [
+    denylist: list[str] = field(default_factory=lambda: [
         r"(?i)error[:\s]",
         r"(?i)exception[:\s]",
         r"(?i)traceback",
@@ -40,36 +39,36 @@ class PatternGate:
         r"(?i)fatal[:\s]",
         r"(?i)panic[:\s]",
     ])
-    
+
     # Patterns that override denylist (allowed even if in denylist)
-    allowlist_exceptions: List[str] = field(default_factory=list)
-    
+    allowlist_exceptions: list[str] = field(default_factory=list)
+
     # Maximum number of warnings allowed
     severity_threshold: int = 0
-    
+
     # Warning patterns (counted but don't fail if under threshold)
-    warning_patterns: List[str] = field(default_factory=lambda: [
+    warning_patterns: list[str] = field(default_factory=lambda: [
         r"(?i)warning[:\s]",
         r"(?i)warn[:\s]",
         r"(?i)deprecated",
     ])
-    
+
     # Whether to check stdout
     check_stdout: bool = True
-    
+
     # Whether to check stderr
     check_stderr: bool = True
-    
+
     def _find_matches(
         self,
         text: str,
-        patterns: List[str],
+        patterns: list[str],
         source: str,
-    ) -> List[PatternMatch]:
+    ) -> list[PatternMatch]:
         """Find all pattern matches in text."""
         matches = []
         lines = text.split("\n")
-        
+
         for pattern in patterns:
             try:
                 regex = re.compile(pattern)
@@ -83,9 +82,9 @@ class PatternGate:
                         ))
             except re.error:
                 continue
-        
+
         return matches
-    
+
     def _is_allowed(self, match: PatternMatch) -> bool:
         """Check if a match is in the allowlist exceptions."""
         for pattern in self.allowlist_exceptions:
@@ -95,24 +94,24 @@ class PatternGate:
             except re.error:
                 continue
         return False
-    
+
     def check(
         self,
         stdout: str = "",
         stderr: str = "",
     ) -> GateResult:
         """Check stdout/stderr for forbidden patterns.
-        
+
         Args:
             stdout: Command stdout.
             stderr: Command stderr.
-        
+
         Returns:
             GateResult with pass/fail status and matched patterns.
         """
-        denied_matches: List[PatternMatch] = []
-        warning_matches: List[PatternMatch] = []
-        
+        denied_matches: list[PatternMatch] = []
+        warning_matches: list[PatternMatch] = []
+
         # Check stdout
         if self.check_stdout and stdout:
             matches = self._find_matches(stdout, self.denylist, "stdout")
@@ -122,7 +121,7 @@ class PatternGate:
             warning_matches.extend(
                 self._find_matches(stdout, self.warning_patterns, "stdout")
             )
-        
+
         # Check stderr
         if self.check_stderr and stderr:
             matches = self._find_matches(stderr, self.denylist, "stderr")
@@ -132,11 +131,11 @@ class PatternGate:
             warning_matches.extend(
                 self._find_matches(stderr, self.warning_patterns, "stderr")
             )
-        
+
         # Determine pass/fail
         warnings_over_threshold = len(warning_matches) > self.severity_threshold
         passed = len(denied_matches) == 0 and not warnings_over_threshold
-        
+
         # Build message
         if passed:
             message = "No forbidden patterns found"
@@ -151,7 +150,7 @@ class PatternGate:
                     f"{len(warning_matches)} warnings exceed threshold of {self.severity_threshold}"
                 )
             message = "; ".join(parts)
-        
+
         return GateResult(
             gate_name="STDOUT_STDERR_PATTERNS",
             passed=passed,
@@ -165,13 +164,13 @@ class PatternGate:
                 "severity_threshold": self.severity_threshold,
             },
         )
-    
+
     def check_terminal_result(self, result) -> GateResult:
         """Check a TerminalResult object.
-        
+
         Args:
             result: A TerminalResult from run_and_observe.
-        
+
         Returns:
             GateResult with pass/fail status.
         """

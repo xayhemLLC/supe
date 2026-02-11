@@ -12,9 +12,6 @@ memory strength/decay metrics.
 
 from __future__ import annotations
 
-import json
-from typing import Dict, List, Optional, Tuple
-
 from .abdb import ABMemory
 from .models import Card
 
@@ -29,12 +26,12 @@ def _payload_to_text(payload: bytes) -> str:
 
 def search_cards(
     memory: ABMemory,
-    keyword: Optional[str] = None,
-    label: Optional[str] = None,
-    owner: Optional[str] = None,
-    start_ts: Optional[str] = None,
-    end_ts: Optional[str] = None,
-) -> List[Card]:
+    keyword: str | None = None,
+    label: str | None = None,
+    owner: str | None = None,
+    start_ts: str | None = None,
+    end_ts: str | None = None,
+) -> list[Card]:
     """Search cards by keyword, label, owner and time range.
 
     Args:
@@ -55,8 +52,8 @@ def search_cards(
     cur = memory.conn.cursor()
     # Build base query joining cards to moments
     query = "SELECT cards.id FROM cards JOIN moments ON cards.moment_id = moments.id"
-    conditions: List[str] = []
-    params: List[object] = []
+    conditions: list[str] = []
+    params: list[object] = []
     if label is not None:
         conditions.append("cards.label = ?")
         params.append(label)
@@ -75,7 +72,7 @@ def search_cards(
     cur.execute(query, tuple(params))
     card_ids = [row["id"] for row in cur.fetchall()]
     # Retrieve cards and filter by keyword
-    results: List[Card] = []
+    results: list[Card] = []
     for cid in card_ids:
         card = memory.get_card(cid)
         include = True
@@ -105,14 +102,14 @@ def search_cards(
     return results
 
 
-def search_payload_keyword(memory: ABMemory, keyword: str) -> List[Tuple[int, str]]:
+def search_payload_keyword(memory: ABMemory, keyword: str) -> list[tuple[int, str]]:
     """Return (card_id, buffer_name) pairs where payload contains the keyword."""
     kw = keyword.lower()
     cur = memory.conn.cursor()
     # Fetch all cards and buffers (could be optimised)
     cur.execute("SELECT id FROM cards")
     ids = [row["id"] for row in cur.fetchall()]
-    matches: List[Tuple[int, str]] = []
+    matches: list[tuple[int, str]] = []
     for cid in ids:
         card = memory.get_card(cid)
         for buf in card.buffers:

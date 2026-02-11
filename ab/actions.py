@@ -22,8 +22,7 @@ registered with additional parameter parsing if desired.
 
 from __future__ import annotations
 
-import json
-from typing import Callable, Dict, Optional, Tuple
+from collections.abc import Callable
 
 from .abdb import ABMemory
 from .models import Buffer
@@ -39,12 +38,12 @@ class Action:
     may return any result, which is ignored by the caller.
     """
 
-    def __init__(self, name: str, func: Callable[[ABMemory, str, Optional[str]], None], description: str = "") -> None:
+    def __init__(self, name: str, func: Callable[[ABMemory, str, str | None], None], description: str = "") -> None:
         self.name = name
         self.func = func
         self.description = description
 
-    def __call__(self, memory: ABMemory, arg: str, owner_self: Optional[str] = None) -> None:
+    def __call__(self, memory: ABMemory, arg: str, owner_self: str | None = None) -> None:
         self.func(memory, arg, owner_self)
 
 
@@ -52,15 +51,15 @@ class ActionRegistry:
     """Registry for actions keyed by name."""
 
     def __init__(self) -> None:
-        self._registry: Dict[str, Action] = {}
+        self._registry: dict[str, Action] = {}
 
-    def register(self, name: str, func: Callable[[ABMemory, str, Optional[str]], None], description: str = "") -> None:
+    def register(self, name: str, func: Callable[[ABMemory, str, str | None], None], description: str = "") -> None:
         self._registry[name] = Action(name, func, description)
 
-    def get(self, name: str) -> Optional[Action]:
+    def get(self, name: str) -> Action | None:
         return self._registry.get(name)
 
-    def execute(self, memory: ABMemory, action_str: str, owner_self: Optional[str] = None) -> None:
+    def execute(self, memory: ABMemory, action_str: str, owner_self: str | None = None) -> None:
         """Parse and execute an action string.
 
         The action string should start with the action name followed
@@ -89,18 +88,18 @@ class ActionRegistry:
 registry = ActionRegistry()
 
 
-def _noop_action(memory: ABMemory, arg: str, owner_self: Optional[str] = None) -> None:
+def _noop_action(memory: ABMemory, arg: str, owner_self: str | None = None) -> None:
     """A no-op action that does nothing."""
     # Purposefully does nothing.
     return
 
 
-def _print_action(memory: ABMemory, arg: str, owner_self: Optional[str] = None) -> None:
+def _print_action(memory: ABMemory, arg: str, owner_self: str | None = None) -> None:
     """Print the provided argument to standard output."""
     print(arg)
 
 
-def _log_action(memory: ABMemory, arg: str, owner_self: Optional[str] = None) -> None:
+def _log_action(memory: ABMemory, arg: str, owner_self: str | None = None) -> None:
     """Persist a log entry as a card in AB memory.
 
     The ``arg`` string is stored as the payload of a buffer named

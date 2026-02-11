@@ -17,16 +17,14 @@ additional checkpoint types as needed.
 
 from __future__ import annotations
 
-from typing import List, Optional, Dict
-
 from .abdb import ABMemory
 from .card_utils import (
-    create_spec_card,
-    create_plan_card,
-    create_decision_card,
     create_bug_card,
-    create_evidence_card,
     create_convo_card,
+    create_decision_card,
+    create_evidence_card,
+    create_plan_card,
+    create_spec_card,
 )
 
 
@@ -35,12 +33,12 @@ def checkpoint_after_planning(
     tasc_card_id: int,
     spec: str,
     plan: str,
-    known_pitfalls: Optional[List[str]] = None,
-    definition_of_done: Optional[List[str]] = None,
-    plan_items: Optional[List[str]] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
-) -> Dict[str, int]:
+    known_pitfalls: list[str] | None = None,
+    definition_of_done: list[str] | None = None,
+    plan_items: list[str] | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
+) -> dict[str, int]:
     """Persist the specification and plan for a Tasc.
 
     This checkpoint captures both the problem definition (spec) and
@@ -89,9 +87,9 @@ def checkpoint_after_decision(
     memory: ABMemory,
     tasc_card_id: int,
     decision: str,
-    reasoning: Optional[str] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    reasoning: str | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Persist the chosen decision and rationale for a Tasc.
 
@@ -127,9 +125,9 @@ def checkpoint_after_evidence(
     tasc_card_id: int,
     evidence_data: bytes,
     content_type: str,
-    description: Optional[str] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    description: str | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Persist evidence produced during execution or validation.
 
@@ -167,10 +165,10 @@ def checkpoint_after_bug(
     memory: ABMemory,
     tasc_card_id: int,
     description: str,
-    reproduction_steps: Optional[str] = None,
-    fix: Optional[str] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    reproduction_steps: str | None = None,
+    fix: str | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Persist a bug encountered during execution or validation.
 
@@ -202,8 +200,8 @@ def checkpoint_after_conversation(
     memory: ABMemory,
     tasc_card_id: int,
     conversation: str,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Persist a conversation transcript related to a Tasc.
 

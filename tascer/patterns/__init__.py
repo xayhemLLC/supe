@@ -5,11 +5,11 @@ They compound over time to improve judgment.
 """
 
 from .objects import (
-    Pattern,
+    DecisionPattern,
     FailurePattern,
     FixPattern,
-    DecisionPattern,
     FrontendPattern,
+    Pattern,
     PatternStore,
 )
 

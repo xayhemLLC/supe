@@ -11,25 +11,24 @@ ACTIONS:
 import os
 import signal
 import subprocess
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 
 @dataclass
 class ProcessInfo:
     """Information about a running process."""
-    
+
     pid: int
     command: str
     status: str  # running, sleeping, stopped, zombie
-    cpu_percent: Optional[float] = None
-    memory_mb: Optional[float] = None
-    started_at: Optional[datetime] = None
-    cwd: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    cpu_percent: float | None = None
+    memory_mb: float | None = None
+    started_at: datetime | None = None
+    cwd: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "pid": self.pid,
             "command": self.command,
@@ -44,12 +43,12 @@ class ProcessInfo:
 @dataclass
 class ProcessListResult:
     """Result of listing processes."""
-    
-    processes: List[ProcessInfo]
+
+    processes: list[ProcessInfo]
     timestamp: datetime
-    filter_pattern: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    filter_pattern: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "processes": [p.to_dict() for p in self.processes],
             "timestamp": self.timestamp.isoformat(),
@@ -60,14 +59,14 @@ class ProcessListResult:
 @dataclass
 class ProcessLogs:
     """Captured process logs."""
-    
+
     pid: int
     stdout: str
     stderr: str
     captured_at: datetime
-    since: Optional[datetime] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    since: datetime | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "pid": self.pid,
             "stdout": self.stdout,
@@ -80,17 +79,17 @@ class ProcessLogs:
 @dataclass
 class StartedProcess:
     """A process that was started by process.start."""
-    
+
     pid: int
     command: str
     cwd: str
     started_at: datetime
-    env: Dict[str, str] = field(default_factory=dict)
-    
+    env: dict[str, str] = field(default_factory=dict)
+
     # Internal process handle (not serialized)
-    _process: Optional[subprocess.Popen] = field(default=None, repr=False)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    _process: subprocess.Popen | None = field(default=None, repr=False)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "pid": self.pid,
             "command": self.command,
@@ -101,39 +100,39 @@ class StartedProcess:
 
 
 # Global registry of started processes
-_started_processes: Dict[int, StartedProcess] = {}
+_started_processes: dict[int, StartedProcess] = {}
 
 
 def process_list(
-    filter_pattern: Optional[str] = None,
+    filter_pattern: str | None = None,
     user_only: bool = True,
 ) -> ProcessListResult:
     """List running processes.
-    
+
     ACTION: process.list
-    
+
     Args:
         filter_pattern: Filter processes by command pattern.
         user_only: Only list processes owned by current user.
-    
+
     Returns:
         ProcessListResult with matching processes.
     """
     processes = []
-    
+
     try:
         # Use ps command for cross-platform compatibility
         cmd = ["ps", "-eo", "pid,comm,stat"]
         if user_only:
             cmd = ["ps", "-u", str(os.getuid()), "-o", "pid,comm,stat"]
-        
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=10,
         )
-        
+
         if result.returncode == 0:
             lines = result.stdout.strip().split("\n")[1:]  # Skip header
             for line in lines:
@@ -142,11 +141,11 @@ def process_list(
                     pid = int(parts[0])
                     command = parts[1]
                     status = parts[2]
-                    
+
                     # Apply filter
                     if filter_pattern and filter_pattern not in command:
                         continue
-                    
+
                     processes.append(ProcessInfo(
                         pid=pid,
                         command=command,
@@ -154,7 +153,7 @@ def process_list(
                     ))
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
-    
+
     return ProcessListResult(
         processes=processes,
         timestamp=datetime.now(),
@@ -167,19 +166,19 @@ def process_logs(
     lines: int = 100,
 ) -> ProcessLogs:
     """Capture output from a running process.
-    
+
     ACTION: process.logs
-    
+
     Args:
         pid: Process ID to capture logs from.
         lines: Number of lines to capture.
-    
+
     Returns:
         ProcessLogs with stdout/stderr.
     """
     stdout = ""
     stderr = ""
-    
+
     # Check if it's a process we started
     if pid in _started_processes:
         proc = _started_processes[pid]
@@ -192,7 +191,7 @@ def process_logs(
                     stderr = proc._process.stderr.read() or ""
             except Exception:
                 pass
-    
+
     return ProcessLogs(
         pid=pid,
         stdout=stdout,
@@ -203,31 +202,31 @@ def process_logs(
 
 def process_start(
     command: str,
-    cwd: Optional[str] = None,
-    env: Optional[Dict[str, str]] = None,
+    cwd: str | None = None,
+    env: dict[str, str] | None = None,
     shell: bool = True,
 ) -> StartedProcess:
     """Start a tracked process.
-    
+
     ACTION: process.start (MUTATION)
-    
+
     Args:
         command: Command to run.
         cwd: Working directory.
         env: Environment variables to set.
         shell: Run through shell.
-    
+
     Returns:
         StartedProcess with PID and tracking info.
     """
     if cwd is None:
         cwd = os.getcwd()
-    
+
     # Prepare environment
     process_env = os.environ.copy()
     if env:
         process_env.update(env)
-    
+
     proc = subprocess.Popen(
         command,
         cwd=cwd,
@@ -237,7 +236,7 @@ def process_start(
         stderr=subprocess.PIPE,
         text=True,
     )
-    
+
     started = StartedProcess(
         pid=proc.pid,
         command=command,
@@ -246,9 +245,9 @@ def process_start(
         env=env or {},
         _process=proc,
     )
-    
+
     _started_processes[proc.pid] = started
-    
+
     return started
 
 
@@ -256,16 +255,16 @@ def process_stop(
     pid: int,
     force: bool = False,
     timeout_sec: float = 10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Stop a running process.
-    
+
     ACTION: process.stop (MUTATION)
-    
+
     Args:
         pid: Process ID to stop.
         force: Use SIGKILL instead of SIGTERM.
         timeout_sec: Wait time before force killing.
-    
+
     Returns:
         Dict with stop result.
     """
@@ -275,14 +274,14 @@ def process_stop(
         "exit_code": None,
         "forced": False,
     }
-    
+
     try:
         # Send signal
         sig = signal.SIGKILL if force else signal.SIGTERM
         os.kill(pid, sig)
         result["stopped"] = True
         result["forced"] = force
-        
+
         # If we have the process handle, wait for it
         if pid in _started_processes:
             proc = _started_processes[pid]._process
@@ -294,27 +293,27 @@ def process_stop(
                     proc.kill()
                     result["forced"] = True
             del _started_processes[pid]
-            
+
     except ProcessLookupError:
         result["stopped"] = True  # Already stopped
     except PermissionError:
         result["stopped"] = False
-        
+
     return result
 
 
 def process_restart(
     pid: int,
     timeout_sec: float = 10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Restart a process.
-    
+
     ACTION: process.restart (MUTATION)
-    
+
     Args:
         pid: Process ID to restart.
         timeout_sec: Wait time for stop.
-    
+
     Returns:
         Dict with old_pid, new_pid, and result.
     """
@@ -323,33 +322,33 @@ def process_restart(
         "new_pid": None,
         "success": False,
     }
-    
+
     # Get process info before stopping
     if pid not in _started_processes:
         result["error"] = "Process not tracked - cannot restart"
         return result
-    
+
     proc_info = _started_processes[pid]
     command = proc_info.command
     cwd = proc_info.cwd
     env = proc_info.env
-    
+
     # Stop the process
     stop_result = process_stop(pid, timeout_sec=timeout_sec)
     if not stop_result["stopped"]:
         result["error"] = "Failed to stop process"
         return result
-    
+
     # Start again
     new_proc = process_start(command=command, cwd=cwd, env=env)
-    
+
     result["new_pid"] = new_proc.pid
     result["success"] = True
-    
+
     return result
 
 
-def get_tracked_pids() -> Set[int]:
+def get_tracked_pids() -> set[int]:
     """Get set of all tracked process PIDs."""
     return set(_started_processes.keys())
 

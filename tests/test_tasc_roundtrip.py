@@ -2,9 +2,9 @@
 
 import pytest
 
-from tasc.tasc import Tasc
-from tasc.atom import decode_atom, Atom
+from tasc.atom import Atom, decode_atom
 from tasc.atomtypes import registry
+from tasc.tasc import Tasc
 
 
 def test_tasc_basic_roundtrip() -> None:

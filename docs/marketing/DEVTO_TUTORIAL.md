@@ -1,14 +1,16 @@
-# Building Auditable AI Agents with Python: A Practical Guide
+# Building AI Agents with a Brain: Neural Memory, Validation, and Proofs
 
 > Your AI agent just deleted the production database. Now what?
 
 AI agents are powerful, but they're also black boxes. When something goes wrong, you're left digging through logs trying to piece together what happened. And for regulated industries? Good luck explaining to auditors that your AI "just does things."
 
-I built **Supe** to solve this problem. It's an open-source Python library that wraps AI agent SDKs (like Claude's) with:
+I built **Supe** to solve this problem. It's an open-source Python library that gives AI agents a proper cognitive architecture:
 
-- **Validation gates** that block dangerous operations before they happen
-- **Proof-of-work** that creates tamper-evident audit trails
-- **Recall** that lets you query past executions
+- **Neural Memory** with Hebbian learning and spreading activation
+- **Validation Gates** that block dangerous operations before they happen
+- **Proof-of-Work** that creates tamper-evident audit trails
+- **Cognitive Hierarchy** with moments, cards, and buffers
+- **Semantic Relations** with 7 typed connections
 
 Let me show you how it works.
 
@@ -25,15 +27,47 @@ User: "Wait, what?"
 Most agent frameworks have no concept of:
 1. **Pre-execution validation** - Can I stop this before it happens?
 2. **Audit trails** - What exactly did the agent do?
-3. **Session memory** - What has this agent done before?
+3. **Neural memory** - How do related concepts connect?
+4. **Session memory** - What has this agent done before?
 
-## The Solution: Validation Gates
+## Solution 1: Neural Memory
+
+Supe doesn't just store data - it learns associations like a brain.
+
+```python
+from ab.neural_memory import NeuralMemory
+
+neural = NeuralMemory()
+
+# Add knowledge as cards
+neural.add_card(1, {"title": "OAuth Authentication", "type": "feature"})
+neural.add_card(2, {"title": "Login Page", "type": "feature"})
+neural.add_card(3, {"title": "Session Management", "type": "feature"})
+
+# Hebbian learning: "cells that fire together wire together"
+neural.connect(1, 2)  # OAuth often used with Login
+neural.connect(1, 3)  # OAuth often used with Sessions
+neural.connect(1, 2)  # Repeated use = stronger connection
+
+# Query with spreading activation
+results = neural.recall("authentication login", top_k=5)
+# Returns cards ranked by activation level, not just keyword match
+```
+
+**Key features:**
+- **Long-term potentiation**: Frequently used paths strengthen
+- **Synaptic depression**: Unused links decay over time
+- **Hub formation**: Central concepts emerge naturally
+- **Spreading activation**: Queries propagate through the network
+
+## Solution 2: Validation Gates
 
 Supe introduces "gates" - simple Python functions that run before and after every tool execution:
 
 ```python
 from tascer.contracts import GateResult
 
+@agent.register_gate("safe_commands")
 def safe_commands(record, phase) -> GateResult:
     """Block dangerous shell commands."""
     if phase != "pre":
@@ -55,6 +89,59 @@ def safe_commands(record, phase) -> GateResult:
 
 That's it. A gate is just a function that returns `GateResult(name, passed, message)`.
 
+## Solution 3: Cognitive Hierarchy
+
+Not flat key-value storage. A real hierarchy:
+
+```python
+from ab import ABMemory, Buffer
+
+ab = ABMemory(".tascer/memory.sqlite")
+
+# Moments = work sessions
+moment = ab.create_moment(master_input="RE analysis session")
+
+# Cards = units of knowledge
+card = ab.store_card(
+    label="analysis:player_struct",
+    buffers=[
+        Buffer(name="definition", payload=b"struct Player { int health; int mana; }"),
+        Buffer(name="offsets", payload=b'{"health": "0x10", "mana": "0x14"}'),
+    ],
+    moment_id=moment.id,
+)
+```
+
+**Hierarchy:**
+- **Moments** → Sessions of work
+  - **Cards** → Units of knowledge
+    - **Buffers** → Raw data payloads
+
+## Solution 4: Semantic Relations
+
+Knowledge has relationships. Capture them:
+
+```python
+from tasc.relations import Relation, RelationType, RelationCollection
+
+# 7 relation types
+relations = [
+    Relation.create("r1", RelationType.SUPPORTS, evidence_id, hypothesis_id, 0.9),
+    Relation.create("r2", RelationType.CONTRADICTS, old_id, new_id, 0.8),
+    Relation.create("r3", RelationType.DEPENDS_ON, feature_id, library_id, 1.0),
+]
+
+# Organize in collections
+collection = RelationCollection(id="audit-findings", description="Security audit")
+for rel in relations:
+    collection.add_relation(rel)
+```
+
+**7 Types:**
+- CAUSES, IMPLIES, CONTRADICTS
+- SUPPORTS, DEPENDS_ON
+- EQUALS, TRANSFORMS
+
 ## Setting Up TascerAgent
 
 TascerAgent wraps any Claude SDK agent with validation:
@@ -65,6 +152,7 @@ from tascer.sdk_wrapper import (
     TascerAgent,
     TascerAgentOptions,
     ToolValidationConfig,
+    RecallConfig,
 )
 
 # Persistent memory storage
@@ -85,12 +173,23 @@ agent = TascerAgent(
             ),
         },
         store_to_ab=True,  # Enable persistent storage
+        recall_config=RecallConfig(
+            enabled=True,
+            index_on_store=True,
+        ),
     ),
     ab_memory=ab,
 )
 
 # Register your custom gate
-agent.register_gate("safe_commands", safe_commands)
+@agent.register_gate("safe_commands")
+def safe_commands(record, phase) -> GateResult:
+    if phase != "pre":
+        return GateResult("safe_commands", True, "OK")
+    cmd = record.tool_input.get("command", "")
+    if "rm -rf" in cmd:
+        return GateResult("safe_commands", False, "BLOCKED")
+    return GateResult("safe_commands", True, "OK")
 ```
 
 Now every Bash command goes through your `safe_commands` gate before executing.
@@ -156,6 +255,34 @@ agent.export_report("audit_trail.json")
 
 The proof hash is computed from the tool name, input, output, and timestamp. If anyone modifies the records, the proofs won't verify.
 
+## Task Management with Evidence
+
+14 evidence types for task completion:
+
+```python
+from tasc.tasc import Tasc
+from tasc.evidence import Evidence, EvidenceSource
+from tasc.domains import infer_domain_from_title
+
+# Create a task
+task = Tasc(
+    id="task-001",
+    status="pending",
+    title="Fix security vulnerability in auth",
+)
+
+# Auto-infer domain (7 categories)
+domain = infer_domain_from_title(task.title)
+# Returns: TaskDomain.SECURITY
+
+# Attach evidence
+evidence = [
+    Evidence.create("Tests pass", EvidenceSource.TEST, ["pytest: 42 passed"]),
+    Evidence.create("Code reviewed", EvidenceSource.PEER_REVIEW, ["PR #123"]),
+    Evidence.create("Scan clean", EvidenceSource.SECURITY_SCAN, ["snyk: 0 vulns"]),
+]
+```
+
 ## Recall: Query Past Executions
 
 Every execution is stored as a Card in AB Memory, enabling powerful queries:
@@ -181,13 +308,12 @@ This is incredibly useful for:
 - **Context**: "What has the agent learned about this file?"
 - **Compliance**: "Show me everything the agent did on Tuesday"
 
-## Putting It All Together
-
-Here's a complete example:
+## Complete Example
 
 ```python
 import asyncio
 from ab import ABMemory
+from ab.neural_memory import NeuralMemory
 from tascer.sdk_wrapper import (
     TascerAgent,
     TascerAgentOptions,
@@ -196,8 +322,9 @@ from tascer.sdk_wrapper import (
 )
 from tascer.contracts import GateResult
 
-# Setup
+# Setup cognitive memory
 ab = ABMemory(".tascer/agent_memory.sqlite")
+neural = NeuralMemory()
 
 agent = TascerAgent(
     tascer_options=TascerAgentOptions(
@@ -216,7 +343,7 @@ agent = TascerAgent(
         recall_config=RecallConfig(
             enabled=True,
             index_on_store=True,
-            auto_context=True,  # Auto-retrieve relevant past executions
+            auto_context=True,
         ),
     ),
     ab_memory=ab,
@@ -232,9 +359,8 @@ def safe_commands(record, phase) -> GateResult:
         return GateResult("safe_commands", False, f"BLOCKED: {cmd}")
     return GateResult("safe_commands", True, "OK")
 
-# ... add more gates as needed
+# Add more gates as needed...
 
-# Use the agent
 async def main():
     # Your agent logic here...
 
@@ -260,6 +386,28 @@ pip install supe
 # With Claude SDK integration
 pip install supe[anthropic]
 ```
+
+## Run the Demo
+
+```bash
+python scripts/demo_full_capabilities.py
+```
+
+## What's Included
+
+| Component | Features |
+|-----------|----------|
+| **AB Memory** | Moments, cards, buffers - cognitive hierarchy |
+| **Neural Memory** | Hebbian learning, spreading activation, hub formation |
+| **Tascer** | Validation gates, proof chains, recall |
+| **Tasc** | Task management, 14 evidence types, 7 domains |
+| **Relations** | 7 semantic types (CAUSES, SUPPORTS, etc.) |
+
+- 343 tests passing
+- MIT license
+- Python 3.10+
+- Full type hints
+- Async support
 
 ## What's Next?
 

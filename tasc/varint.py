@@ -14,7 +14,6 @@ returns a two-tuple of the decoded integer and the next offset into
 the buffer.
 """
 
-from typing import Tuple
 
 
 def encode_varint(value: int) -> bytes:
@@ -45,7 +44,7 @@ def encode_varint(value: int) -> bytes:
     return bytes(out)
 
 
-def decode_varint(buf: bytes, offset: int = 0) -> Tuple[int, int]:
+def decode_varint(buf: bytes, offset: int = 0) -> tuple[int, int]:
     """Decode a varint from a buffer starting at ``offset``.
 
     Args:

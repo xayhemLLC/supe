@@ -15,17 +15,16 @@ surrounding structures.
 """
 
 from dataclasses import dataclass
-from typing import List, Tuple
 
 from .atom import Atom, decode_atom
-from .varint import encode_varint, decode_varint
+from .varint import decode_varint, encode_varint
 
 
 @dataclass
 class UList:
     """A sequence of ``Atom`` elements encoded with a length prefix."""
 
-    elements: List[Atom]
+    elements: list[Atom]
 
     def encode(self) -> bytes:
         """Encode this list into bytes.
@@ -40,7 +39,7 @@ class UList:
         return bytes(out)
 
     @classmethod
-    def decode(cls, buf: bytes, offset: int = 0) -> Tuple["UList", int]:
+    def decode(cls, buf: bytes, offset: int = 0) -> tuple["UList", int]:
         """Decode a universal list from a buffer starting at ``offset``.
 
         Args:
@@ -52,7 +51,7 @@ class UList:
             the list.
         """
         count, off = decode_varint(buf, offset)
-        elements: List[Atom] = []
+        elements: list[Atom] = []
         for _ in range(count):
             atom, off = decode_atom(buf, off)
             elements.append(atom)

@@ -20,8 +20,9 @@ themselves. See ``init_default_atomtypes`` for the initialisation
 routine invoked on import.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Dict, Callable, Optional
+from typing import Any
 
 Encoder = Callable[[Any], bytes]
 Decoder = Callable[[bytes], Any]
@@ -58,18 +59,18 @@ class AtomType:
     pindex: int
     name: str
     kind: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
     version: int = 1
-    encoder: Optional[Encoder] = None
-    decoder: Optional[Decoder] = None
+    encoder: Encoder | None = None
+    decoder: Decoder | None = None
 
 
 class AtomTypeRegistry:
     """Registry for looking up atom types by name or prefix index."""
 
     def __init__(self) -> None:
-        self._by_index: Dict[int, AtomType] = {}
-        self._by_name: Dict[str, AtomType] = {}
+        self._by_index: dict[int, AtomType] = {}
+        self._by_name: dict[str, AtomType] = {}
 
     def register(self, atom_type: AtomType) -> None:
         """Register an ``AtomType`` in the registry.

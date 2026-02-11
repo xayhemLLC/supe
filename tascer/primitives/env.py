@@ -6,10 +6,9 @@ ACTIONS:
 """
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
-
+from typing import Any
 
 # Default allowlist of safe environment variables
 DEFAULT_ENV_ALLOWLIST = [
@@ -51,14 +50,14 @@ ENV_DENYLIST = [
 @dataclass
 class EnvReadResult:
     """Result of reading environment variables."""
-    
-    variables: Dict[str, str]
-    requested: List[str]
-    allowed: List[str]
-    denied: List[str]
+
+    variables: dict[str, str]
+    requested: list[str]
+    allowed: list[str]
+    denied: list[str]
     timestamp: datetime
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "variables": self.variables,
             "requested": self.requested,
@@ -71,14 +70,14 @@ class EnvReadResult:
 @dataclass
 class EnvSetResult:
     """Result of setting an environment variable."""
-    
+
     variable: str
-    old_value: Optional[str]
+    old_value: str | None
     new_value: str
     success: bool
     scope: str  # ephemeral, process
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "variable": self.variable,
             "old_value": self.old_value,
@@ -89,8 +88,8 @@ class EnvSetResult:
 
 
 # Ephemeral env storage (for sandbox scope)
-_ephemeral_env: Dict[str, str] = {}
-_original_env: Dict[str, str] = {}
+_ephemeral_env: dict[str, str] = {}
+_original_env: dict[str, str] = {}
 
 
 def _is_denied(var: str) -> bool:
@@ -103,44 +102,44 @@ def _is_denied(var: str) -> bool:
 
 
 def env_read(
-    variables: Optional[List[str]] = None,
-    allowlist: Optional[List[str]] = None,
+    variables: list[str] | None = None,
+    allowlist: list[str] | None = None,
 ) -> EnvReadResult:
     """Read allow-listed environment variables.
-    
+
     ACTION: env.read
-    
+
     This action will NEVER return sensitive variables like API keys,
     passwords, or tokens even if requested.
-    
+
     Args:
         variables: Specific variables to read. If None, reads allowlist.
         allowlist: Custom allowlist. Defaults to DEFAULT_ENV_ALLOWLIST.
-    
+
     Returns:
         EnvReadResult with allowed variables and which were denied.
     """
     if allowlist is None:
         allowlist = DEFAULT_ENV_ALLOWLIST
-    
+
     if variables is None:
         variables = allowlist
-    
+
     result_vars = {}
     allowed = []
     denied = []
-    
+
     for var in variables:
         # Check denylist first
         if _is_denied(var):
             denied.append(var)
             continue
-        
+
         # Check allowlist
         if var not in allowlist:
             denied.append(var)
             continue
-        
+
         # Get value (check ephemeral first, then real env)
         if var in _ephemeral_env:
             value = _ephemeral_env[var]
@@ -148,10 +147,10 @@ def env_read(
             value = os.environ[var]
         else:
             continue  # Variable doesn't exist
-        
+
         result_vars[var] = value
         allowed.append(var)
-    
+
     return EnvReadResult(
         variables=result_vars,
         requested=variables,
@@ -167,18 +166,18 @@ def env_set(
     scope: str = "ephemeral",
 ) -> EnvSetResult:
     """Set environment variable in ephemeral scope.
-    
+
     ACTION: env.set (MUTATION)
-    
+
     This action only sets variables in ephemeral scope by default,
     meaning they don't affect the actual process environment until
     explicitly applied.
-    
+
     Args:
         variable: Variable name to set.
         value: Value to set.
         scope: Scope for the change (ephemeral, process).
-    
+
     Returns:
         EnvSetResult with old and new values.
     """
@@ -191,26 +190,26 @@ def env_set(
             success=False,
             scope=scope,
         )
-    
+
     old_value = None
-    
+
     if scope == "ephemeral":
         # Store in ephemeral scope
         if variable in _ephemeral_env:
             old_value = _ephemeral_env[variable]
         elif variable in os.environ:
             old_value = os.environ[variable]
-        
+
         _ephemeral_env[variable] = value
-        
+
     elif scope == "process":
         # Set in actual process environment
         if variable in os.environ:
             old_value = os.environ[variable]
             _original_env[variable] = old_value
-        
+
         os.environ[variable] = value
-    
+
     return EnvSetResult(
         variable=variable,
         old_value=old_value,
@@ -220,17 +219,17 @@ def env_set(
     )
 
 
-def env_reset(variable: Optional[str] = None) -> Dict[str, Any]:
+def env_reset(variable: str | None = None) -> dict[str, Any]:
     """Reset environment to original state.
-    
+
     Args:
         variable: Specific variable to reset. If None, resets all.
-    
+
     Returns:
         Dict with reset information.
     """
     reset_vars = []
-    
+
     if variable:
         # Reset specific variable
         if variable in _ephemeral_env:
@@ -247,13 +246,13 @@ def env_reset(variable: Optional[str] = None) -> Dict[str, Any]:
             os.environ[var] = original
             reset_vars.append(var)
         _original_env.clear()
-    
+
     return {
         "reset_variables": reset_vars,
         "timestamp": datetime.now().isoformat(),
     }
 
 
-def get_ephemeral_env() -> Dict[str, str]:
+def get_ephemeral_env() -> dict[str, str]:
     """Get all ephemeral environment variables."""
     return dict(_ephemeral_env)

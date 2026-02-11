@@ -30,7 +30,7 @@ jobs:
         run: uv pip install --system -e ".[dev]"
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: uv run --extra dev pytest tests/ -v --tb=short --cov=ab --cov=tasc --cov=tascer --cov=supe --cov-report=term-missing --cov-fail-under=35
 
       - name: Test CLI commands
         run: |
@@ -57,7 +57,7 @@ jobs:
         run: uv pip install --system -e ".[dev]"
 
       - name: Run ruff
-        run: ruff check . --output-format=github
+        run: uv run --extra dev ruff check ab tasc tascer supe tests --output-format=github
 
   docker:
     runs-on: ubuntu-latest

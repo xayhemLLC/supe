@@ -14,7 +14,6 @@ and to produce such a dictionary when all values decode to strings.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any
 
 from .atom import Atom
 from .atomtypes import registry
@@ -26,7 +25,7 @@ from .ulist import UList
 class UObject:
     """Universal object storing string keys and Atom values."""
 
-    pairs: Dict[str, Atom]
+    pairs: dict[str, Atom]
 
     def to_ulist(self) -> UList:
         """Convert this object into a ``UList`` of ``u2`` atoms.
@@ -50,7 +49,7 @@ class UObject:
     @classmethod
     def from_ulist(cls, ulist: UList) -> "UObject":
         """Decode a ``UObject`` from a ``UList`` of ``u2`` atoms."""
-        result: Dict[str, Atom] = {}
+        result: dict[str, Atom] = {}
         for u2_atom in ulist.elements:
             # The payload of a u2 atom is the raw encoding of the pair
             u2_bytes = u2_atom.payload
@@ -60,20 +59,20 @@ class UObject:
         return cls(pairs=result)
 
     @classmethod
-    def from_dict_of_strings(cls, d: Dict[str, str]) -> "UObject":
+    def from_dict_of_strings(cls, d: dict[str, str]) -> "UObject":
         """Create a ``UObject`` from a mapping of strings to strings."""
         str_type = registry.get_by_name("string")
-        pairs: Dict[str, Atom] = {}
+        pairs: dict[str, Atom] = {}
         for key, val in d.items():
             pairs[key] = Atom.from_value(str_type, val)
         return cls(pairs=pairs)
 
-    def to_dict_of_strings(self) -> Dict[str, str]:
+    def to_dict_of_strings(self) -> dict[str, str]:
         """Return the object as a mapping of strings to strings.
 
         All values must decode to strings; otherwise a ``TypeError`` is raised.
         """
-        out: Dict[str, str] = {}
+        out: dict[str, str] = {}
         for key, atom_val in self.pairs.items():
             val = atom_val.decode_value()
             if not isinstance(val, str):

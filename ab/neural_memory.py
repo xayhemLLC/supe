@@ -15,10 +15,9 @@ Like neurons:
 """
 
 import math
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -39,7 +38,7 @@ class NeuralLink:
     def activate(self):
         """Strengthen this link (Hebbian learning)."""
         self.activation_count += 1
-        self.last_activated = datetime.utcnow()
+        self.last_activated = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Long-term potentiation: strength increases with use
         # Diminishing returns as strength approaches 1.0
@@ -48,7 +47,7 @@ class NeuralLink:
 
     def decay(self, current_time: datetime = None):
         """Weaken from disuse (synaptic depression)."""
-        current_time = current_time or datetime.utcnow()
+        current_time = current_time or datetime.now(timezone.utc).replace(tzinfo=None)
         days_inactive = (current_time - self.last_activated).days
 
         if days_inactive > 0:
@@ -66,7 +65,7 @@ class NeuralLink:
 class NeuralCard:
     """A neuron-like memory card."""
     card_id: int
-    buffers: Dict
+    buffers: dict
 
     # Neural properties
     activation: float = 0.0           # Current activation level (0-1)
@@ -74,8 +73,8 @@ class NeuralCard:
     activation_threshold: float = 0.3  # Min activation to fire
 
     # Connections (can be infinite, like dendrites)
-    outgoing: Dict[int, NeuralLink] = field(default_factory=dict)
-    incoming: Dict[int, NeuralLink] = field(default_factory=dict)
+    outgoing: dict[int, NeuralLink] = field(default_factory=dict)
+    incoming: dict[int, NeuralLink] = field(default_factory=dict)
 
     # Statistics
     recall_count: int = 0
@@ -120,16 +119,16 @@ class NeuralMemory:
     """
 
     def __init__(self):
-        self.cards: Dict[int, NeuralCard] = {}
-        self.links: Dict[Tuple[int, int], NeuralLink] = {}
+        self.cards: dict[int, NeuralCard] = {}
+        self.links: dict[tuple[int, int], NeuralLink] = {}
 
         # Query history for pattern detection
-        self.query_history: List[Tuple[str, List[int], datetime]] = []
+        self.query_history: list[tuple[str, list[int], datetime]] = []
 
         # Concept index (word → card_ids)
-        self.concept_index: Dict[str, Set[int]] = defaultdict(set)
+        self.concept_index: dict[str, set[int]] = defaultdict(set)
 
-    def add_card(self, card_id: int, buffers: Dict) -> NeuralCard:
+    def add_card(self, card_id: int, buffers: dict) -> NeuralCard:
         """Add a card to the network."""
         card = NeuralCard(card_id=card_id, buffers=buffers)
         self.cards[card_id] = card
@@ -172,7 +171,7 @@ class NeuralMemory:
 
         return self.links[key]
 
-    def recall(self, query: str, top_k: int = 10) -> List[Tuple[int, float]]:
+    def recall(self, query: str, top_k: int = 10) -> list[tuple[int, float]]:
         """Recall memories using spreading activation.
 
         This is how biological recall works:
@@ -231,12 +230,12 @@ class NeuralMemory:
         self.query_history.append((
             query,
             [r[0] for r in results[:top_k]],
-            datetime.utcnow()
+            datetime.now(timezone.utc).replace(tzinfo=None)
         ))
 
         return results[:top_k]
 
-    def _strengthen_pathways(self, activated_ids: Set[int]):
+    def _strengthen_pathways(self, activated_ids: set[int]):
         """Strengthen links between co-activated cards (Hebbian learning)."""
         activated_list = list(activated_ids)
 
@@ -249,18 +248,18 @@ class NeuralMemory:
                 # Update recall stats
                 if id1 in self.cards:
                     self.cards[id1].recall_count += 1
-                    self.cards[id1].last_recalled = datetime.utcnow()
+                    self.cards[id1].last_recalled = datetime.now(timezone.utc).replace(tzinfo=None)
                 if id2 in self.cards:
                     self.cards[id2].recall_count += 1
-                    self.cards[id2].last_recalled = datetime.utcnow()
+                    self.cards[id2].last_recalled = datetime.now(timezone.utc).replace(tzinfo=None)
 
     def decay_all(self):
         """Apply decay to all links (call periodically)."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         for link in self.links.values():
             link.decay(now)
 
-    def get_hubs(self, top_k: int = 10) -> List[Tuple[int, NeuralCard]]:
+    def get_hubs(self, top_k: int = 10) -> list[tuple[int, NeuralCard]]:
         """Get the most connected hub cards."""
         cards_by_connectivity = sorted(
             self.cards.items(),
@@ -269,7 +268,7 @@ class NeuralMemory:
         )
         return cards_by_connectivity[:top_k]
 
-    def get_strongest_paths(self, card_id: int, depth: int = 2) -> Dict:
+    def get_strongest_paths(self, card_id: int, depth: int = 2) -> dict:
         """Get strongest connection paths from a card."""
         if card_id not in self.cards:
             return {}
@@ -302,7 +301,7 @@ class NeuralMemory:
 
         return paths
 
-    def find_fundamental_branches(self) -> List[Dict]:
+    def find_fundamental_branches(self) -> list[dict]:
         """Find the most established pathways (language-like structures).
 
         These are the "highways" of memory - frequently traveled,
@@ -357,7 +356,7 @@ class NeuralMemory:
         # Analyze query history for patterns
         if len(self.query_history) > 10:
             # Find cards that are frequently co-recalled
-            cooccurrence: Dict[Tuple[int, int], int] = defaultdict(int)
+            cooccurrence: dict[tuple[int, int], int] = defaultdict(int)
 
             for _, recalled_ids, _ in self.query_history[-100:]:
                 for i, id1 in enumerate(recalled_ids):

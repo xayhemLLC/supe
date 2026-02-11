@@ -4,28 +4,28 @@ ACTION: http.request
 Make HTTP requests and capture responses.
 """
 
+import json
 import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
-import urllib.request
 import urllib.error
 import urllib.parse
-import json
+import urllib.request
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class HttpResponse:
     """Response from an HTTP request."""
-    
+
     status_code: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     body: str
     duration_ms: float
     url: str
     method: str
-    error: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "status_code": self.status_code,
             "headers": self.headers,
@@ -35,11 +35,11 @@ class HttpResponse:
             "method": self.method,
             "error": self.error,
         }
-    
+
     def json(self) -> Any:
         """Parse body as JSON."""
         return json.loads(self.body)
-    
+
     @property
     def ok(self) -> bool:
         """Check if response was successful (2xx)."""
@@ -49,15 +49,15 @@ class HttpResponse:
 def http_request(
     url: str,
     method: str = "GET",
-    headers: Optional[Dict[str, str]] = None,
-    body: Optional[Union[str, bytes, Dict]] = None,
+    headers: dict[str, str] | None = None,
+    body: str | bytes | dict | None = None,
     timeout_sec: float = 30,
     follow_redirects: bool = True,
 ) -> HttpResponse:
     """Make an HTTP request and capture the response.
-    
+
     ACTION: http.request
-    
+
     Args:
         url: URL to request.
         method: HTTP method (GET, POST, PUT, DELETE, etc.).
@@ -65,13 +65,13 @@ def http_request(
         body: Request body. Dicts are JSON-encoded.
         timeout_sec: Request timeout.
         follow_redirects: Whether to follow redirects.
-    
+
     Returns:
         HttpResponse with status, headers, body, and timing.
     """
     headers = headers or {}
     start_time = time.perf_counter()
-    
+
     # Prepare body
     data = None
     if body is not None:
@@ -83,7 +83,7 @@ def http_request(
             data = body.encode("utf-8")
         else:
             data = body
-    
+
     # Create request
     req = urllib.request.Request(
         url,
@@ -91,15 +91,15 @@ def http_request(
         headers=headers,
         method=method.upper(),
     )
-    
+
     try:
         with urllib.request.urlopen(req, timeout=timeout_sec) as response:
             response_body = response.read().decode("utf-8", errors="replace")
             response_headers = dict(response.headers)
             status_code = response.status
-            
+
         end_time = time.perf_counter()
-        
+
         return HttpResponse(
             status_code=status_code,
             headers=response_headers,
@@ -108,7 +108,7 @@ def http_request(
             url=url,
             method=method.upper(),
         )
-        
+
     except urllib.error.HTTPError as e:
         end_time = time.perf_counter()
         body_content = ""
@@ -116,7 +116,7 @@ def http_request(
             body_content = e.read().decode("utf-8", errors="replace")
         except Exception:
             pass
-        
+
         return HttpResponse(
             status_code=e.code,
             headers=dict(e.headers) if e.headers else {},
@@ -126,7 +126,7 @@ def http_request(
             method=method.upper(),
             error=str(e.reason),
         )
-        
+
     except urllib.error.URLError as e:
         end_time = time.perf_counter()
         return HttpResponse(
@@ -138,7 +138,7 @@ def http_request(
             method=method.upper(),
             error=str(e.reason),
         )
-        
+
     except Exception as e:
         end_time = time.perf_counter()
         return HttpResponse(
@@ -159,7 +159,7 @@ def http_get(url: str, **kwargs) -> HttpResponse:
 
 def http_post(
     url: str,
-    body: Optional[Union[str, bytes, Dict]] = None,
+    body: str | bytes | dict | None = None,
     **kwargs
 ) -> HttpResponse:
     """Convenience function for POST requests."""

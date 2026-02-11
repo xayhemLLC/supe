@@ -8,11 +8,13 @@ Your AI agent just mass-deleted files.
 
 Can you prove it wasn't supposed to?
 
-I built Supe - the missing audit layer for AI agents.
+I built Supe - a cognitive brain for AI agents.
 
-Open source, 343 tests, pip installable.
+Not just memory. Neural learning + validation gates + cryptographic proofs.
 
-🧵 Here's how it works:
+343 tests, pip installable, MIT license.
+
+Here's what makes it different:
 
 ---
 
@@ -20,20 +22,39 @@ Open source, 343 tests, pip installable.
 
 The problem with AI agents:
 
-❌ No pre-execution validation
-❌ No audit trails
-❌ No session memory
-❌ No way to prove what happened
+- No pre-execution validation
+- No audit trails
+- No persistent memory
+- No way to prove what happened
+- No understanding of relationships
 
-Most frameworks just... let agents do things.
+Most frameworks just... let agents do things. Then hope for the best.
 
 ---
 
-## Tweet 3 (Solution - Gates)
+## Tweet 3 (Neural Memory)
 
-Supe adds validation gates.
+Supe has *neural* memory, not flat storage.
 
-Gates are just Python functions that run before/after every tool execution.
+"Cells that fire together wire together"
+
+```python
+neural = NeuralMemory()
+neural.add_card(1, {"title": "OAuth"})
+neural.add_card(2, {"title": "Login"})
+neural.connect(1, 2)  # Hebbian learning
+
+results = neural.recall("authentication")
+# Spreading activation through network
+```
+
+Connections strengthen with use. Hubs emerge. Like a brain.
+
+---
+
+## Tweet 4 (Validation Gates)
+
+Gates = Python functions that validate tool execution.
 
 ```python
 @agent.register_gate("safe")
@@ -45,13 +66,15 @@ def safe(record, phase):
 
 10 lines. No DSL. No config files.
 
+Block dangerous commands. Enforce read-only. Whitelist operations.
+
 ---
 
-## Tweet 4 (Solution - Proofs)
+## Tweet 5 (Proofs)
 
 Every execution gets a SHA256 proof.
 
-Tool + Input + Output + Timestamp → Hash
+Tool + Input + Output + Timestamp to Hash
 
 Tamper with the logs? Proofs won't verify.
 
@@ -64,22 +87,67 @@ Compliance teams love this.
 
 ---
 
-## Tweet 5 (Solution - Recall)
+## Tweet 6 (Cognitive Hierarchy)
 
-Query past executions with semantic search.
+Not flat key-value storage. A cognitive hierarchy:
+
+Moments to Sessions
+  Cards to Knowledge units
+    Buffers to Raw data
 
 ```python
-results = agent.recall("player struct", top_k=5)
-history = agent.recall_tool("Bash")
+moment = ab.create_moment(master_input="Analysis session")
+card = ab.store_card(
+    label="analysis:player_struct",
+    buffers=[Buffer(name="def", payload=b"struct Player")],
+)
 ```
-
-Built on neural spreading activation, not just keyword matching.
 
 ---
 
-## Tweet 6 (Use Case)
+## Tweet 7 (Relations)
 
-Real use case: Reverse engineering
+Knowledge has relationships. Supe captures them:
+
+7 relation types:
+- CAUSES
+- IMPLIES
+- CONTRADICTS
+- SUPPORTS
+- DEPENDS_ON
+- EQUALS
+- TRANSFORMS
+
+```python
+Relation.create("r1", RelationType.SUPPORTS, card1.id, card2.id)
+```
+
+---
+
+## Tweet 8 (Task Management)
+
+Task management with 14 evidence types:
+- TEST
+- PEER_REVIEW
+- SECURITY_SCAN
+- ...
+
+7 domain categories auto-inferred:
+- DEBUGGING
+- SECURITY
+- REFACTORING
+- ...
+
+```python
+domain = infer_domain_from_title("Fix security vulnerability")
+# TaskDomain.SECURITY
+```
+
+---
+
+## Tweet 9 (Use Case)
+
+Real use case: Reverse engineering workflow
 
 Agent analyzes game binaries with Ghidra/radare2.
 Agent can NOT modify game files.
@@ -96,71 +164,70 @@ def whitelist(record, phase):
 
 ---
 
-## Tweet 7 (Comparison)
-
-| Feature | LangChain | AutoGPT | Supe |
-|---------|-----------|---------|------|
-| Pre-validation | ❌ | ❌ | ✅ |
-| Post-validation | ❌ | ❌ | ✅ |
-| Proof-of-work | ❌ | ❌ | ✅ |
-| Recall | ❌ | Partial | ✅ |
-| Custom gates | ❌ | ❌ | ✅ |
-
----
-
-## Tweet 8 (CTA)
+## Tweet 10 (CTA)
 
 pip install supe
 
 GitHub: github.com/xayhemLLC/supe
 
+What you get:
 - 343 tests passing
 - MIT license
-- Works with Claude SDK
-- OpenAI wrapper coming
-
-Would love feedback on the gate pattern design.
+- Neural memory with Hebbian learning
+- Validation gates (code, not config)
+- Cryptographic proof chains
+- 7 semantic relation types
+- 14 evidence types
+- Claude SDK integration
 
 ---
 
-## Alternative Thread (Shorter, 4 tweets)
+## Shorter Thread (5 tweets)
 
 ### Tweet 1
 AI agents are powerful but terrifying.
 
-No validation. No audit trails. No memory.
+No validation. No audit trails. No understanding of relationships.
 
-I built Supe to fix this. Here's the idea:
+I built Supe - a cognitive brain for AI agents.
+
+Not just memory. Neural learning + validation + cryptographic proofs.
 
 ### Tweet 2
-**Validation gates**: Python functions that run before/after every tool execution.
+**Neural Memory**: Hebbian learning. "Fire together, wire together."
 
-Block rm -rf? 10 lines.
-Read-only mode? 10 lines.
-Whitelist commands? 10 lines.
+Connections strengthen with use. Hubs emerge. Spreading activation for recall.
 
-No DSL. Just code.
+```python
+neural.connect(card1, card2)  # Repeated use = stronger link
+results = neural.recall("authentication")  # Spreads through network
+```
 
 ### Tweet 3
-**Proof-of-work**: SHA256 hash of every execution.
+**Validation Gates**: Python functions, not config files.
 
-Tamper with logs → proofs don't verify.
+Block rm -rf? 10 lines.
+Whitelist commands? 10 lines.
+Read-only mode? 10 lines.
 
-**Recall**: Query past executions with semantic search.
-
-"What did the agent do with database files?"
+**Proofs**: SHA256 of every execution. Tamper = invalid chain.
 
 ### Tweet 4
+**7 Relation Types**: CAUSES, IMPLIES, CONTRADICTS, SUPPORTS, DEPENDS_ON, EQUALS, TRANSFORMS
+
+**Cognitive Hierarchy**: Moments to Cards to Buffers
+
+**14 Evidence Types**: TEST, PEER_REVIEW, SECURITY_SCAN...
+
+### Tweet 5
 pip install supe
 
-- 343 tests
-- MIT license
-- Works with Claude SDK
+343 tests | MIT license | Claude SDK integration
 
-github.com/xayhemLLC/supe
+GitHub: github.com/xayhemLLC/supe
 
 ---
 
 ## Hashtags (use sparingly)
 
-#AI #AIAgents #Python #OpenSource #MachineLearning #Claude #Anthropic
+#AI #AIAgents #Python #OpenSource #MachineLearning #Claude #Anthropic #CognitiveAI

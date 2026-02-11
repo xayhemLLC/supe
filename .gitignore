@@ -46,6 +46,7 @@ htmlcov/
 
 # Tascer runtime outputs
 .tascer/
+.supe/
 
 # Documentation
 site/

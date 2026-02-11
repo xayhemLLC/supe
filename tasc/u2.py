@@ -15,7 +15,6 @@ decode the key or value as a string when appropriate.
 """
 
 from dataclasses import dataclass
-from typing import Any, Tuple
 
 from .atom import Atom, decode_atom
 from .atomtypes import registry
@@ -44,7 +43,7 @@ class U2:
         return self.key.encode() + self.value.encode()
 
     @classmethod
-    def decode(cls, buf: bytes, offset: int = 0) -> Tuple["U2", int]:
+    def decode(cls, buf: bytes, offset: int = 0) -> tuple["U2", int]:
         """Decode a universal pair from a buffer starting at ``offset``.
 
         Returns the decoded pair and the next offset after both atoms.

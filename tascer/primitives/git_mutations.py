@@ -9,21 +9,20 @@ These are potentially destructive and require checkpoint + explicit approval.
 
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class CheckoutResult:
     """Result of git checkout operation."""
-    
+
     success: bool
     old_ref: str
     new_ref: str
     files_changed: int
-    error: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "old_ref": self.old_ref,
@@ -36,14 +35,14 @@ class CheckoutResult:
 @dataclass
 class CommitResult:
     """Result of git commit operation."""
-    
+
     success: bool
-    commit_sha: Optional[str]
+    commit_sha: str | None
     message: str
-    files_committed: List[str]
-    error: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    files_committed: list[str]
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "commit_sha": self.commit_sha,
@@ -60,24 +59,24 @@ def git_checkout(
     checkpoint_manager=None,
 ) -> CheckoutResult:
     """Checkout a branch or commit.
-    
+
     ACTION: git.checkout (MUTATION)
-    
+
     Requires active checkpoint for safety.
-    
+
     Args:
         ref: Branch name or commit SHA to checkout.
         repo_root: Repository root directory.
         create_branch: If True, create the branch.
         checkpoint_manager: Optional checkpoint manager for safety check.
-    
+
     Returns:
         CheckoutResult with before/after refs.
     """
     # Check checkpoint if manager provided
     if checkpoint_manager:
         checkpoint_manager.require_checkpoint("git.checkout")
-    
+
     # Get current ref
     try:
         old_ref_result = subprocess.run(
@@ -90,14 +89,14 @@ def git_checkout(
         old_ref = old_ref_result.stdout.strip() if old_ref_result.returncode == 0 else ""
     except Exception:
         old_ref = ""
-    
+
     try:
         # Build command
         cmd = ["git", "checkout"]
         if create_branch:
             cmd.append("-b")
         cmd.append(ref)
-        
+
         result = subprocess.run(
             cmd,
             cwd=repo_root,
@@ -105,7 +104,7 @@ def git_checkout(
             text=True,
             timeout=30,
         )
-        
+
         if result.returncode != 0:
             return CheckoutResult(
                 success=False,
@@ -114,20 +113,20 @@ def git_checkout(
                 files_changed=0,
                 error=result.stderr.strip(),
             )
-        
+
         # Count files changed
         files_changed = 0
         if "files changed" in result.stderr:
             # Parse output
             pass
-        
+
         return CheckoutResult(
             success=True,
             old_ref=old_ref,
             new_ref=ref,
             files_changed=files_changed,
         )
-        
+
     except Exception as e:
         return CheckoutResult(
             success=False,
@@ -141,18 +140,18 @@ def git_checkout(
 def git_commit(
     message: str,
     repo_root: str,
-    files: Optional[List[str]] = None,
+    files: list[str] | None = None,
     all_changes: bool = False,
     checkpoint_manager=None,
     gated_approval: bool = False,
 ) -> CommitResult:
     """Create a git commit.
-    
+
     ACTION: git.commit (MUTATION, GATED)
-    
+
     This is a gated operation requiring explicit approval.
     Requires active checkpoint for safety.
-    
+
     Args:
         message: Commit message.
         repo_root: Repository root directory.
@@ -160,7 +159,7 @@ def git_commit(
         all_changes: If True, stage and commit all changes.
         checkpoint_manager: Optional checkpoint manager for safety check.
         gated_approval: Must be True to execute (gate).
-    
+
     Returns:
         CommitResult with commit SHA.
     """
@@ -173,11 +172,11 @@ def git_commit(
             files_committed=[],
             error="git.commit is a gated action. Set gated_approval=True to proceed.",
         )
-    
+
     # Check checkpoint if manager provided
     if checkpoint_manager:
         checkpoint_manager.require_checkpoint("git.commit")
-    
+
     try:
         # Stage files
         if files:
@@ -195,7 +194,7 @@ def git_commit(
                 capture_output=True,
                 timeout=10,
             )
-        
+
         # Commit
         result = subprocess.run(
             ["git", "commit", "-m", message],
@@ -204,7 +203,7 @@ def git_commit(
             text=True,
             timeout=30,
         )
-        
+
         if result.returncode != 0:
             return CommitResult(
                 success=False,
@@ -213,7 +212,7 @@ def git_commit(
                 files_committed=[],
                 error=result.stderr.strip(),
             )
-        
+
         # Get commit SHA
         sha_result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -223,7 +222,7 @@ def git_commit(
             timeout=10,
         )
         commit_sha = sha_result.stdout.strip() if sha_result.returncode == 0 else None
-        
+
         # Get committed files
         files_result = subprocess.run(
             ["git", "diff", "--name-only", "HEAD~1", "HEAD"],
@@ -233,14 +232,14 @@ def git_commit(
             timeout=10,
         )
         files_committed = files_result.stdout.strip().split("\n") if files_result.returncode == 0 else []
-        
+
         return CommitResult(
             success=True,
             commit_sha=commit_sha,
             message=message,
             files_committed=files_committed,
         )
-        
+
     except Exception as e:
         return CommitResult(
             success=False,
@@ -255,16 +254,16 @@ def git_log(
     repo_root: str,
     max_count: int = 10,
     format_str: str = "%H|%an|%ae|%s|%ci",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get git commit history.
-    
+
     ACTION: git.log (OBSERVATION)
-    
+
     Args:
         repo_root: Repository root directory.
         max_count: Maximum number of commits.
         format_str: Git log format string.
-    
+
     Returns:
         Dict with commits list.
     """
@@ -276,10 +275,10 @@ def git_log(
             text=True,
             timeout=30,
         )
-        
+
         if result.returncode != 0:
             return {"commits": [], "error": result.stderr.strip()}
-        
+
         commits = []
         for line in result.stdout.strip().split("\n"):
             if line:
@@ -292,8 +291,8 @@ def git_log(
                         "message": parts[3],
                         "date": parts[4],
                     })
-        
+
         return {"commits": commits}
-        
+
     except Exception as e:
         return {"commits": [], "error": str(e)}

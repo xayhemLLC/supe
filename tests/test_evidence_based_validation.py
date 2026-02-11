@@ -10,27 +10,27 @@ Tests all components:
 """
 
 import pytest
+
+from tasc.domains import (
+    TaskDomain,
+    apply_domain_to_tasc,
+    get_requirements_for_domain,
+    infer_domain_from_title,
+)
 from tasc.evidence import (
     Evidence,
     EvidenceCollection,
     EvidenceSource,
-    collect_test_evidence,
     collect_code_evidence,
+    collect_test_evidence,
+)
+from tasc.self_validation import (
+    ExperimentStatus,
+    SelfValidatingTaskc,
+    ValidationExperiment,
 )
 from tasc.tasc import Tasc
 from tasc.validation import UnifiedValidator, ValidationResult
-from tasc.domains import (
-    TaskDomain,
-    get_requirements_for_domain,
-    apply_domain_to_tasc,
-    infer_domain_from_title,
-)
-from tasc.self_validation import (
-    SelfValidatingTaskc,
-    ExperimentStatus,
-    ValidationExperiment,
-)
-
 
 # ============================================================================
 # Evidence Tests
@@ -48,19 +48,21 @@ def test_evidence_creation():
     assert evidence.text == "Test passed successfully"
     assert evidence.source == EvidenceSource.TEST
     assert evidence.citations == ["tests/test_foo.py::test_bar"]
-    assert evidence.validated == False
+    assert not evidence.validated
     assert evidence.confidence == 1.0
 
 
 def test_evidence_serialization():
     """Test evidence serialization to/from dict."""
+    from tasc.evidence import ValidationMethod
+
     original = Evidence.create(
         text="Code review approved",
         source=EvidenceSource.PEER_REVIEW,
         citations=["github.com/org/repo/pull/123"],
     )
     original.validated = True
-    original.validation_method = "manual"
+    original.validation_method = ValidationMethod.MANUAL_REVIEW
 
     # Serialize
     data = original.to_dict()
@@ -74,6 +76,40 @@ def test_evidence_serialization():
     assert restored.citations == original.citations
     assert restored.validated == original.validated
     assert restored.validation_method == original.validation_method
+
+
+def test_validation_method_legacy_string():
+    """Test that legacy string validation methods are converted correctly."""
+    from tasc.evidence import ValidationMethod
+
+    original = Evidence.create(
+        text="Test evidence",
+        source=EvidenceSource.TEST,
+        citations=["test.py"],
+    )
+    # Assign legacy string - should still work
+    original.validation_method = "manual"
+
+    # Serialize and deserialize
+    data = original.to_dict()
+    assert data["validation_method"] == "manual"
+
+    # Restored should convert to enum
+    restored = Evidence.from_dict(data)
+    assert restored.validation_method == ValidationMethod.MANUAL_REVIEW
+
+    # Test other legacy mappings
+    for legacy, expected in [
+        ("test", ValidationMethod.AUTOMATED_TEST),
+        ("lint", ValidationMethod.STATIC_ANALYSIS),
+        ("security", ValidationMethod.SECURITY_SCAN),
+        ("e2e", ValidationMethod.INTEGRATION_TEST),
+        ("perf", ValidationMethod.BENCHMARK),
+        ("uat", ValidationMethod.USER_ACCEPTANCE),
+    ]:
+        data["validation_method"] = legacy
+        restored = Evidence.from_dict(data)
+        assert restored.validation_method == expected, f"Failed for {legacy}"
 
 
 def test_evidence_helper_functions():

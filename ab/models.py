@@ -7,8 +7,8 @@ lightweight and are not tied to any particular storage backend. The
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any
 
 
 @dataclass
@@ -23,53 +23,50 @@ class Buffer:
     """
 
     name: str
-    headers: Dict[str, Any] = field(default_factory=dict)
+    headers: dict[str, Any] = field(default_factory=dict)
     payload: bytes = b""
-    exe: Optional[str] = None
+    exe: str | None = None
 
 
 @dataclass
 class Moment:
     """A single tick in time used as the backbone of the AB ledger."""
 
-    id: Optional[int] = None
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    id: int | None = None
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
     # Each moment records the aggregate input and output of the cognitive pulse.
     # ``master_input`` captures the primary prompt or context that initiated
     # this moment, and ``master_output`` stores the final integrated output
     # produced by the Overlord after all subselves have emitted proposals.
-    master_input: Optional[str] = None
-    master_output: Optional[str] = None
+    master_input: str | None = None
+    master_output: str | None = None
     # Every moment also references an ``awareness_card`` capturing raw
     # inputs (prompt, state, files, etc.) fused into a single card.  The
     # awareness card ID is stored here for quick lookup.
-    awareness_card_id: Optional[int] = None
+    awareness_card_id: int | None = None
     # ID of the master card containing raw sensory and internal state
     # data for this moment.  Each moment has exactly one master card
     # capturing the hardware inputs prior to awareness fusion.  The
     # master card can be ``None`` when hardware is disabled.
-    master_card_id: Optional[int] = None
+    master_card_id: int | None = None
 
 
 @dataclass
 class Card:
     """Primary memory unit storing buffers with a label and metadata."""
 
-    id: Optional[int] = None
+    id: int | None = None
     label: str = ""
-    moment_id: Optional[int] = None
-    owner_self: Optional[str] = None
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    buffers: List[Buffer] = field(default_factory=list)
+    moment_id: int | None = None
+    owner_self: str | None = None
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+    buffers: list[Buffer] = field(default_factory=list)
     # A card has exactly one ``master_input`` and one ``master_output``.  They
     # capture the primary input the card operates on and the result it
     # produces.  For many cards (e.g., content cards or awareness cards)
     # these fields may be ``None``.
-    master_input: Optional[str] = None
-    master_output: Optional[str] = None
-    # Genetic blueprint for this card, stored as a serialized DNA string.
-    # See ``ab/atoms.py`` for format details.
-    dna: Optional[str] = None
+    master_input: str | None = None
+    master_output: str | None = None
     # Memory track: 'awareness' (knowledge/content), 'execution' (tasc history),
     # or 'sensory' (raw input data). Defaults to 'awareness'.
     track: str = "awareness"
@@ -92,4 +89,4 @@ class CardStats:
     card_id: int
     strength: float = 1.0
     recall_count: int = 0
-    last_recalled: Optional[str] = None
+    last_recalled: str | None = None

@@ -23,13 +23,12 @@ later.
 from __future__ import annotations
 
 import json
-from typing import List, Optional, Dict
 
-from .models import Buffer
 from .abdb import ABMemory
+from .models import Buffer
 
 
-def _serialise_list(lst: List[str]) -> str:
+def _serialise_list(lst: list[str]) -> str:
     """Serialise a list of strings as a JSON array.
 
     Args:
@@ -47,10 +46,10 @@ def create_spec_card(
     memory: ABMemory,
     tasc_card_id: int,
     spec: str,
-    known_pitfalls: Optional[List[str]] = None,
-    definition_of_done: Optional[List[str]] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    known_pitfalls: list[str] | None = None,
+    definition_of_done: list[str] | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create a specification card for a Tasc.
 
@@ -72,7 +71,7 @@ def create_spec_card(
     Returns:
         The ID of the newly created spec card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     # Primary spec text
     buffers.append(
         Buffer(
@@ -112,9 +111,9 @@ def create_plan_card(
     memory: ABMemory,
     tasc_card_id: int,
     plan: str,
-    plan_items: Optional[List[str]] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    plan_items: list[str] | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create a plan card describing the intended approach.
 
@@ -129,7 +128,7 @@ def create_plan_card(
     Returns:
         The ID of the newly created plan card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     buffers.append(
         Buffer(
             name="plan_text",
@@ -156,9 +155,9 @@ def create_decision_card(
     memory: ABMemory,
     tasc_card_id: int,
     decision: str,
-    reasoning: Optional[str] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    reasoning: str | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create a decision card documenting the chosen course of action.
 
@@ -174,7 +173,7 @@ def create_decision_card(
     Returns:
         The ID of the newly created decision card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     buffers.append(
         Buffer(
             name="decision_text",
@@ -202,9 +201,9 @@ def create_evidence_card(
     tasc_card_id: int,
     evidence: bytes,
     content_type: str,
-    description: Optional[str] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    description: str | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create an evidence card storing binary artefacts or data.
 
@@ -221,7 +220,7 @@ def create_evidence_card(
     Returns:
         The ID of the newly created evidence card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     buffers.append(
         Buffer(
             name="evidence",
@@ -248,10 +247,10 @@ def create_bug_card(
     memory: ABMemory,
     tasc_card_id: int,
     description: str,
-    reproduction_steps: Optional[str] = None,
-    fix: Optional[str] = None,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    reproduction_steps: str | None = None,
+    fix: str | None = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create a bug card capturing an issue encountered.
 
@@ -267,7 +266,7 @@ def create_bug_card(
     Returns:
         The ID of the newly created bug card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     buffers.append(
         Buffer(
             name="bug_description",
@@ -300,8 +299,8 @@ def create_convo_card(
     memory: ABMemory,
     tasc_card_id: int,
     conversation: str,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create a conversation card storing compressed dialogue.
 
@@ -316,7 +315,7 @@ def create_convo_card(
     Returns:
         The ID of the newly created conversation card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     buffers.append(
         Buffer(
             name="conversation",

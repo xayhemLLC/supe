@@ -9,26 +9,22 @@ This module tests the following features:
 
 import os
 import tempfile
+
 import pytest
 
 from ab import (
     ABMemory,
     Buffer,
-    CardStats,
-    apply_transform,
-    transform_registry,
-    decay_formula,
-    apply_decay_to_all,
-    Self,
-    Proposal,
-    PlannerSelf,
     ExecutorSelf,
-    rfs_recall,
+    PlannerSelf,
+    Proposal,
+    apply_transform,
     attention_jump,
-    semantic_search,
-    find_similar_cards,
     cosine_similarity,
+    decay_formula,
     embed_text,
+    rfs_recall,
+    semantic_search,
 )
 
 
@@ -104,7 +100,7 @@ class TestCardStats:
 
     def test_list_cards_by_strength(self, memory):
         """Cards should be returned ordered by strength."""
-        card1 = memory.store_card(label="low", buffers=[])
+        memory.store_card(label="low", buffers=[])
         card2 = memory.store_card(label="high", buffers=[])
 
         # Recall card2 more times to increase its strength
@@ -353,7 +349,7 @@ class TestIntegration:
         from ab.recall import recall_cards
 
         # Create cards with searchable content
-        card1 = memory.store_card(
+        memory.store_card(
             label="doc",
             buffers=[Buffer(name="text", payload=b"Hello world test", headers={})]
         )

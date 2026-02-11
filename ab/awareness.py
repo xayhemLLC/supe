@@ -16,7 +16,7 @@ automatic propagation.
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 
 from .abdb import ABMemory
 from .models import Buffer
@@ -27,7 +27,7 @@ def create_awareness_card(
     memory: ABMemory,
     name: str,
     buffers: Iterable[Buffer],
-    owner_self: Optional[str] = None,
+    owner_self: str | None = None,
 ) -> int:
     """Create a new awareness card.
 
@@ -42,7 +42,7 @@ def create_awareness_card(
         The ID of the new awareness card.
     """
     # Ensure the name is included in headers for each buffer
-    bufs: List[Buffer] = []
+    bufs: list[Buffer] = []
     for buf in buffers:
         headers = dict(buf.headers)
         headers["awareness_name"] = name
@@ -56,14 +56,14 @@ def subscribe_to_awareness(
     awareness_card_id: int,
     subscriber_card_id: int,
     buffer_names: Iterable[str],
-    config: Optional[dict] = None,
-) -> List[int]:
+    config: dict | None = None,
+) -> list[int]:
     """Subscribe a card to one or more buffers on an awareness card.
 
     A subscription is created for each buffer name provided.  Returns
     the IDs of the new subscription records.
     """
-    sub_ids: List[int] = []
+    sub_ids: list[int] = []
     for bname in buffer_names:
         sub_id = memory.create_subscription(
             subscriber_card_id=subscriber_card_id,
@@ -91,7 +91,7 @@ def update_awareness_buffer(
     if card.label != "awareness":
         raise ValueError(f"Card {awareness_card_id} is not an awareness card (label={card.label})")
     # Replace or append buffer
-    new_buffers: List[Buffer] = []
+    new_buffers: list[Buffer] = []
     replaced = False
     for buf in card.buffers:
         if buf.name == buffer_name:

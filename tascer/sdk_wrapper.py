@@ -21,24 +21,25 @@ import hashlib
 import json
 import os
 import uuid
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from .contracts import Context, GateResult, GitState
 
 # Optional recall imports
 try:
+    from ab.neural_memory import NeuralMemory
     from ab.recall import recall_cards
     from ab.search import search_cards
-    from ab.neural_memory import NeuralMemory
     RECALL_AVAILABLE = True
 except ImportError:
     RECALL_AVAILABLE = False
 
 # Optional AB Memory integration
 try:
-    from ab import ABMemory, Moment, Card, Buffer
+    from ab import ABMemory, Buffer
     AB_AVAILABLE = True
 except ImportError:
     AB_AVAILABLE = False
@@ -53,14 +54,14 @@ class ToolValidationConfig:
     """Configuration for validating a specific tool."""
 
     tool_name: str
-    pre_gates: List[str] = field(default_factory=list)
-    post_gates: List[str] = field(default_factory=list)
-    required_permissions: List[str] = field(default_factory=list)
-    evidence_types: List[str] = field(default_factory=list)
+    pre_gates: list[str] = field(default_factory=list)
+    post_gates: list[str] = field(default_factory=list)
+    required_permissions: list[str] = field(default_factory=list)
+    evidence_types: list[str] = field(default_factory=list)
     timeout_ms: int = 30000
     require_proof: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tool_name": self.tool_name,
             "pre_gates": self.pre_gates,
@@ -72,7 +73,7 @@ class ToolValidationConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolValidationConfig":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolValidationConfig":
         return cls(
             tool_name=data.get("tool_name", ""),
             pre_gates=data.get("pre_gates", []),
@@ -91,27 +92,27 @@ class ToolExecutionRecord:
     tool_use_id: str
     tool_name: str
     timestamp_start: str
-    timestamp_end: Optional[str] = None
+    timestamp_end: str | None = None
 
     # Input/output
-    tool_input: Dict[str, Any] = field(default_factory=dict)
+    tool_input: dict[str, Any] = field(default_factory=dict)
     tool_output: Any = None
 
     # Context
-    context: Optional[Context] = None
+    context: Context | None = None
 
     # Validation
-    pre_gate_results: List[GateResult] = field(default_factory=list)
-    post_gate_results: List[GateResult] = field(default_factory=list)
+    pre_gate_results: list[GateResult] = field(default_factory=list)
+    post_gate_results: list[GateResult] = field(default_factory=list)
 
     # Proof
     proof_hash: str = ""
-    evidence_paths: List[str] = field(default_factory=list)
+    evidence_paths: list[str] = field(default_factory=list)
 
     # Status: pending | validated | failed | blocked
     status: str = "pending"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tool_use_id": self.tool_use_id,
             "tool_name": self.tool_name,
@@ -128,7 +129,7 @@ class ToolExecutionRecord:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolExecutionRecord":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolExecutionRecord":
         context_data = data.get("context")
         return cls(
             tool_use_id=data.get("tool_use_id", ""),
@@ -168,12 +169,12 @@ class RecallQuery:
     """Query parameters for recall."""
 
     query: str                                # Search text
-    tool_name: Optional[str] = None           # Filter by tool
-    session_id: Optional[str] = None          # Filter by session
-    start_time: Optional[str] = None          # Time range start
-    end_time: Optional[str] = None            # Time range end
+    tool_name: str | None = None           # Filter by tool
+    session_id: str | None = None          # Filter by session
+    start_time: str | None = None          # Time range start
+    end_time: str | None = None            # Time range end
     top_k: int = 5                            # Max results
-    include_buffers: List[str] = field(       # Which buffers to return
+    include_buffers: list[str] = field(       # Which buffers to return
         default_factory=lambda: ["input", "output"]
     )
     use_neural: bool = True                   # Enable spreading activation
@@ -187,17 +188,17 @@ class RecallResult:
     card_id: int                              # Card ID in AB Memory
     score: float                              # Relevance score (0-1)
     tool_name: str                            # Extracted tool name
-    tool_input: Dict[str, Any]                # Tool input data
-    tool_output: Optional[Any]                # Tool output data
+    tool_input: dict[str, Any]                # Tool input data
+    tool_output: Any | None                # Tool output data
     timestamp: str                            # When executed
-    session_id: Optional[str]                 # Session it belongs to
+    session_id: str | None                 # Session it belongs to
     proof_valid: bool                         # Proof verification status
     proof_hash: str                           # The proof hash
-    highlights: Dict[str, str] = field(       # Matched snippets per buffer
+    highlights: dict[str, str] = field(       # Matched snippets per buffer
         default_factory=dict
     )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "card_id": self.card_id,
             "score": self.score,
@@ -217,16 +218,16 @@ class TascerAgentOptions:
     """Options for Tascer-validated agent execution."""
 
     # Tool validation configs (tool_name -> config)
-    tool_configs: Dict[str, ToolValidationConfig] = field(default_factory=dict)
+    tool_configs: dict[str, ToolValidationConfig] = field(default_factory=dict)
 
     # Default gates for all tools
-    default_pre_gates: List[str] = field(default_factory=list)
-    default_post_gates: List[str] = field(default_factory=list)
+    default_pre_gates: list[str] = field(default_factory=list)
+    default_post_gates: list[str] = field(default_factory=list)
 
     # Context capture
     capture_git_state: bool = True
     capture_env: bool = True
-    env_allowlist: List[str] = field(
+    env_allowlist: list[str] = field(
         default_factory=lambda: ["PATH", "HOME", "USER", "SHELL"]
     )
 
@@ -269,7 +270,7 @@ class TascerAgent:
 
     def __init__(
         self,
-        tascer_options: Optional[TascerAgentOptions] = None,
+        tascer_options: TascerAgentOptions | None = None,
         ab_memory: Optional["ABMemory"] = None,
     ):
         """Initialize TascerAgent.
@@ -279,16 +280,16 @@ class TascerAgent:
             ab_memory: Optional ABMemory instance for storing execution records
         """
         self.tascer_options = tascer_options or TascerAgentOptions()
-        self._execution_records: List[ToolExecutionRecord] = []
-        self._gates: Dict[str, GateFunction] = {}
-        self._session_id: Optional[str] = None
+        self._execution_records: list[ToolExecutionRecord] = []
+        self._gates: dict[str, GateFunction] = {}
+        self._session_id: str | None = None
 
         # AB Memory integration
         self._ab_memory = ab_memory
-        self._session_moment_id: Optional[int] = None
+        self._session_moment_id: int | None = None
 
         # Neural memory for spreading activation recall
-        self._neural_memory: Optional["NeuralMemory"] = None
+        self._neural_memory: NeuralMemory | None = None
         if RECALL_AVAILABLE and self.tascer_options.recall_config.enabled:
             self._neural_memory = NeuralMemory()
 
@@ -305,7 +306,7 @@ class TascerAgent:
         self._gates["always_pass"] = self._gate_always_pass
 
     def register_gate(
-        self, name: str, func: Optional[GateFunction] = None
+        self, name: str, func: GateFunction | None = None
     ) -> Callable:
         """Register a custom validation gate.
 
@@ -337,8 +338,8 @@ class TascerAgent:
     async def query(
         self,
         prompt: str,
-        allowed_tools: Optional[List[str]] = None,
-        resume: Optional[str] = None,
+        allowed_tools: list[str] | None = None,
+        resume: str | None = None,
         **kwargs,
     ) -> AsyncIterator[Any]:
         """Execute agent query with Tascer validation.
@@ -354,7 +355,8 @@ class TascerAgent:
         """
         try:
             # Import SDK here to allow graceful fallback if not installed
-            from claude_agent_sdk import query as sdk_query, ClaudeAgentOptions, HookMatcher
+            from claude_agent_sdk import ClaudeAgentOptions, HookMatcher
+            from claude_agent_sdk import query as sdk_query
         except ImportError:
             raise ImportError(
                 "claude-agent-sdk is required. Install with: pip install claude-agent-sdk"
@@ -387,10 +389,10 @@ class TascerAgent:
 
     async def _pre_tool_hook(
         self,
-        input_data: Dict[str, Any],
+        input_data: dict[str, Any],
         tool_use_id: str,
         context: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Pre-execution validation hook.
 
         Called before each tool execution to:
@@ -437,14 +439,26 @@ class TascerAgent:
 
         # Store record for post-hook
         self._execution_records.append(record)
+
+        # Auto-inject context if enabled
+        recall_config = self.tascer_options.recall_config
+        if recall_config.enabled and recall_config.auto_context:
+            context_items = self.get_context_for(
+                tool_name=tool_name,
+                tool_input=tool_input,
+                max_context=recall_config.auto_context_limit,
+            )
+            if context_items:
+                return {"context": self._format_context_for_injection(context_items)}
+
         return {}
 
     async def _post_tool_hook(
         self,
-        input_data: Dict[str, Any],
+        input_data: dict[str, Any],
         tool_use_id: str,
         context: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Post-execution validation and proof generation.
 
         Called after each tool execution to:
@@ -514,7 +528,7 @@ class TascerAgent:
         # Return default config
         return ToolValidationConfig(tool_name=tool_name)
 
-    def _find_record(self, tool_use_id: str) -> Optional[ToolExecutionRecord]:
+    def _find_record(self, tool_use_id: str) -> ToolExecutionRecord | None:
         """Find execution record by tool_use_id.
 
         Args:
@@ -679,7 +693,7 @@ class TascerAgent:
     # Public API
     # ---------------------------------------------------------------------------
 
-    def get_validation_report(self) -> List[ToolExecutionRecord]:
+    def get_validation_report(self) -> list[ToolExecutionRecord]:
         """Get all execution records from this session.
 
         Returns:
@@ -695,7 +709,7 @@ class TascerAgent:
         """
         return all(self._verify_proof(r) for r in self._execution_records)
 
-    def get_session_id(self) -> Optional[str]:
+    def get_session_id(self) -> str | None:
         """Get the current session ID.
 
         Returns:
@@ -727,11 +741,11 @@ class TascerAgent:
     def recall(
         self,
         query: str,
-        top_k: Optional[int] = None,
-        tool_name: Optional[str] = None,
-        session_id: Optional[str] = None,
+        top_k: int | None = None,
+        tool_name: str | None = None,
+        session_id: str | None = None,
         use_neural: bool = True,
-    ) -> List[RecallResult]:
+    ) -> list[RecallResult]:
         """Recall past executions matching query.
 
         Primary recall interface that searches stored execution cards
@@ -776,7 +790,7 @@ class TascerAgent:
         )
 
         # Convert to RecallResults with filtering
-        results: List[RecallResult] = []
+        results: list[RecallResult] = []
         for card, score in raw_results:
             # Filter by label pattern
             if not card.label.startswith(label_filter):
@@ -858,8 +872,8 @@ class TascerAgent:
     def recall_tool(
         self,
         tool_name: str,
-        top_k: Optional[int] = None,
-    ) -> List[RecallResult]:
+        top_k: int | None = None,
+    ) -> list[RecallResult]:
         """Get recent executions of a specific tool.
 
         Useful for: "Show me all my Read operations"
@@ -886,7 +900,7 @@ class TascerAgent:
         cards = [c for c in cards if c.label.startswith(f"tascer:{tool_name}:")]
 
         # Convert to results (newest first)
-        results: List[RecallResult] = []
+        results: list[RecallResult] = []
         for card in reversed(cards[-top_k * 2:]):
             tool_input = {}
             tool_output = None
@@ -928,8 +942,8 @@ class TascerAgent:
 
     def recall_session(
         self,
-        session_id: Optional[str] = None,
-    ) -> List[RecallResult]:
+        session_id: str | None = None,
+    ) -> list[RecallResult]:
         """Get full execution history for a session.
 
         Args:
@@ -952,7 +966,7 @@ class TascerAgent:
         )
 
         # Filter to tascer cards and convert
-        results: List[RecallResult] = []
+        results: list[RecallResult] = []
         for card in cards:
             if not card.label.startswith("tascer:"):
                 continue
@@ -997,9 +1011,9 @@ class TascerAgent:
 
     def recall_similar(
         self,
-        tool_input: Dict[str, Any],
+        tool_input: dict[str, Any],
         top_k: int = 3,
-    ) -> List[RecallResult]:
+    ) -> list[RecallResult]:
         """Find executions similar to given input.
 
         Useful for: "Have I run this command before?"
@@ -1025,9 +1039,9 @@ class TascerAgent:
     def get_context_for(
         self,
         tool_name: str,
-        tool_input: Dict[str, Any],
+        tool_input: dict[str, Any],
         max_context: int = 3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Auto-retrieve relevant context for a tool call.
 
         Called internally during _pre_tool_hook to inject
@@ -1063,11 +1077,45 @@ class TascerAgent:
             for r in results
         ]
 
+    def _format_context_for_injection(
+        self,
+        context_items: list[dict[str, Any]],
+    ) -> str:
+        """Format recalled context for injection into agent prompt.
+
+        Converts a list of past execution context items into a markdown
+        formatted string suitable for inclusion in agent prompts.
+
+        Args:
+            context_items: List of context dicts from get_context_for()
+
+        Returns:
+            Formatted markdown string, or empty string if no items
+        """
+        if not context_items:
+            return ""
+
+        lines = ["## Relevant Past Context"]
+        for i, item in enumerate(context_items, 1):
+            timestamp = item.get("timestamp", "")
+            timestamp_str = timestamp[:10] if timestamp else "unknown"
+            lines.append(f"\n### {i}. {item['tool_name']} ({timestamp_str})")
+
+            if item.get("tool_input"):
+                input_str = json.dumps(item["tool_input"], default=str)[:200]
+                lines.append(f"**Input**: {input_str}")
+
+            if item.get("tool_output"):
+                output_str = str(item["tool_output"])[:300]
+                lines.append(f"**Result**: {output_str}")
+
+        return "\n".join(lines)
+
     # ---------------------------------------------------------------------------
     # AB Memory Integration
     # ---------------------------------------------------------------------------
 
-    def _extract_concepts(self, record: ToolExecutionRecord) -> List[str]:
+    def _extract_concepts(self, record: ToolExecutionRecord) -> list[str]:
         """Extract concepts from execution record for neural indexing.
 
         Pulls keywords from tool name, input values, and output to
@@ -1114,7 +1162,7 @@ class TascerAgent:
 
         return unique[:20]  # Limit to 20 concepts
 
-    def _store_to_ab(self, record: ToolExecutionRecord) -> Optional[int]:
+    def _store_to_ab(self, record: ToolExecutionRecord) -> int | None:
         """Store execution record to AB Memory as a Card.
 
         Creates a Card on the 'execution' track with buffers for:

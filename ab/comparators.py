@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 
 
 class CompareOp(Enum):
@@ -74,7 +74,7 @@ class CompareResult:
     matched: bool
     score: float = 1.0      # 0.0-1.0, for ranking
     reason: str = ""        # Human-readable explanation
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class BufferComparator(ABC):
@@ -95,7 +95,7 @@ class BufferComparator(ABC):
 # Value Extraction (handle different buffer payload types)
 # =============================================================================
 
-def extract_value(payload: Any, headers: Dict = None) -> Any:
+def extract_value(payload: Any, headers: dict = None) -> Any:
     """Extract comparable value from buffer payload.
 
     Handles:
@@ -152,7 +152,7 @@ def extract_text(value: Any) -> str:
     if isinstance(value, bytes):
         try:
             return value.decode("utf-8", errors="ignore")
-        except:
+        except Exception:
             return ""
 
     if isinstance(value, (list, tuple)):
@@ -167,7 +167,7 @@ def extract_text(value: Any) -> str:
     return str(value)
 
 
-def extract_words(value: Any, min_length: int = 3) -> Set[str]:
+def extract_words(value: Any, min_length: int = 3) -> set[str]:
     """Extract significant words from any value."""
     text = extract_text(value).lower()
 
@@ -233,8 +233,8 @@ class TextComparator(BufferComparator):
 class NumericComparator(BufferComparator):
     """Compare numeric values."""
     op: CompareOp
-    value: Union[float, int]
-    value2: Optional[Union[float, int]] = None  # For BETWEEN
+    value: float | int
+    value2: float | int | None = None  # For BETWEEN
 
     def compare(self, buffer_value: Any) -> CompareResult:
         try:
@@ -273,10 +273,10 @@ class NumericComparator(BufferComparator):
 class TemporalComparator(BufferComparator):
     """Compare timestamp/datetime values."""
     op: CompareOp
-    value: Union[datetime, int, str]  # datetime, epoch ms, or ISO string
-    value2: Optional[Union[datetime, int, str]] = None  # For BETWEEN
+    value: datetime | int | str  # datetime, epoch ms, or ISO string
+    value2: datetime | int | str | None = None  # For BETWEEN
 
-    def _parse_datetime(self, v: Any) -> Optional[datetime]:
+    def _parse_datetime(self, v: Any) -> datetime | None:
         """Parse various datetime formats."""
         if isinstance(v, datetime):
             return v
@@ -327,7 +327,7 @@ class TemporalComparator(BufferComparator):
 class CollectionComparator(BufferComparator):
     """Compare collections (lists, sets)."""
     op: CompareOp
-    values: List[Any]
+    values: list[Any]
 
     def compare(self, buffer_value: Any) -> CompareResult:
         # Extract as set for comparison
@@ -341,7 +341,7 @@ class CollectionComparator(BufferComparator):
                     buffer_set = set(parsed)
                 else:
                     buffer_set = {buffer_value}
-            except:
+            except Exception:
                 buffer_set = {buffer_value}
         else:
             buffer_set = {buffer_value}
@@ -434,7 +434,7 @@ class HashComparator(BufferComparator):
 @dataclass
 class SemanticComparator(BufferComparator):
     """Compare by embedding similarity."""
-    embedding: List[float]
+    embedding: list[float]
     threshold: float = 0.8
 
     def compare(self, buffer_value: Any) -> CompareResult:
@@ -469,7 +469,7 @@ class SemanticComparator(BufferComparator):
 @dataclass
 class WordOverlapComparator(BufferComparator):
     """Compare by shared significant words."""
-    words: Set[str]
+    words: set[str]
     min_overlap: int = 2
 
     def compare(self, buffer_value: Any) -> CompareResult:
@@ -536,7 +536,7 @@ class JSONPathComparator(BufferComparator):
         if isinstance(buffer_value, str):
             try:
                 data = json.loads(buffer_value)
-            except:
+            except Exception:
                 return CompareResult(matched=False, reason="Cannot parse JSON")
         else:
             data = buffer_value
@@ -573,7 +573,7 @@ class JSONPathComparator(BufferComparator):
 @dataclass
 class AndComparator(BufferComparator):
     """All comparators must match."""
-    comparators: List[BufferComparator]
+    comparators: list[BufferComparator]
 
     def compare(self, buffer_value: Any) -> CompareResult:
         results = [c.compare(buffer_value) for c in self.comparators]
@@ -595,7 +595,7 @@ class AndComparator(BufferComparator):
 @dataclass
 class OrComparator(BufferComparator):
     """Any comparator can match."""
-    comparators: List[BufferComparator]
+    comparators: list[BufferComparator]
 
     def compare(self, buffer_value: Any) -> CompareResult:
         results = [c.compare(buffer_value) for c in self.comparators]
@@ -640,7 +640,7 @@ class FilterBuilder:
 
     def __init__(self, buffer_name: str):
         self.buffer_name = buffer_name
-        self._comparators: List[BufferComparator] = []
+        self._comparators: list[BufferComparator] = []
 
     def eq(self, value: Any) -> "FilterBuilder":
         if isinstance(value, (int, float)):
@@ -657,11 +657,11 @@ class FilterBuilder:
         self._comparators.append(TextComparator(CompareOp.REGEX, pattern))
         return self
 
-    def gt(self, value: Union[int, float]) -> "FilterBuilder":
+    def gt(self, value: int | float) -> "FilterBuilder":
         self._comparators.append(NumericComparator(CompareOp.GT, value))
         return self
 
-    def lt(self, value: Union[int, float]) -> "FilterBuilder":
+    def lt(self, value: int | float) -> "FilterBuilder":
         self._comparators.append(NumericComparator(CompareOp.LT, value))
         return self
 
@@ -672,7 +672,7 @@ class FilterBuilder:
             self._comparators.append(NumericComparator(CompareOp.BETWEEN, start, end))
         return self
 
-    def in_list(self, values: List[Any]) -> "FilterBuilder":
+    def in_list(self, values: list[Any]) -> "FilterBuilder":
         self._comparators.append(CollectionComparator(CompareOp.IN, values))
         return self
 
@@ -684,11 +684,11 @@ class FilterBuilder:
         self._comparators.append(ExistenceComparator(CompareOp.NOT_EXISTS))
         return self
 
-    def words_overlap(self, words: Set[str], min_overlap: int = 2) -> "FilterBuilder":
+    def words_overlap(self, words: set[str], min_overlap: int = 2) -> "FilterBuilder":
         self._comparators.append(WordOverlapComparator(words, min_overlap))
         return self
 
-    def similar_to(self, embedding: List[float], threshold: float = 0.8) -> "FilterBuilder":
+    def similar_to(self, embedding: list[float], threshold: float = 0.8) -> "FilterBuilder":
         self._comparators.append(SemanticComparator(embedding, threshold))
         return self
 
@@ -696,7 +696,7 @@ class FilterBuilder:
         self._comparators.append(JSONPathComparator(path, op, value))
         return self
 
-    def build(self) -> Tuple[str, BufferComparator]:
+    def build(self) -> tuple[str, BufferComparator]:
         """Build the final comparator."""
         if len(self._comparators) == 1:
             return self.buffer_name, self._comparators[0]

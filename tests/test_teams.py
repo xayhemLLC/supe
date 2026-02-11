@@ -1,34 +1,32 @@
 """Tests for supe.teams module."""
 
+
 import pytest
-import asyncio
+
 from supe.teams import (
+    AgencyTeam,
+    AgentRole,
+    DeveloperAgent,
+    EnterpriseTeam,
+    LeadAgent,
+    MobTeam,
+    OpenSourceTeam,
+    PairTeam,
+    QAAgent,
+    ResearchTeam,
+    ReviewerAgent,
+    SoloDevTeam,
+    # Team Styles
+    StartupTeam,
     # Config
     TeamConfig,
     TeamStyle,
-    AgentRole,
-    # Team Styles
-    StartupTeam,
-    EnterpriseTeam,
-    ResearchTeam,
-    SoloDevTeam,
-    PairTeam,
-    MobTeam,
-    OpenSourceTeam,
-    AgencyTeam,
-    # Agents
-    ValidatedAgent,
-    LeadAgent,
-    DeveloperAgent,
-    ReviewerAgent,
-    QAAgent,
 )
 from supe.teams.base import (
-    CeremonyConfig,
     CeremonyType,
-    ValidationConfig,
-    TaskAssignment,
     MessageBus,
+    TaskAssignment,
+    ValidationConfig,
 )
 
 

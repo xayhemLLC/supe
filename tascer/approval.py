@@ -9,18 +9,17 @@ Key features:
 - Simple API for external integrations
 """
 
-import hashlib
 import json
 import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 # Default dangerous actions that always require approval
 DANGEROUS_ACTIONS = {
     "delete_file",
-    "delete_directory", 
+    "delete_directory",
     "deploy",
     "publish",
     "push_to_main",
@@ -38,36 +37,36 @@ class Approval:
     approver: str
     approved: bool
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 @dataclass
 class ApprovalRequest:
     """Request for human sign-off on an action or plan.
-    
+
     Supports multi-approver workflows where N of M approvers must approve.
     """
     id: str
     tasc_id: str
-    plan_id: Optional[str]
+    plan_id: str | None
     title: str
     description: str
     action_type: str  # e.g., "deploy", "delete_file", "manual_gate"
     requested_by: str  # "agent", "system", or agent name
     requested_at: str
     status: Literal["pending", "approved", "rejected", "partial"]
-    
+
     # Multi-approver settings
     required_approvals: int = 1  # How many approvals needed
-    approvals: List[Approval] = field(default_factory=list)
-    
+    approvals: list[Approval] = field(default_factory=list)
+
     # Context for the approver
-    context: Dict[str, Any] = field(default_factory=dict)  # command, files, diff, etc.
-    
+    context: dict[str, Any] = field(default_factory=dict)  # command, files, diff, etc.
+
     # Rejection info
-    rejection_reason: Optional[str] = None
-    
-    def to_dict(self) -> Dict:
+    rejection_reason: str | None = None
+
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "tasc_id": self.tasc_id,
@@ -91,9 +90,9 @@ class ApprovalRequest:
             "context": self.context,
             "rejection_reason": self.rejection_reason,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict) -> "ApprovalRequest":
+    def from_dict(cls, data: dict) -> "ApprovalRequest":
         approvals = [
             Approval(
                 approver=a["approver"],
@@ -118,22 +117,22 @@ class ApprovalRequest:
             context=data.get("context", {}),
             rejection_reason=data.get("rejection_reason"),
         )
-    
+
     @property
     def approval_count(self) -> int:
         """Count of approvals (not rejections)."""
         return sum(1 for a in self.approvals if a.approved)
-    
+
     @property
     def rejection_count(self) -> int:
         """Count of rejections."""
         return sum(1 for a in self.approvals if not a.approved)
-    
+
     @property
     def is_approved(self) -> bool:
         """Check if enough approvals have been received."""
         return self.approval_count >= self.required_approvals
-    
+
     @property
     def is_rejected(self) -> bool:
         """Check if any rejection has been received."""
@@ -142,42 +141,42 @@ class ApprovalRequest:
 
 class ApprovalStore:
     """Storage for approval requests.
-    
+
     Uses a simple JSON file for persistence.
     Can be extended to use SQLite, AB Memory, etc.
     """
-    
+
     def __init__(self, path: str = ".tascer/approvals.json"):
         self.path = path
         self._ensure_dir()
-    
+
     def _ensure_dir(self):
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         if not os.path.exists(self.path):
             self._save({})
-    
-    def _load(self) -> Dict[str, Dict]:
+
+    def _load(self) -> dict[str, dict]:
         if os.path.exists(self.path):
             with open(self.path) as f:
                 return json.load(f)
         return {}
-    
-    def _save(self, data: Dict):
+
+    def _save(self, data: dict):
         with open(self.path, 'w') as f:
             json.dump(data, f, indent=2)
-    
+
     def save(self, request: ApprovalRequest):
         data = self._load()
         data[request.id] = request.to_dict()
         self._save(data)
-    
-    def get(self, request_id: str) -> Optional[ApprovalRequest]:
+
+    def get(self, request_id: str) -> ApprovalRequest | None:
         data = self._load()
         if request_id in data:
             return ApprovalRequest.from_dict(data[request_id])
         return None
-    
-    def list_pending(self, plan_id: Optional[str] = None) -> List[ApprovalRequest]:
+
+    def list_pending(self, plan_id: str | None = None) -> list[ApprovalRequest]:
         data = self._load()
         results = []
         for item in data.values():
@@ -185,15 +184,15 @@ class ApprovalStore:
                 if plan_id is None or item.get("plan_id") == plan_id:
                     results.append(ApprovalRequest.from_dict(item))
         return results
-    
-    def list_all(self, limit: int = 50) -> List[ApprovalRequest]:
+
+    def list_all(self, limit: int = 50) -> list[ApprovalRequest]:
         data = self._load()
         items = sorted(data.values(), key=lambda x: x["requested_at"], reverse=True)
         return [ApprovalRequest.from_dict(item) for item in items[:limit]]
 
 
 # Global store instance
-_store: Optional[ApprovalStore] = None
+_store: ApprovalStore | None = None
 
 
 def get_store() -> ApprovalStore:
@@ -210,12 +209,12 @@ def request_approval(
     description: str,
     action_type: str = "manual_gate",
     requested_by: str = "agent",
-    plan_id: Optional[str] = None,
+    plan_id: str | None = None,
     required_approvals: int = 1,
-    context: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
 ) -> ApprovalRequest:
     """Create a new approval request.
-    
+
     Args:
         tasc_id: ID of the Tasc this approval is for
         title: Short title for the approval request
@@ -225,7 +224,7 @@ def request_approval(
         plan_id: ID of the parent plan (optional)
         required_approvals: How many approvers needed (default: 1)
         context: Additional context (command, diff, files, etc.)
-    
+
     Returns:
         ApprovalRequest in pending state
     """
@@ -242,7 +241,7 @@ def request_approval(
         required_approvals=required_approvals,
         context=context or {},
     )
-    
+
     get_store().save(request)
     return request
 
@@ -250,47 +249,47 @@ def request_approval(
 def approve(
     request_id: str,
     approver: str,
-    comment: Optional[str] = None,
+    comment: str | None = None,
 ) -> ApprovalRequest:
     """Approve a pending request.
-    
+
     Args:
         request_id: ID of the approval request
         approver: Name/ID of the approver
         comment: Optional comment
-    
+
     Returns:
         Updated ApprovalRequest
-    
+
     Raises:
         ValueError: If request not found or already resolved
     """
     store = get_store()
     request = store.get(request_id)
-    
+
     if request is None:
         raise ValueError(f"Approval request not found: {request_id}")
-    
+
     if request.status not in ("pending", "partial"):
         raise ValueError(f"Request already resolved: {request.status}")
-    
+
     # Check if this approver already voted
     if any(a.approver == approver for a in request.approvals):
         raise ValueError(f"Approver {approver} already voted")
-    
+
     # Add approval
     request.approvals.append(Approval(
         approver=approver,
         approved=True,
         comment=comment,
     ))
-    
+
     # Update status
     if request.is_approved:
         request.status = "approved"
     elif len(request.approvals) > 0:
         request.status = "partial"
-    
+
     store.save(request)
     return request
 
@@ -301,54 +300,54 @@ def reject(
     reason: str,
 ) -> ApprovalRequest:
     """Reject a pending request.
-    
+
     Args:
         request_id: ID of the approval request
         approver: Name/ID of the rejector
         reason: Reason for rejection
-    
+
     Returns:
         Updated ApprovalRequest
-    
+
     Raises:
         ValueError: If request not found
     """
     store = get_store()
     request = store.get(request_id)
-    
+
     if request is None:
         raise ValueError(f"Approval request not found: {request_id}")
-    
+
     if request.status not in ("pending", "partial"):
         raise ValueError(f"Request already resolved: {request.status}")
-    
+
     # Add rejection
     request.approvals.append(Approval(
         approver=approver,
         approved=False,
         comment=reason,
     ))
-    
+
     request.status = "rejected"
     request.rejection_reason = reason
-    
+
     store.save(request)
     return request
 
 
-def get_pending_approvals(plan_id: Optional[str] = None) -> List[ApprovalRequest]:
+def get_pending_approvals(plan_id: str | None = None) -> list[ApprovalRequest]:
     """Get all pending approval requests.
-    
+
     Args:
         plan_id: Optional filter by plan
-    
+
     Returns:
         List of pending ApprovalRequest objects
     """
     return get_store().list_pending(plan_id)
 
 
-def get_approval(request_id: str) -> Optional[ApprovalRequest]:
+def get_approval(request_id: str) -> ApprovalRequest | None:
     """Get an approval request by ID."""
     return get_store().get(request_id)
 
@@ -360,7 +359,7 @@ def is_dangerous_action(action_type: str) -> bool:
 
 def require_approval_for(action_type: str) -> bool:
     """Check if this action type should require approval.
-    
+
     Uses the DANGEROUS_ACTIONS set by default.
     """
     return is_dangerous_action(action_type)

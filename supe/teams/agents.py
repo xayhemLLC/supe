@@ -13,11 +13,10 @@ import asyncio
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
-from .base import AgentRole, TaskAssignment, MessageBus
+from .base import AgentRole, MessageBus, TaskAssignment
 
 
 @dataclass
@@ -26,11 +25,11 @@ class AgentConfig:
 
     agent_id: str
     role: AgentRole
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
 
     # Validation settings
-    pre_gates: List[str] = field(default_factory=lambda: ["safe_commands"])
-    post_gates: List[str] = field(default_factory=lambda: ["exit_code_zero"])
+    pre_gates: list[str] = field(default_factory=lambda: ["safe_commands"])
+    post_gates: list[str] = field(default_factory=lambda: ["exit_code_zero"])
     generate_proofs: bool = True
     store_to_memory: bool = True
 
@@ -57,11 +56,11 @@ class ValidatedAgent(ABC):
         self.message_bus = message_bus
 
         self.status = "idle"
-        self.current_task: Optional[TaskAssignment] = None
+        self.current_task: TaskAssignment | None = None
         self._supe_agent = None
 
         # Execution history
-        self.executions: List[Dict[str, Any]] = []
+        self.executions: list[dict[str, Any]] = []
 
     def _get_supe_agent(self):
         """Lazy-load supe agent for validation."""
@@ -69,10 +68,10 @@ class ValidatedAgent(ABC):
             try:
                 from ab import ABMemory
                 from tascer.sdk_wrapper import (
+                    RecallConfig,
                     TascerAgent,
                     TascerAgentOptions,
                     ToolValidationConfig,
-                    RecallConfig,
                 )
 
                 db_path = os.path.expanduser("~/.supe/memory.sqlite")
@@ -107,8 +106,8 @@ class ValidatedAgent(ABC):
     async def validate_tool_call(
         self,
         tool_name: str,
-        tool_input: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        tool_input: dict[str, Any],
+    ) -> dict[str, Any]:
         """Validate a tool call through supe.
 
         Returns:
@@ -152,10 +151,10 @@ class ValidatedAgent(ABC):
     async def record_execution(
         self,
         tool_name: str,
-        tool_input: Dict[str, Any],
+        tool_input: dict[str, Any],
         tool_output: Any,
         tool_use_id: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Record tool execution and get proof hash."""
         agent = self._get_supe_agent()
         if not agent:
@@ -171,7 +170,7 @@ class ValidatedAgent(ABC):
         return record.proof_hash if record else None
 
     @abstractmethod
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Work on an assigned task. Implement in subclass."""
         pass
 
@@ -184,13 +183,13 @@ class ValidatedAgent(ABC):
                     await self._handle_message(msg)
             await asyncio.sleep(0.1)
 
-    async def _handle_message(self, msg: Dict[str, Any]) -> None:
+    async def _handle_message(self, msg: dict[str, Any]) -> None:
         """Handle incoming message."""
         content = msg.get("content", {})
         msg_type = content.get("type")
 
         if msg_type == "task_assigned":
-            task_id = content.get("task_id")
+            content.get("task_id")
             # Would look up task and work on it
             pass
 
@@ -215,7 +214,7 @@ class LeadAgent(ValidatedAgent):
         )
         super().__init__(config, **kwargs)
 
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Lead works on architecture/review tasks."""
         self.status = "working"
         self.current_task = task
@@ -231,7 +230,7 @@ class LeadAgent(ValidatedAgent):
         self.current_task = None
         return result
 
-    async def review_pr(self, pr_url: str) -> Dict[str, Any]:
+    async def review_pr(self, pr_url: str) -> dict[str, Any]:
         """Review a pull request."""
         validation = await self.validate_tool_call(
             "Bash",
@@ -265,7 +264,7 @@ class DeveloperAgent(ValidatedAgent):
         )
         super().__init__(config, **kwargs)
 
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Implement a task."""
         self.status = "working"
         self.current_task = task
@@ -288,7 +287,7 @@ class DeveloperAgent(ValidatedAgent):
         self.current_task = None
         return result
 
-    async def run_tests(self, path: str = "tests/") -> Dict[str, Any]:
+    async def run_tests(self, path: str = "tests/") -> dict[str, Any]:
         """Run tests with validation."""
         validation = await self.validate_tool_call(
             "Bash",
@@ -325,7 +324,7 @@ class ReviewerAgent(ValidatedAgent):
         )
         super().__init__(config, **kwargs)
 
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Review code."""
         self.status = "working"
         self.current_task = task
@@ -363,7 +362,7 @@ class QAAgent(ValidatedAgent):
         )
         super().__init__(config, **kwargs)
 
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Test/validate a task."""
         self.status = "working"
         self.current_task = task
@@ -407,7 +406,7 @@ class ArchitectAgent(ValidatedAgent):
         )
         super().__init__(config, **kwargs)
 
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Design/architecture work."""
         self.status = "working"
         self.current_task = task
@@ -445,7 +444,7 @@ class ResearcherAgent(ValidatedAgent):
         )
         super().__init__(config, **kwargs)
 
-    async def work_on_task(self, task: TaskAssignment) -> Dict[str, Any]:
+    async def work_on_task(self, task: TaskAssignment) -> dict[str, Any]:
         """Research/investigation work."""
         self.status = "working"
         self.current_task = task
@@ -462,7 +461,7 @@ class ResearcherAgent(ValidatedAgent):
         self.current_task = None
         return result
 
-    async def recall_similar(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    async def recall_similar(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         """Recall similar past research from memory."""
         agent = self._get_supe_agent()
         if not agent:

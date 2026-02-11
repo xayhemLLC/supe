@@ -11,20 +11,21 @@ You can execute this file directly via ``python validate_tasc.py``.
 
 import sys
 
-# Import the necessary TASC core classes and helpers
-from tasc.varint import encode_varint, decode_varint
-from tasc.atomtypes import (
-    registry,
-    AtomTypeRegistry,
-    AtomType,
-    _encode_string,
-    _decode_string,
-)
 from tasc.atom import Atom, decode_atom
+from tasc.atomtypes import (
+    AtomType,
+    AtomTypeRegistry,
+    _decode_string,
+    _encode_string,
+    registry,
+)
+from tasc.tasc import Tasc
 from tasc.u2 import U2
 from tasc.ulist import UList
 from tasc.uobj import UObject
-from tasc.tasc import Tasc
+
+# Import the necessary TASC core classes and helpers
+from tasc.varint import decode_varint, encode_varint
 
 
 def assert_equal(a, b, message=""):

@@ -12,6 +12,7 @@ Commands:
 """
 
 import os
+import shlex
 import sys
 from datetime import datetime
 
@@ -20,6 +21,16 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+from supe.memory_paths import (
+    filter_by_project as _filter_by_project,
+)
+from supe.memory_paths import (
+    get_current_project as _get_current_project,
+)
+from supe.memory_paths import (
+    get_global_db_path as _get_global_db_path,
+)
 
 console = Console()
 
@@ -226,23 +237,43 @@ def run(command, force, timeout):
 
     cmd_str = " ".join(command)
 
+    privileged_enabled = os.environ.get("SUPE_CLI_PRIVILEGED") == "1"
+    permissions = {"terminal"}
+    if force and privileged_enabled:
+        permissions.update({"terminal_unrestricted", "gated_actions"})
+
     # Check legality
     result = check_action_legality(
         action_id="terminal.run",
         inputs={"command": cmd_str},
-        permissions={"terminal"},
-        has_checkpoint=force,
+        permissions=permissions,
+        has_checkpoint=force and privileged_enabled,
     )
 
     if not result.is_legal:
         console.print(f"[red]🚫 BLOCKED:[/red] {result.violations[0]}")
         if not force:
-            console.print("[dim]   Use --force to override[/dim]")
+            console.print("[dim]   Use --force with SUPE_CLI_PRIVILEGED=1 to override[/dim]")
             return 1
-        console.print("[yellow]   Proceeding with --force...[/yellow]")
+        if not privileged_enabled:
+            console.print(
+                "[yellow]   Set SUPE_CLI_PRIVILEGED=1 to enable privileged overrides.[/yellow]"
+            )
+            return 1
+        console.print("[yellow]   Proceeding with privileged override...[/yellow]")
+
+    try:
+        command_parts = shlex.split(cmd_str)
+    except ValueError as exc:
+        console.print(f"[red]🚫 Invalid command:[/red] {exc}")
+        return 1
+
+    if not command_parts:
+        console.print("[red]🚫 Invalid command:[/red] empty input")
+        return 1
 
     console.print(f"[cyan]▶️  Running:[/cyan] {cmd_str}")
-    output = run_and_observe(cmd_str, shell=True, timeout_sec=timeout)
+    output = run_and_observe(command_parts, shell=False, timeout_sec=timeout)
 
     console.print(f"\n[dim]Exit code: {output.exit_code}[/dim]")
     if output.stdout:
@@ -733,69 +764,6 @@ def recall(query):
 
 
 @tasc.command()
-@click.argument('target')
-@click.option('--gen', '-g', default=10, help='Number of generations')
-@click.option('--pop', '-p', default=16, help='Population size')
-def evolve(target, gen, pop):
-    """Evolve solutions using genetic algorithms.
-
-    Example: supe tasc evolve "sort algorithm" --gen 20 --pop 32
-    """
-    from ab.code_dna import create_random_code_dna, crossover_code, mutate_code
-
-    console.print(Panel.fit(
-        f"[bold cyan]🧬 Evolving solutions for:[/bold cyan] {target}\n\n"
-        f"Population: {pop} | Generations: {gen}",
-        border_style="cyan",
-    ))
-
-    # Simple evolution loop
-    agents = [create_random_code_dna() for _ in range(pop)]
-
-    for generation in range(gen):
-        # Evaluate (placeholder - just count instructions)
-        scores = []
-        for dna in agents:
-            code = dna.to_python_code()
-            # Simple fitness: shorter is better, must compile
-            try:
-                compile(code, "<string>", "exec")
-                score = 100 - len(code) / 10
-            except Exception:
-                score = 0
-            scores.append(score)
-
-        # Sort by score
-        ranked = sorted(zip(scores, agents), key=lambda x: -x[0])
-        best_score = ranked[0][0]
-
-        if generation % 5 == 0 or generation == gen - 1:
-            console.print(f"  Gen {generation+1}: Best score = {best_score:.1f}")
-
-        # Selection + crossover
-        survivors = [a for _, a in ranked[:pop//2]]
-        offspring = []
-        for i in range(0, len(survivors)-1, 2):
-            child = crossover_code(survivors[i], survivors[i+1])
-            child = mutate_code(child, rate=0.2)
-            offspring.append(child)
-
-        agents = survivors + offspring + [
-            create_random_code_dna() for _ in range(pop - len(survivors) - len(offspring))
-        ]
-
-    # Show best
-    best = ranked[0][1]
-    console.print()
-    console.print(Panel.fit(
-        f"[bold green]Best Solution[/bold green]\n\n{best.to_python_code()}",
-        border_style="green",
-    ))
-
-    console.print("[green]✅ Evolution complete![/green]")
-
-
-@tasc.command()
 @click.argument('hook_type', type=click.Choice(['commit']))
 def hook(hook_type):
     """Install git hooks.
@@ -994,13 +962,67 @@ def generate(goal, context, constraint, max_tascs, no_approval, temperature, sav
             if verbose and tasc.testing_instructions:
                 console.print(f"     [dim]Test: {tasc.testing_instructions}[/dim]")
 
-        # Save plan if requested
+        # Save plan using PlannerAgent for consistent format
         if save:
-            from tascer import save_plan
-            plan_file = save_plan(result.plan, output_dir=output or ".tascer/plans")
-            console.print(f"\n[green]💾 Plan saved:[/green] {plan_file}")
-            console.print(f"   [dim]Plan ID: {result.plan.id}[/dim]")
-            console.print(f"\n[dim]📝 To execute: supe plan execute {result.plan.id}[/dim]")
+            try:
+                from tascer.agents.planner import PlannerAgent
+
+                output_dir = output or ".supe/plans"
+                planner = PlannerAgent(plans_dir=output_dir)
+
+                # Create ImplementationPlan from Claude result
+                impl_plan = planner.create_plan(
+                    goal=goal_str,
+                    title=result.plan.title,
+                    constraints=list(constraint) if constraint else None,
+                )
+
+                # Set summary from Claude's reasoning
+                impl_plan.summary = result.reasoning
+
+                # Convert tascs to steps
+                for i, tasc in enumerate(result.plan.tascs, 1):
+                    # Determine dependencies (step numbers)
+                    depends_on = []
+                    if tasc.dependencies:
+                        for dep_id in tasc.dependencies:
+                            # Find the step number for this dependency
+                            for j, t in enumerate(result.plan.tascs, 1):
+                                if t.id == dep_id:
+                                    depends_on.append(j)
+                                    break
+
+                    planner.add_step(
+                        plan=impl_plan,
+                        title=tasc.title,
+                        description=tasc.testing_instructions or "",
+                        validation=tasc.testing_instructions,
+                        depends_on=depends_on if depends_on else None,
+                    )
+
+                # Add architectural decision about confidence
+                if result.confidence and result.reasoning:
+                    planner.add_decision(
+                        plan=impl_plan,
+                        title="Claude Generation Confidence",
+                        context=f"Plan generated by Claude with {result.confidence:.0%} confidence",
+                        decision=result.reasoning,
+                        rationale=f"Auto-generated plan for: {goal_str}",
+                    )
+
+                # Save with PlannerAgent (creates both JSON and Markdown)
+                plan_file = planner.save_plan(impl_plan)
+                console.print(f"\n[green]💾 Plan saved:[/green] {plan_file}")
+                console.print(f"   [dim]Plan ID: {impl_plan.id}[/dim]")
+                console.print(f"\n[dim]📝 View plan: supe plan show {impl_plan.id}[/dim]")
+                console.print(f"[dim]📝 Approve: supe plan approve {impl_plan.id}[/dim]")
+
+            except ImportError:
+                # Fallback to legacy save if PlannerAgent not available
+                from tascer import save_plan
+                plan_file = save_plan(result.plan, output_dir=output or ".tascer/plans")
+                console.print(f"\n[green]💾 Plan saved:[/green] {plan_file}")
+                console.print(f"   [dim]Plan ID: {result.plan.id}[/dim]")
 
         # Show JSON output if requested
         if json_output:
@@ -1028,6 +1050,231 @@ def generate(goal, context, constraint, max_tascs, no_approval, temperature, sav
             import traceback
             traceback.print_exc()
         return 1
+
+
+@plan.command()
+@click.argument('goal', nargs=-1, required=True)
+@click.option('--title', '-t', help='Plan title (defaults to goal)')
+@click.option('--constraint', '-c', multiple=True, help='Constraints (can specify multiple)')
+@click.option('--analyze', '-a', is_flag=True, help='Analyze codebase for patterns')
+@click.option('--interactive', '-i', is_flag=True, help='Interactive step-by-step mode')
+@click.option('--output', '-o', help='Output directory for saved plan')
+@click.option('--approve', is_flag=True, help='Auto-approve the plan')
+def new(goal, title, constraint, analyze, interactive, output, approve):
+    """Create a new implementation plan locally using PlannerAgent.
+
+    This creates a structured plan without requiring Claude API calls.
+
+    Example: supe plan new "add user authentication with JWT"
+    """
+    from pathlib import Path
+
+    try:
+        from tascer.agents.planner import PlannerAgent
+    except ImportError as e:
+        console.print(f"[red]❌ Error: {e}[/red]")
+        return 1
+
+    goal_str = " ".join(goal)
+    output_dir = output or ".supe/plans"
+
+    console.print("[cyan]📋 Creating implementation plan...[/cyan]")
+    console.print(f"[dim]🎯 Goal: {goal_str}[/dim]\n")
+
+    # Initialize planner
+    planner = PlannerAgent(plans_dir=output_dir)
+
+    # Analyze codebase if requested
+    if analyze:
+        console.print("[dim]🔍 Analyzing codebase patterns...[/dim]")
+        try:
+            analysis = planner.analyze_codebase()
+            techs = analysis.get("technologies", [])
+            console.print(f"[green]✅ Found:[/green] {', '.join(techs) if techs else 'no config files'}\n")
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Analysis failed: {e}[/yellow]\n")
+
+    # Create the plan
+    plan = planner.create_plan(
+        goal=goal_str,
+        title=title,
+        constraints=list(constraint) if constraint else None,
+    )
+
+    console.print(f"[green]✅ Plan created:[/green] {plan.title}")
+    console.print(f"[dim]📁 ID: {plan.id}[/dim]\n")
+
+    # Interactive mode for adding steps
+    if interactive:
+        console.print("[cyan]📝 Interactive mode - add steps to your plan[/cyan]")
+        console.print("[dim]Type 'done' when finished, 'skip' to skip adding steps[/dim]\n")
+
+        step_num = 1
+        while True:
+            step_title = click.prompt(f"Step {step_num} title", default="done")
+            if step_title.lower() in ("done", "skip"):
+                break
+
+            description = click.prompt("  Description", default="")
+            validation = click.prompt("  Validation (how to verify)", default="")
+
+            planner.add_step(
+                plan=plan,
+                title=step_title,
+                description=description,
+                validation=validation if validation else None,
+            )
+            console.print(f"  [green]✓[/green] Added step {step_num}\n")
+            step_num += 1
+
+        # Ask about architectural decisions
+        console.print("\n[cyan]🏗️ Architectural decisions (optional)[/cyan]")
+        console.print("[dim]Type 'done' when finished[/dim]\n")
+
+        while True:
+            decision_title = click.prompt("Decision title", default="done")
+            if decision_title.lower() == "done":
+                break
+
+            context = click.prompt("  Context (why this decision)", default="")
+            decision = click.prompt("  Decision (what we chose)", default="")
+            alternatives = click.prompt("  Alternatives (comma-separated)", default="")
+            alt_list = [a.strip() for a in alternatives.split(",") if a.strip()]
+            rationale = click.prompt("  Rationale (why this choice)", default="")
+
+            planner.add_decision(
+                plan=plan,
+                title=decision_title,
+                context=context,
+                decision=decision,
+                alternatives=alt_list if alt_list else None,
+                rationale=rationale if rationale else None,
+            )
+            console.print("  [green]✓[/green] Added decision\n")
+
+    # Save the plan (this also saves markdown version)
+    plan_file = planner.save_plan(plan)
+    console.print(f"\n[green]💾 Plan saved:[/green] {plan_file}")
+
+    md_file = Path(plan_file).with_suffix(".md")
+    console.print(f"[green]📄 Markdown saved:[/green] {md_file}")
+
+    # Auto-approve if requested
+    if approve:
+        planner.approve_plan(plan)
+        console.print("\n[green]✅ Plan approved[/green]")
+
+    # Show summary
+    console.print("\n[bold]📋 Plan Summary:[/bold]")
+    console.print(f"  Steps: {len(plan.steps)}")
+    console.print(f"  Decisions: {len(plan.decisions)}")
+    console.print(f"  Status: {plan.status.value}")
+
+    console.print("\n[dim]📝 Next steps:[/dim]")
+    console.print(f"   supe plan show {plan.id}  # View full plan")
+    console.print(f"   supe plan approve {plan.id}  # Approve for execution")
+
+    return 0
+
+
+@plan.command()
+@click.argument('plan_id')
+def show(plan_id):
+    """Show details of a plan.
+
+    Example: supe plan show abc123
+    """
+    from pathlib import Path
+
+    try:
+        from tascer.agents.planner import PlannerAgent
+    except ImportError as e:
+        console.print(f"[red]❌ Error: {e}[/red]")
+        return 1
+
+    plans_dir = ".supe/plans"
+    planner = PlannerAgent(plans_dir=plans_dir)
+
+    # Try to load the plan
+    plan = planner.load_plan(plan_id)
+    if plan is None:
+        # Try finding by partial ID
+        plan_files = list(Path(plans_dir).glob(f"*{plan_id}*.json"))
+        if plan_files:
+            plan = planner.load_plan(plan_files[0].stem)
+        if plan is None:
+            console.print(f"[red]❌ Plan not found: {plan_id}[/red]")
+            return 1
+
+    # Display the plan
+    console.print(Panel.fit(
+        f"[bold cyan]{plan.title}[/bold cyan]\n\n"
+        f"[bold]Goal:[/bold] {plan.goal}\n"
+        f"[bold]Status:[/bold] {plan.status.value}\n"
+        f"[bold]Created:[/bold] {plan.created_at[:19]}",
+        title=f"📋 Plan {plan.id[:8]}",
+    ))
+
+    if plan.codebase_analysis:
+        console.print(f"\n[bold]Codebase Analysis:[/bold]\n[dim]{plan.codebase_analysis[:200]}...[/dim]")
+
+    if plan.steps:
+        console.print(f"\n[bold]📝 Steps ({len(plan.steps)}):[/bold]")
+        for step in plan.steps:
+            console.print(f"  {step.step_number}. {step.title}")
+            if step.description:
+                console.print(f"      [dim]{step.description}[/dim]")
+            if step.validation:
+                console.print(f"      [green]✓ {step.validation}[/green]")
+
+    if plan.decisions:
+        console.print(f"\n[bold]🏗️ Architectural Decisions ({len(plan.decisions)}):[/bold]")
+        for decision in plan.decisions:
+            console.print(f"  • {decision.title}")
+            console.print(f"    [dim]{decision.decision}[/dim]")
+            if decision.rationale:
+                console.print(f"    [cyan]Rationale: {decision.rationale}[/cyan]")
+
+    return 0
+
+
+@plan.command(name="approve")
+@click.argument('plan_id')
+def approve_plan(plan_id):
+    """Approve a plan for execution.
+
+    Example: supe plan approve abc123
+    """
+    from pathlib import Path
+
+    try:
+        from tascer.agents.planner import PlannerAgent, PlanStatus
+    except ImportError as e:
+        console.print(f"[red]❌ Error: {e}[/red]")
+        return 1
+
+    plans_dir = ".supe/plans"
+    planner = PlannerAgent(plans_dir=plans_dir)
+
+    # Load plan
+    plan = planner.load_plan(plan_id)
+    if plan is None:
+        plan_files = list(Path(plans_dir).glob(f"*{plan_id}*.json"))
+        if plan_files:
+            plan = planner.load_plan(plan_files[0].stem)
+        if plan is None:
+            console.print(f"[red]❌ Plan not found: {plan_id}[/red]")
+            return 1
+
+    if plan.status == PlanStatus.APPROVED:
+        console.print("[yellow]⚠️ Plan already approved[/yellow]")
+        return 0
+
+    planner.approve_plan(plan)
+    console.print(f"[green]✅ Plan approved:[/green] {plan.title}")
+    console.print("\n[dim]📝 Ready for execution[/dim]")
+
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -1060,13 +1307,13 @@ def install():
 # Approval System
 # ---------------------------------------------------------------------------
 
-@cli.group()
-def approve():
+@cli.group(name="approve")
+def approve_group():
     """Approval management for human sign-off gates."""
     pass
 
 
-@approve.command(name='list')
+@approve_group.command(name='list')
 def list_approvals():
     """List pending approval requests.
 
@@ -1100,7 +1347,7 @@ def list_approvals():
     console.print("\n[dim]Use 'supe approve yes <id>' to approve[/dim]")
 
 
-@approve.command(name='yes')
+@approve_group.command(name='yes')
 @click.argument('request_id')
 @click.option('--approver', '-a', default='user', help='Approver name')
 @click.option('--comment', '-c', help='Optional comment')
@@ -1141,7 +1388,7 @@ def approve_request(request_id, approver, comment):
         return 1
 
 
-@approve.command(name='no')
+@approve_group.command(name='no')
 @click.argument('request_id')
 @click.option('--approver', '-a', default='user', help='Rejector name')
 @click.argument('reason')
@@ -1178,7 +1425,7 @@ def reject_request(request_id, approver, reason):
         return 1
 
 
-@approve.command(name='show')
+@approve_group.command(name='show')
 @click.argument('request_id')
 def show_approval(request_id):
     """Show details of an approval request.
@@ -1304,6 +1551,490 @@ def respond_input(request_id, value):
     except Exception as e:
         console.print(f"[red]❌ Error: {e}[/red]")
         return 1
+
+
+# ---------------------------------------------------------------------------
+# Memory Commands
+# ---------------------------------------------------------------------------
+@cli.group()
+def memory():
+    """Memory query commands for AB Memory system.
+
+    All commands support --project to filter by project name.
+    Set SUPE_PROJECT env var to set default project.
+    Database location: ~/.supe/memory.sqlite (or SUPE_DB env var)
+    """
+    pass
+
+
+@memory.command()
+def projects():
+    """List all projects in memory.
+
+    Example: supe memory projects
+    """
+    from ab.abdb import ABMemory
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+
+    # Get unique owner_self values (projects)
+    cursor = mem.conn.execute(
+        "SELECT DISTINCT owner_self FROM cards WHERE owner_self IS NOT NULL ORDER BY owner_self"
+    )
+    rows = cursor.fetchall()
+
+    if not rows:
+        console.print("[dim]No projects found.[/dim]")
+        return
+
+    table = Table(title="📁 Projects", box=box.ROUNDED)
+    table.add_column("Project", style="cyan")
+    table.add_column("Cards", style="dim")
+
+    for row in rows:
+        project = row[0]
+        count_cursor = mem.conn.execute(
+            "SELECT COUNT(*) FROM cards WHERE owner_self = ?", (project,)
+        )
+        count = count_cursor.fetchone()[0]
+        table.add_row(project, str(count))
+
+    console.print(table)
+    console.print(f"\n[dim]Database: {db_path}[/dim]")
+
+
+@memory.command()
+@click.option('--project', '-p', help='Project name (default: current dir name)')
+def init(project):
+    """Initialize memory for a project.
+
+    Creates the global database if needed and registers the project.
+
+    Example: supe memory init
+    Example: supe memory init --project myapp
+    """
+    from ab.abdb import ABMemory
+    from ab.models import Buffer
+
+    project = project or _get_current_project()
+    db_path = _get_global_db_path()
+
+    mem = ABMemory(db_path)
+
+    # Create an initialization card for this project
+    moment = mem.create_moment(
+        master_input=f"Project initialization: {project}",
+        master_output=f"Initialized memory for {project}"
+    )
+
+    mem.store_card(
+        label="supe:init",
+        buffers=[
+            Buffer(name="project", payload=project.encode()),
+            Buffer(name="cwd", payload=os.getcwd().encode()),
+        ],
+        owner_self=project,
+        moment_id=moment.id,
+        master_input=f"Initialized {project}",
+    )
+
+    console.print(f"[green]✅ Initialized memory for project:[/green] {project}")
+    console.print(f"[dim]Database: {db_path}[/dim]")
+    console.print()
+    console.print("[dim]Tip: Set SUPE_PROJECT in your shell to auto-tag memories:[/dim]")
+    console.print(f"[dim]  export SUPE_PROJECT={project}[/dim]")
+
+
+@memory.command()
+@click.argument('query')
+@click.option('--limit', '-n', default=10, help='Max results')
+@click.option('--project', '-p', help='Filter by project (default: current dir name)')
+@click.option('--label', '-l', help='Filter by card label')
+@click.option('--owner', '-o', help='Filter by owner')
+@click.option('--format', '-f', 'output_format', type=click.Choice(['table', 'json']), default='table')
+def search(query, limit, project, label, owner, output_format):
+    """Search memory cards by keyword.
+
+    Example: supe memory search "authentication"
+    Example: supe memory search "auth" --project myapp
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+    from ab.search import search_cards
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found. Run some commands first.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+    results = search_cards(mem, keyword=query, label=label, owner=owner)
+
+    # Filter by project if specified
+    if project:
+        results = _filter_by_project(results, project)
+
+    results = results[:limit]
+
+    if not results:
+        console.print("[dim]No results found.[/dim]")
+        return
+
+    if output_format == 'json':
+        output = [
+            {
+                "id": c.id,
+                "label": c.label,
+                "owner": c.owner_self,
+                "buffers": len(c.buffers),
+            }
+            for c in results
+        ]
+        console.print(json_module.dumps(output, indent=2))
+    else:
+        title = f"🔍 Search: '{query}'"
+        if project:
+            title += f" [project: {project}]"
+        table = Table(title=title, box=box.ROUNDED)
+        table.add_column("ID", style="dim")
+        table.add_column("Label", style="cyan")
+        table.add_column("Project", style="dim")
+        table.add_column("Buffers")
+
+        for card in results:
+            table.add_row(
+                str(card.id),
+                card.label[:30],
+                card.owner_self or "-",
+                str(len(card.buffers)),
+            )
+
+        console.print(table)
+
+
+@memory.command()
+@click.argument('query')
+@click.option('--limit', '-n', default=10, help='Max results')
+@click.option('--project', '-p', help='Filter by project')
+@click.option('--label', '-l', help='Filter by card label')
+@click.option('--format', '-f', 'output_format', type=click.Choice(['table', 'json']), default='table')
+def semantic(query, limit, project, label, output_format):
+    """Search memory using semantic similarity.
+
+    Uses bag-of-words cosine similarity for matching.
+
+    Example: supe memory semantic "user authentication flow"
+    Example: supe memory semantic "login" --project webapp
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+    from ab.vector_search import semantic_search
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+    # Get more results initially to allow for filtering
+    results = semantic_search(mem, query=query, top_k=limit * 2, label_filter=label)
+
+    # Filter by project if specified
+    if project:
+        results = [(card, score) for card, score in results
+                   if card.owner_self and project in card.owner_self]
+
+    results = results[:limit]
+
+    if not results:
+        console.print("[dim]No semantic matches found.[/dim]")
+        return
+
+    if output_format == 'json':
+        output = [
+            {
+                "id": card.id,
+                "label": card.label,
+                "score": round(score, 3),
+            }
+            for card, score in results
+        ]
+        console.print(json_module.dumps(output, indent=2))
+    else:
+        table = Table(title=f"🧠 Semantic: '{query}'", box=box.ROUNDED)
+        table.add_column("ID", style="dim")
+        table.add_column("Label", style="cyan")
+        table.add_column("Score", style="green")
+
+        for card, score in results:
+            table.add_row(
+                str(card.id),
+                card.label[:40],
+                f"{score:.3f}",
+            )
+
+        console.print(table)
+
+
+@memory.command(name="recall")
+@click.argument('query')
+@click.option('--limit', '-n', default=5, help='Max results')
+@click.option('--project', '-p', help='Filter by project')
+@click.option('--neural/--no-neural', default=True, help='Use neural spreading activation')
+@click.option('--format', '-f', 'output_format', type=click.Choice(['table', 'json']), default='table')
+def recall_memory(query, limit, project, neural, output_format):
+    """Recall cards using keyword + connection traversal.
+
+    Strengthens connections when cards are recalled, allowing
+    frequently accessed paths to become stronger over time.
+
+    Example: supe memory recall "struct player"
+    Example: supe memory recall "auth" --project api-server
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+    from ab.recall import recall_cards
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+    results = recall_cards(mem, query=query, top_k=limit * 2, strengthen=True, use_card_stats=neural)
+
+    # Filter by project if specified
+    if project:
+        results = [(card, score) for card, score in results
+                   if card.owner_self and project in card.owner_self]
+
+    results = results[:limit]
+
+    if not results:
+        console.print("[dim]No recall results found.[/dim]")
+        return
+
+    if output_format == 'json':
+        output = [
+            {
+                "id": card.id,
+                "label": card.label,
+                "score": round(score, 3),
+            }
+            for card, score in results
+        ]
+        console.print(json_module.dumps(output, indent=2))
+    else:
+        table = Table(title=f"💡 Recall: '{query}'", box=box.ROUNDED)
+        table.add_column("ID", style="dim")
+        table.add_column("Label", style="cyan")
+        table.add_column("Score", style="green")
+        table.add_column("Buffers")
+
+        for card, score in results:
+            table.add_row(
+                str(card.id),
+                card.label[:40],
+                f"{score:.3f}",
+                str(len(card.buffers)),
+            )
+
+        console.print(table)
+
+
+@memory.command()
+@click.option('--start', '-s', required=True, help='Start timestamp (ISO-8601)')
+@click.option('--end', '-e', required=True, help='End timestamp (ISO-8601)')
+@click.option('--limit', '-n', default=50, help='Max results')
+@click.option('--project', '-p', help='Filter by project')
+@click.option('--format', '-f', 'output_format', type=click.Choice(['table', 'json']), default='table')
+def timeline(start, end, limit, project, output_format):
+    """Query moments within a time range.
+
+    Example: supe memory timeline --start 2025-01-01 --end 2025-01-31
+    Example: supe memory timeline -s 2025-01-01 -e 2025-12-31 --project myapp
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+    from ab.moment_ledger import get_moments_between
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+    moments = get_moments_between(mem, start_ts=start, end_ts=end, limit=limit)
+
+    # Filter by project if specified (check moment's master_input for project tag)
+    if project:
+        moments = [m for m in moments if m.master_input and project in m.master_input]
+
+    if not moments:
+        console.print("[dim]No moments in that time range.[/dim]")
+        return
+
+    if output_format == 'json':
+        output = [
+            {
+                "id": m.id,
+                "timestamp": m.timestamp,
+            }
+            for m in moments
+        ]
+        console.print(json_module.dumps(output, indent=2))
+    else:
+        table = Table(title=f"📅 Timeline: {start} to {end}", box=box.ROUNDED)
+        table.add_column("ID", style="dim")
+        table.add_column("Timestamp", style="cyan")
+
+        for moment in moments:
+            table.add_row(str(moment.id), moment.timestamp[:19])
+
+        console.print(table)
+        console.print(f"\n[dim]Showing {len(moments)} moments[/dim]")
+
+
+@memory.command()
+@click.argument('card_id', type=int)
+@click.option('--format', '-f', 'output_format', type=click.Choice(['table', 'json']), default='table')
+def card(card_id, output_format):
+    """Show details of a specific card.
+
+    Example: supe memory card 42
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+
+    try:
+        c = mem.get_card(card_id)
+    except Exception:
+        console.print(f"[red]Card {card_id} not found.[/red]")
+        return
+
+    if output_format == 'json':
+        output = {
+            "id": c.id,
+            "label": c.label,
+            "owner_self": c.owner_self,
+            "master_input": c.master_input,
+            "master_output": c.master_output,
+            "moment_id": c.moment_id,
+            "buffers": [
+                {
+                    "name": b.name,
+                    "headers": b.headers,
+                    "payload_size": len(b.payload) if b.payload else 0,
+                }
+                for b in c.buffers
+            ],
+        }
+        console.print(json_module.dumps(output, indent=2, default=str))
+    else:
+        console.print(Panel.fit(
+            f"[bold cyan]Card #{c.id}[/bold cyan]\n\n"
+            f"[bold]Label:[/bold] {c.label}\n"
+            f"[bold]Owner:[/bold] {c.owner_self or '-'}\n"
+            f"[bold]Moment ID:[/bold] {c.moment_id or '-'}\n"
+            f"[bold]Master Input:[/bold] {(c.master_input or '-')[:100]}\n"
+            f"[bold]Master Output:[/bold] {(c.master_output or '-')[:100]}",
+            title="📋 Card Details",
+        ))
+
+        if c.buffers:
+            table = Table(title="Buffers", box=box.ROUNDED)
+            table.add_column("Name", style="cyan")
+            table.add_column("Headers")
+            table.add_column("Payload Size", style="dim")
+
+            for b in c.buffers:
+                headers_str = ", ".join(f"{k}={v}" for k, v in list(b.headers.items())[:3])
+                table.add_row(
+                    b.name,
+                    headers_str[:40] or "-",
+                    f"{len(b.payload) if b.payload else 0} bytes",
+                )
+
+            console.print(table)
+
+
+@memory.command()
+@click.argument('tool_name')
+@click.option('--input', '-i', 'tool_input', help='Tool input as JSON string')
+@click.option('--limit', '-n', default=3, help='Max context items')
+@click.option('--project', '-p', help='Filter by project')
+def context(tool_name, tool_input, limit, project):
+    """Preview auto-context for a tool call.
+
+    Shows what context would be injected for a given tool.
+
+    Example: supe memory context Read --input '{"file_path": "/src/auth.py"}'
+    Example: supe memory context Bash --project myapi
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+    from tascer.sdk_wrapper import RecallConfig, TascerAgent, TascerAgentOptions
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    # Parse tool input
+    parsed_input = {}
+    if tool_input:
+        try:
+            parsed_input = json_module.loads(tool_input)
+        except json_module.JSONDecodeError:
+            console.print("[red]Invalid JSON for --input[/red]")
+            return
+
+    mem = ABMemory(db_path)
+    agent = TascerAgent(
+        tascer_options=TascerAgentOptions(
+            recall_config=RecallConfig(enabled=True, auto_context=True, auto_context_limit=limit),
+        ),
+        ab_memory=mem,
+    )
+
+    context_items = agent.get_context_for(
+        tool_name=tool_name,
+        tool_input=parsed_input,
+        max_context=limit,
+    )
+
+    if not context_items:
+        console.print(f"[dim]No relevant context found for {tool_name}[/dim]")
+        return
+
+    console.print(f"[cyan]📎 Context for {tool_name}:[/cyan]\n")
+    for i, item in enumerate(context_items, 1):
+        console.print(f"[bold]{i}. {item['tool_name']}[/bold] ({item['timestamp'][:10] if item['timestamp'] else 'unknown'})")
+        if item['tool_input']:
+            input_str = json_module.dumps(item['tool_input'], default=str)[:200]
+            console.print(f"   [dim]Input:[/dim] {input_str}")
+        if item['tool_output']:
+            output_str = str(item['tool_output'])[:200]
+            console.print(f"   [dim]Output:[/dim] {output_str}")
+        console.print()
 
 
 # ---------------------------------------------------------------------------

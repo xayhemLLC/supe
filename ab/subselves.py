@@ -15,13 +15,12 @@ higher-level API for lane operations and subscription propagation.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
-from .abdb import ABMemory
-from .models import Buffer, Card
 from tasc.atom import Atom  # type: ignore
 from tasc.atomtypes import registry  # type: ignore
 from tasc.ulist import UList  # type: ignore
+
+from .abdb import ABMemory
+from .models import Buffer, Card
 
 
 class LaneManager:
@@ -46,7 +45,7 @@ class LaneManager:
             raise ValueError(f"Card {lane_card_id} is not a lane card (label={card.label})")
         return card
 
-    def load_lane(self, lane_card_id: int) -> List[int]:
+    def load_lane(self, lane_card_id: int) -> list[int]:
         """Return a list of card IDs stored in the lane."""
         card = self._get_lane_card(lane_card_id)
         # Find buffer
@@ -58,13 +57,13 @@ class LaneManager:
         if buf is None:
             return []
         ulist, _ = UList.decode(buf.payload, 0)
-        ids: List[int] = []
+        ids: list[int] = []
         for atom in ulist.elements:
             val = atom.decode_value()
             ids.append(int(val))
         return ids
 
-    def _store_lane(self, lane_card_id: int, ids: List[int]) -> None:
+    def _store_lane(self, lane_card_id: int, ids: list[int]) -> None:
         ref_type = registry.get_by_name("ref")
         atoms = [Atom.from_value(ref_type, str(i)) for i in ids]
         ulist = UList(elements=atoms)
@@ -72,7 +71,7 @@ class LaneManager:
         new_buf = Buffer(name="lane_list", headers={"atom_type": "ulist"}, payload=payload, exe=None)
         card = self._get_lane_card(lane_card_id)
         # Replace existing buffer or append
-        new_buffers: List[Buffer] = []
+        new_buffers: list[Buffer] = []
         replaced = False
         for b in card.buffers:
             if b.name == "lane_list":
@@ -95,7 +94,7 @@ class LaneManager:
             ids.remove(card_id)
             self._store_lane(lane_card_id, ids)
 
-    def reorder_lane(self, lane_card_id: int, new_order: List[int]) -> None:
+    def reorder_lane(self, lane_card_id: int, new_order: list[int]) -> None:
         current = self.load_lane(lane_card_id)
         if sorted(current) != sorted(new_order):
             raise ValueError("new_order must contain the same card IDs as the current lane")
@@ -140,7 +139,7 @@ def propagate_subscriptions(memory: ABMemory, source_card_id: int, buffer_name: 
         )
         # Replace or append buffer on subscriber card
         card = memory.get_card(subscriber_id)
-        new_buffers: List[Buffer] = []
+        new_buffers: list[Buffer] = []
         replaced = False
         for b in card.buffers:
             if b.name == buffer_name:

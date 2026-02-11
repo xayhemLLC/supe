@@ -7,32 +7,31 @@ Runs test command and proves:
 
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
-from ..primitives import capture_context, run_and_observe
-from ..actions.test import test_run_and_triage, TestTriageResult
-from ..gates import ExitCodeGate, PatternGate
+from ..actions.test import test_run_and_triage
 from ..contracts import GateResult
+from ..gates import ExitCodeGate, PatternGate
+from ..primitives import capture_context
 
 
 @dataclass
 class TestProofResult:
     """Result of proving tests pass."""
-    
+
     proven: bool
     total_tests: int
     passed_tests: int
     failed_tests: int
     skipped_tests: int
-    gate_results: List[GateResult] = field(default_factory=list)
-    failure_summary: List[Dict] = field(default_factory=list)
-    coverage_percent: Optional[float] = None
+    gate_results: list[GateResult] = field(default_factory=list)
+    failure_summary: list[dict] = field(default_factory=list)
+    coverage_percent: float | None = None
     duration_ms: float = 0
     stdout: str = ""
     stderr: str = ""
-    context_snapshot: Optional[Dict] = None
-    
-    def to_dict(self) -> Dict:
+    context_snapshot: dict | None = None
+
+    def to_dict(self) -> dict:
         return {
             "proven": self.proven,
             "total_tests": self.total_tests,
@@ -48,7 +47,7 @@ class TestProofResult:
 
 def prove_tests_passing(
     test_cmd: str = "pytest -v",
-    cwd: Optional[str] = None,
+    cwd: str | None = None,
     timeout_sec: float = 300,
     allow_skipped: bool = True,
     require_coverage: bool = False,
@@ -56,9 +55,9 @@ def prove_tests_passing(
     tasc_id: str = "test_proof",
 ) -> TestProofResult:
     """Prove that test suite passes.
-    
+
     TASC_PROVE_TESTS_PASSING implementation.
-    
+
     Args:
         test_cmd: Test command to run.
         cwd: Working directory.
@@ -67,27 +66,27 @@ def prove_tests_passing(
         require_coverage: Whether to check coverage threshold.
         min_coverage: Minimum coverage percentage required.
         tasc_id: Identifier for context capture.
-    
+
     Returns:
         TestProofResult proving test status.
     """
     if cwd is None:
         cwd = os.getcwd()
-    
+
     # Capture context
     context = capture_context(
         tasc_id=tasc_id,
         repo_root=cwd,
         permissions=["terminal"],
     )
-    
+
     # Run tests with triage
     triage = test_run_and_triage(
         test_cmd=test_cmd,
         cwd=cwd,
         timeout_sec=timeout_sec,
     )
-    
+
     # Build failure summary
     failure_summary = [
         {
@@ -98,15 +97,15 @@ def prove_tests_passing(
         }
         for f in triage.failures[:10]  # Limit to first 10
     ]
-    
+
     # Apply gates
     gate_results = []
-    
+
     # Exit code gate
     exit_gate = ExitCodeGate(expected=[0])
     exit_result = exit_gate.check(triage.exit_code)
     gate_results.append(exit_result)
-    
+
     # Pattern gate (check for unexpected errors in output)
     pattern_gate = PatternGate(
         denylist=[r"(?i)fatal", r"(?i)panic"],
@@ -114,7 +113,7 @@ def prove_tests_passing(
     )
     pattern_result = pattern_gate.check(triage.stdout, triage.stderr)
     gate_results.append(pattern_result)
-    
+
     # Custom gate for test counts
     tests_gate = GateResult(
         gate_name="TESTS_COUNT",
@@ -127,10 +126,10 @@ def prove_tests_passing(
         },
     )
     gate_results.append(tests_gate)
-    
+
     # Parse coverage if available
     coverage = _parse_coverage(triage.stdout)
-    
+
     if require_coverage and coverage is not None:
         coverage_gate = GateResult(
             gate_name="COVERAGE_THRESHOLD",
@@ -139,12 +138,12 @@ def prove_tests_passing(
             evidence={"coverage": coverage, "min_required": min_coverage},
         )
         gate_results.append(coverage_gate)
-    
+
     # Determine overall proof status
     proven = all(g.passed for g in gate_results)
-    
+
     context.finalize()
-    
+
     return TestProofResult(
         proven=proven,
         total_tests=triage.total_tests,
@@ -161,20 +160,20 @@ def prove_tests_passing(
     )
 
 
-def _parse_coverage(output: str) -> Optional[float]:
+def _parse_coverage(output: str) -> float | None:
     """Try to parse coverage percentage from pytest output."""
     import re
-    
+
     # Look for patterns like "TOTAL ... 85%" or "Coverage: 85.5%"
     patterns = [
         r"TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%",
         r"Coverage[:\s]+(\d+(?:\.\d+)?)%",
         r"(\d+(?:\.\d+)?)%\s+covered",
     ]
-    
+
     for pattern in patterns:
         match = re.search(pattern, output, re.IGNORECASE)
         if match:
             return float(match.group(1))
-    
+
     return None

@@ -16,68 +16,67 @@ Output format:
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from ..contracts import ValidationReport
-from ..ledgers import MomentsLedger, ExeLedger, LedgerStorage
+from ..ledgers import LedgerStorage
 
 
 @dataclass
 class AuditExporter:
     """Exports tasc runs to Markdown."""
-    
+
     output_dir: str = "./audit_output"
-    
+
     def export_report(
         self,
         report: ValidationReport,
         include_evidence: bool = True,
     ) -> str:
         """Export a ValidationReport to Markdown.
-        
+
         Args:
             report: The validation report to export.
             include_evidence: Include evidence file references.
-        
+
         Returns:
             Path to generated Markdown file.
         """
         os.makedirs(self.output_dir, exist_ok=True)
-        
+
         md_content = format_tasc_report(report, include_evidence)
-        
+
         filename = f"Tasc-{report.tasc_id}.md"
         filepath = os.path.join(self.output_dir, filename)
-        
+
         with open(filepath, "w") as f:
             f.write(md_content)
-        
+
         return filepath
-    
+
     def export_ledgers(
         self,
         storage: LedgerStorage,
-        hypothesis: Optional[str] = None,
+        hypothesis: str | None = None,
     ) -> str:
         """Export ledgers to comprehensive Markdown.
-        
+
         Args:
             storage: LedgerStorage with moments and exe.
             hypothesis: Optional hypothesis being tested.
-        
+
         Returns:
             Path to generated Markdown file.
         """
         os.makedirs(self.output_dir, exist_ok=True)
-        
+
         md_content = format_ledgers(storage, hypothesis)
-        
+
         filename = f"Tasc-{storage.run_id}.md"
         filepath = os.path.join(self.output_dir, filename)
-        
+
         with open(filepath, "w") as f:
             f.write(md_content)
-        
+
         return filepath
 
 
@@ -86,11 +85,11 @@ def format_tasc_report(
     include_evidence: bool = True,
 ) -> str:
     """Format a ValidationReport as Markdown.
-    
+
     Args:
         report: Report to format.
         include_evidence: Include evidence references.
-    
+
     Returns:
         Formatted Markdown string.
     """
@@ -126,7 +125,7 @@ def format_tasc_report(
         f"- **Exit Code:** {report.action_result.op_result}",
         "",
     ]
-    
+
     # Gates
     lines.extend([
         "---",
@@ -134,21 +133,21 @@ def format_tasc_report(
         "## Validation Gates",
         "",
     ])
-    
+
     if report.gates_passed:
         lines.append("### ✅ Passed")
         lines.append("")
         for gate in report.gates_passed:
             lines.append(f"- **{gate.gate_name}**: {gate.message}")
         lines.append("")
-    
+
     if report.gates_failed:
         lines.append("### ❌ Failed")
         lines.append("")
         for gate in report.gates_failed:
             lines.append(f"- **{gate.gate_name}**: {gate.message}")
         lines.append("")
-    
+
     # Evidence
     if include_evidence and report.evidence_index:
         lines.extend([
@@ -160,7 +159,7 @@ def format_tasc_report(
         for key, path in report.evidence_index.items():
             lines.append(f"- **{key}**: `{path}`")
         lines.append("")
-    
+
     # Summary
     lines.extend([
         "---",
@@ -170,20 +169,20 @@ def format_tasc_report(
         report.summary or "*No summary generated.*",
         "",
     ])
-    
+
     return "\n".join(lines)
 
 
 def format_ledgers(
     storage: LedgerStorage,
-    hypothesis: Optional[str] = None,
+    hypothesis: str | None = None,
 ) -> str:
     """Format ledgers as Markdown.
-    
+
     Args:
         storage: LedgerStorage with moments and exe.
         hypothesis: Optional hypothesis being tested.
-    
+
     Returns:
         Formatted Markdown string.
     """
@@ -193,7 +192,7 @@ def format_ledgers(
         f"**Generated:** {datetime.now().isoformat()}",
         "",
     ]
-    
+
     if hypothesis:
         lines.extend([
             "## Hypothesis",
@@ -201,7 +200,7 @@ def format_ledgers(
             f"> {hypothesis}",
             "",
         ])
-    
+
     # Exe Ledger - Intent
     lines.extend([
         "---",
@@ -209,14 +208,14 @@ def format_ledgers(
         "## Intent (Exe Ledger)",
         "",
     ])
-    
+
     for decision in storage.exe.get_all():
         icon = {
             "CONTINUE": "▶️",
             "STOP": "⏹️",
             "BACKTRACK": "↩️",
         }.get(decision.decision_type.value.upper(), "•")
-        
+
         lines.append(f"### {icon} {decision.decision_type.value.title()}")
         lines.append("")
         if decision.action_id:
@@ -226,7 +225,7 @@ def format_ledgers(
         if decision.confidence:
             lines.append(f"**Confidence:** {decision.confidence.value:.0%}")
         lines.append("")
-    
+
     # Moments Ledger - Reality
     lines.extend([
         "---",
@@ -234,7 +233,7 @@ def format_ledgers(
         "## Reality (Moments Ledger)",
         "",
     ])
-    
+
     for moment in storage.moments.get_all():
         icon = {
             "context_snapshot": "📷",
@@ -243,7 +242,7 @@ def format_ledgers(
             "error": "❌",
             "evidence": "📎",
         }.get(moment.moment_type.value, "•")
-        
+
         lines.append(f"### {icon} {moment.moment_type.value.replace('_', ' ').title()}")
         lines.append("")
         lines.append(f"**Timestamp:** {moment.timestamp.isoformat()}")
@@ -256,7 +255,7 @@ def format_ledgers(
             lines.append(json.dumps(moment.data, indent=2, default=str)[:500])
             lines.append("```")
         lines.append("")
-    
+
     # Cross-references
     if storage._cross_refs:
         lines.extend([
@@ -273,7 +272,7 @@ def format_ledgers(
                 f"`{ref.action_id or '-'}` | {ref.relationship} |"
             )
         lines.append("")
-    
+
     # Divergence analysis
     divergences = storage.analyze_divergence()
     if divergences:
@@ -286,29 +285,29 @@ def format_ledgers(
         for div in divergences:
             lines.append(f"- **{div['type']}**")
         lines.append("")
-    
+
     return "\n".join(lines)
 
 
 def export_to_markdown(
-    report: Optional[ValidationReport] = None,
-    storage: Optional[LedgerStorage] = None,
+    report: ValidationReport | None = None,
+    storage: LedgerStorage | None = None,
     output_dir: str = "./audit_output",
-    hypothesis: Optional[str] = None,
+    hypothesis: str | None = None,
 ) -> str:
     """Convenience function to export to Markdown.
-    
+
     Args:
         report: ValidationReport to export (optional).
         storage: LedgerStorage to export (optional).
         output_dir: Output directory.
         hypothesis: Optional hypothesis.
-    
+
     Returns:
         Path to generated file.
     """
     exporter = AuditExporter(output_dir=output_dir)
-    
+
     if report:
         return exporter.export_report(report)
     elif storage:

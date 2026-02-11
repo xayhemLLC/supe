@@ -8,30 +8,30 @@ Given a script operation:
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from ..primitives import capture_context, run_and_observe
-from ..primitives.file_ops import snapshot_file, FileSnapshot
-from ..gates import ExitCodeGate, PatternGate, JsonPathGate, JsonPathAssertion
 from ..contracts import GateResult
+from ..gates import ExitCodeGate, JsonPathAssertion, JsonPathGate, PatternGate
+from ..primitives import capture_context, run_and_observe
+from ..primitives.file_ops import snapshot_file
 
 
 @dataclass
 class ScriptProofResult:
     """Result of proving script success."""
-    
+
     proven: bool
     exit_code: int
-    gate_results: List[GateResult] = field(default_factory=list)
+    gate_results: list[GateResult] = field(default_factory=list)
     output_files_valid: bool = True
-    missing_outputs: List[str] = field(default_factory=list)
+    missing_outputs: list[str] = field(default_factory=list)
     stdout: str = ""
     stderr: str = ""
     duration_ms: float = 0
-    parsed_output: Optional[Dict] = None
-    context_snapshot: Optional[Dict] = None
-    
-    def to_dict(self) -> Dict:
+    parsed_output: dict | None = None
+    context_snapshot: dict | None = None
+
+    def to_dict(self) -> dict:
         return {
             "proven": self.proven,
             "exit_code": self.exit_code,
@@ -43,20 +43,20 @@ class ScriptProofResult:
 
 
 def prove_script_success(
-    command: Union[str, List[str]],
-    cwd: Optional[str] = None,
+    command: str | list[str],
+    cwd: str | None = None,
     timeout_sec: float = 120,
-    expected_exit_codes: List[int] = None,
-    expected_output_files: List[str] = None,
-    output_json_assertions: Dict[str, Any] = None,
-    error_patterns: List[str] = None,
+    expected_exit_codes: list[int] = None,
+    expected_output_files: list[str] = None,
+    output_json_assertions: dict[str, Any] = None,
+    error_patterns: list[str] = None,
     tasc_id: str = "script_proof",
     shell: bool = True,
 ) -> ScriptProofResult:
     """Prove that a script executes successfully.
-    
+
     TASC_PROVE_SCRIPT_SUCCESS implementation.
-    
+
     Args:
         command: Script command to run.
         cwd: Working directory.
@@ -67,23 +67,23 @@ def prove_script_success(
         error_patterns: Additional patterns to deny in output.
         tasc_id: Identifier for context capture.
         shell: Whether to run through shell.
-    
+
     Returns:
         ScriptProofResult proving script status.
     """
     if cwd is None:
         cwd = os.getcwd()
-    
+
     if expected_exit_codes is None:
         expected_exit_codes = [0]
-    
+
     # Capture context
     context = capture_context(
         tasc_id=tasc_id,
         repo_root=cwd,
         permissions=["terminal", "fs_write"],
     )
-    
+
     # Run script
     result = run_and_observe(
         command,
@@ -91,23 +91,23 @@ def prove_script_success(
         timeout_sec=timeout_sec,
         shell=shell,
     )
-    
+
     gate_results = []
-    
+
     # Exit code gate
     exit_gate = ExitCodeGate(expected=expected_exit_codes)
     exit_result = exit_gate.check(result.exit_code)
     gate_results.append(exit_result)
-    
+
     # Pattern gate
     deny_patterns = [r"(?i)error:", r"(?i)exception:", r"(?i)fatal:"]
     if error_patterns:
         deny_patterns.extend(error_patterns)
-    
+
     pattern_gate = PatternGate(denylist=deny_patterns)
     pattern_result = pattern_gate.check(result.stdout, result.stderr)
     gate_results.append(pattern_result)
-    
+
     # Check expected output files
     missing_outputs = []
     if expected_output_files:
@@ -116,7 +116,7 @@ def prove_script_success(
             snap = snapshot_file(full_path, preview_bytes=0, compute_hash=False)
             if not snap.exists:
                 missing_outputs.append(output_file)
-        
+
         files_gate = GateResult(
             gate_name="OUTPUT_FILES",
             passed=len(missing_outputs) == 0,
@@ -124,14 +124,14 @@ def prove_script_success(
             evidence={"missing": missing_outputs},
         )
         gate_results.append(files_gate)
-    
+
     # Check JSON output assertions
     parsed_output = None
     if output_json_assertions:
         try:
             import json
             parsed_output = json.loads(result.stdout)
-            
+
             assertions = [
                 JsonPathAssertion(path=path, expected=value, operator="eq")
                 for path, value in output_json_assertions.items()
@@ -147,12 +147,12 @@ def prove_script_success(
                 evidence={},
             )
             gate_results.append(json_gate)
-    
+
     # Determine overall proof status
     proven = all(g.passed for g in gate_results)
-    
+
     context.finalize()
-    
+
     return ScriptProofResult(
         proven=proven,
         exit_code=result.exit_code,

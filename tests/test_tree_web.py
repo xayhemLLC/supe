@@ -1,26 +1,31 @@
 """Tests for Tree-Web memory structure and comparators."""
 
-import pytest
-from datetime import datetime, timedelta
-from typing import Dict, List
-
 # Import modules under test
 import sys
+from datetime import datetime, timedelta
+
+import pytest
+
 sys.path.insert(0, str(__file__).rsplit("/tests", 1)[0])
 
-from ab.tree_web import (
-    TreeWebMemory, TreeNode, WebNode, CardLink, LinkType,
-    TraversalDirection
-)
 from ab.comparators import (
-    Filter, CompareOp, CompareResult,
-    TextComparator, NumericComparator, TemporalComparator,
-    CollectionComparator, ExistenceComparator, HashComparator,
-    SemanticComparator, WordOverlapComparator, JSONPathComparator,
-    AndComparator, OrComparator, NotComparator,
-    extract_value, extract_text, extract_words
+    AndComparator,
+    CollectionComparator,
+    CompareOp,
+    ExistenceComparator,
+    Filter,
+    JSONPathComparator,
+    NotComparator,
+    NumericComparator,
+    OrComparator,
+    SemanticComparator,
+    TemporalComparator,
+    TextComparator,
+    WordOverlapComparator,
+    extract_text,
+    extract_words,
 )
-
+from ab.tree_web import LinkType, TraversalDirection, TreeWebMemory
 
 # =============================================================================
 # Fixtures
@@ -189,7 +194,7 @@ class TestWebStructure:
         links = tree_web.auto_link_by_concepts(101, min_shared=1)
 
         assert len(links) >= 1
-        target_ids = [l.target_id for l in links]
+        target_ids = [link.target_id for link in links]
         # Should link to cards with shared concepts
         assert any(tid in [102, 301] for tid in target_ids)
 
@@ -308,7 +313,7 @@ class TestWordBasedLinking:
         links = tree_web.auto_link_by_words(101, min_shared_words=2)
 
         assert len(links) >= 1
-        assert all(l.link_type == LinkType.CONCEPT for l in links)
+        assert all(link.link_type == LinkType.CONCEPT for link in links)
 
 
 # =============================================================================

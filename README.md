@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-343%20passing-brightgreen.svg)]()
+[![CI](https://github.com/xayhemLLC/supe/actions/workflows/ci.yml/badge.svg)](https://github.com/xayhemLLC/supe/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/supe.svg)](https://pypi.org/project/supe/)
 
 <!-- Demo GIF placeholder - record with: python scripts/demo_recording.py -->
@@ -223,7 +223,7 @@ supe/
 │   ├── contracts.py     # GateResult, ValidationRecord
 │   ├── gates/           # Built-in gates
 │   └── proofs/          # Proof generators
-└── tests/               # 343 tests
+└── tests/               # Test suite
 ```
 
 ## Development

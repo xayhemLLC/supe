@@ -25,13 +25,9 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
-from .tree_web import TreeWebMemory, WebNode, TreeNode, CardLink, LinkType
-from .comparators import (
-    Filter, BufferComparator, TextComparator, CompareOp,
-    extract_words, extract_text
-)
+from .tree_web import LinkType, TreeWebMemory, WebNode
 
 
 @dataclass
@@ -63,8 +59,8 @@ class ClaudeMemBridge:
         self.db_path = Path(self.config.db_path).expanduser()
 
         # Mapping caches
-        self._session_to_moment: Dict[str, int] = {}  # sdk_session_id → moment_id
-        self._obs_to_card: Dict[int, int] = {}        # observation.id → card_id
+        self._session_to_moment: dict[str, int] = {}  # sdk_session_id → moment_id
+        self._obs_to_card: dict[int, int] = {}        # observation.id → card_id
         self._last_sync_epoch: int = 0
 
         # Initialize embedder if enabled
@@ -96,7 +92,7 @@ class ClaudeMemBridge:
         project: str = None,
         since_epoch: int = None,
         limit: int = None
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """Import observations from claude-mem into Tree-Web.
 
         Args:
@@ -168,7 +164,7 @@ class ClaudeMemBridge:
         conn.close()
         return stats
 
-    def import_observation(self, obs_id: int) -> Optional[WebNode]:
+    def import_observation(self, obs_id: int) -> WebNode | None:
         """Import a single observation by ID.
 
         Args:
@@ -210,12 +206,12 @@ class ClaudeMemBridge:
         # Use hash of session_id as moment_id for consistency
         moment_id = abs(hash(sdk_session_id)) % (10 ** 9)
 
-        node = self.tree_web.add_moment(moment_id, timestamp)
+        self.tree_web.add_moment(moment_id, timestamp)
         self._session_to_moment[sdk_session_id] = moment_id
 
         return moment_id
 
-    def _observation_to_card(self, obs: Dict, moment_id: int) -> WebNode:
+    def _observation_to_card(self, obs: dict, moment_id: int) -> WebNode:
         """Convert claude-mem observation to Tree-Web card.
 
         Args:
@@ -273,7 +269,7 @@ class ClaudeMemBridge:
             return []
         try:
             return json.loads(value)
-        except:
+        except Exception:
             return []
 
     # =========================================================================
@@ -287,9 +283,9 @@ class ClaudeMemBridge:
         obs_type: str = None,
         time_start: datetime = None,
         time_end: datetime = None,
-        concepts: List[str] = None,
+        concepts: list[str] = None,
         limit: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Search across claude-mem and Tree-Web.
 
         Args:
@@ -336,9 +332,9 @@ class ClaudeMemBridge:
         obs_type: str = None,
         time_start: datetime = None,
         time_end: datetime = None,
-        concepts: List[str] = None,
+        concepts: list[str] = None,
         limit: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Search Tree-Web memory."""
         filters = []
 
@@ -381,9 +377,9 @@ class ClaudeMemBridge:
         obs_type: str = None,
         time_start: datetime = None,
         time_end: datetime = None,
-        concepts: List[str] = None,
+        concepts: list[str] = None,
         limit: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Search claude-mem database directly."""
         conn = self.connect()
         cursor = conn.cursor()
@@ -460,7 +456,7 @@ class ClaudeMemBridge:
         observation_id: int = None,
         min_shared_words: int = 2,
         limit: int = 10
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Find cards/observations related by shared words.
 
         Args:
@@ -508,7 +504,7 @@ class ClaudeMemBridge:
     # Traversal
     # =========================================================================
 
-    def get_session_timeline(self, sdk_session_id: str) -> List[Dict]:
+    def get_session_timeline(self, sdk_session_id: str) -> list[dict]:
         """Get all observations from a session in order.
 
         Args:
@@ -556,7 +552,7 @@ class ClaudeMemBridge:
         self,
         start_card_id: int,
         max_depth: int = 3
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Traverse concept links from a starting card.
 
         Args:
@@ -596,7 +592,7 @@ class ClaudeMemBridge:
         threshold: float = 0.3,
         project: str = None,
         obs_type: str = None,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Search cards by semantic similarity.
 
         Args:
@@ -666,7 +662,7 @@ class ClaudeMemBridge:
         card_id: int,
         top_k: int = 10,
         threshold: float = 0.5
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Find cards semantically similar to a given card.
 
         Args:
@@ -724,7 +720,7 @@ class ClaudeMemBridge:
         keyword_weight: float = 0.3,
         recency_weight: float = 0.1,
         project: str = None,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Hybrid search combining semantic + keyword + recency.
 
         Args:
@@ -738,7 +734,7 @@ class ClaudeMemBridge:
         Returns:
             List of results with combined scores.
         """
-        results: Dict[int, Dict] = {}
+        results: dict[int, dict] = {}
 
         # 1. Semantic search
         if self.embedder and semantic_weight > 0:
@@ -839,7 +835,7 @@ class ClaudeMemBridge:
     # Stats
     # =========================================================================
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get statistics about both memory systems."""
         stats = {
             "tree_web": {
@@ -868,7 +864,7 @@ class ClaudeMemBridge:
             stats["claude_mem"]["projects"] = cursor.fetchone()[0]
 
             conn.close()
-        except:
+        except Exception:
             stats["claude_mem"] = {"error": "Could not connect"}
 
         return stats
@@ -900,7 +896,7 @@ def create_bridge(db_path: str = None, auto_import: bool = True) -> ClaudeMemBri
     return bridge
 
 
-def quick_search(query: str, project: str = None, limit: int = 10) -> List[Dict]:
+def quick_search(query: str, project: str = None, limit: int = 10) -> list[dict]:
     """Quick search across claude-mem.
 
     Args:

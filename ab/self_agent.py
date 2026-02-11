@@ -15,8 +15,8 @@ demonstrate specialization patterns.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .abdb import ABMemory
@@ -35,7 +35,7 @@ class Proposal:
 
     suggestion: str
     strength: float
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class Self(ABC):
@@ -50,8 +50,8 @@ class Self(ABC):
     def __init__(
         self,
         name: str,
-        role: Optional[str] = None,
-        subscribed_buffers: Optional[List[str]] = None,
+        role: str | None = None,
+        subscribed_buffers: list[str] | None = None,
     ) -> None:
         """Initialize a Self.
 
@@ -64,13 +64,13 @@ class Self(ABC):
         self.name = name
         self.role = role
         self.subscribed_buffers = subscribed_buffers or []
-        self._memory: Optional["ABMemory"] = None
+        self._memory: ABMemory | None = None
 
-    def bind_memory(self, memory: "ABMemory") -> None:
+    def bind_memory(self, memory: ABMemory) -> None:
         """Bind an ABMemory instance for database access."""
         self._memory = memory
 
-    def filter_buffers(self, card: "Card") -> List:
+    def filter_buffers(self, card: Card) -> list:
         """Filter card buffers to only those this self subscribes to.
 
         If subscribed_buffers is empty, returns all buffers.
@@ -80,7 +80,7 @@ class Self(ABC):
         return [b for b in card.buffers if b.name in self.subscribed_buffers]
 
     @abstractmethod
-    def think(self, card: "Card") -> Proposal:
+    def think(self, card: Card) -> Proposal:
         """Process a card and generate a proposal.
 
         Args:
@@ -93,8 +93,8 @@ class Self(ABC):
 
     def call_subself(
         self,
-        target_self: "Self",
-        card: "Card",
+        target_self: Self,
+        card: Card,
     ) -> Proposal:
         """Recursively invoke another self's think() method.
 
@@ -128,7 +128,7 @@ class PlannerSelf(Self):
     def __init__(
         self,
         name: str = "planner",
-        subscribed_buffers: Optional[List[str]] = None,
+        subscribed_buffers: list[str] | None = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -136,7 +136,7 @@ class PlannerSelf(Self):
             subscribed_buffers=subscribed_buffers or ["prompt", "context", "tasks"],
         )
 
-    def think(self, card: "Card") -> Proposal:
+    def think(self, card: Card) -> Proposal:
         """Analyze card for planning and strategy."""
         buffers = self.filter_buffers(card)
 
@@ -155,10 +155,10 @@ class PlannerSelf(Self):
 
         # Generate planning-oriented suggestion
         if "task" in combined.lower() or "plan" in combined.lower():
-            suggestion = f"[Planner] Identified planning context. Recommend structured approach."
+            suggestion = "[Planner] Identified planning context. Recommend structured approach."
             strength += 2.0
         else:
-            suggestion = f"[Planner] General context detected. Low planning priority."
+            suggestion = "[Planner] General context detected. Low planning priority."
 
         return Proposal(
             suggestion=suggestion,
@@ -177,7 +177,7 @@ class ArchitectSelf(Self):
     def __init__(
         self,
         name: str = "architect",
-        subscribed_buffers: Optional[List[str]] = None,
+        subscribed_buffers: list[str] | None = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -185,7 +185,7 @@ class ArchitectSelf(Self):
             subscribed_buffers=subscribed_buffers or ["files", "state", "context"],
         )
 
-    def think(self, card: "Card") -> Proposal:
+    def think(self, card: Card) -> Proposal:
         """Analyze card for architecture and design patterns."""
         buffers = self.filter_buffers(card)
 
@@ -205,9 +205,9 @@ class ArchitectSelf(Self):
         strength = keyword_count * 1.5
 
         if keyword_count > 2:
-            suggestion = f"[Architect] Strong architectural patterns detected. Design review recommended."
+            suggestion = "[Architect] Strong architectural patterns detected. Design review recommended."
         else:
-            suggestion = f"[Architect] Limited architectural context. Low design priority."
+            suggestion = "[Architect] Limited architectural context. Low design priority."
 
         return Proposal(
             suggestion=suggestion,
@@ -225,7 +225,7 @@ class ExecutorSelf(Self):
     def __init__(
         self,
         name: str = "executor",
-        subscribed_buffers: Optional[List[str]] = None,
+        subscribed_buffers: list[str] | None = None,
     ) -> None:
         super().__init__(
             name=name,
@@ -233,7 +233,7 @@ class ExecutorSelf(Self):
             subscribed_buffers=subscribed_buffers or ["prompt", "previous_output"],
         )
 
-    def think(self, card: "Card") -> Proposal:
+    def think(self, card: Card) -> Proposal:
         """Analyze card for actionable items."""
         buffers = self.filter_buffers(card)
 
@@ -256,7 +256,7 @@ class ExecutorSelf(Self):
             suggestion = f"[Executor] Action items detected ({action_count}). Ready to execute."
             strength += 3.0
         else:
-            suggestion = f"[Executor] No immediate actions detected."
+            suggestion = "[Executor] No immediate actions detected."
 
         return Proposal(
             suggestion=suggestion,
@@ -274,21 +274,21 @@ class SelfRegistry:
     """Registry for managing selves dynamically."""
 
     def __init__(self) -> None:
-        self._selves: Dict[str, Self] = {}
+        self._selves: dict[str, Self] = {}
 
     def register(self, self_instance: Self) -> None:
         """Register a self instance."""
         self._selves[self_instance.name] = self_instance
 
-    def get(self, name: str) -> Optional[Self]:
+    def get(self, name: str) -> Self | None:
         """Get a self by name."""
         return self._selves.get(name)
 
-    def list_selves(self) -> List[str]:
+    def list_selves(self) -> list[str]:
         """Return list of registered self names."""
         return list(self._selves.keys())
 
-    def think_all(self, card: "Card") -> List[Proposal]:
+    def think_all(self, card: Card) -> list[Proposal]:
         """Have all registered selves think about a card.
 
         Returns:

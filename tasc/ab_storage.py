@@ -14,21 +14,19 @@ maintaining the AB Memory architecture while extending it for validation.
 """
 
 import json
-from typing import Dict, List, Optional, Tuple
 
 from ab.abdb import ABMemory
 from ab.models import Buffer, Card
 
 from .evidence import Evidence, EvidenceCollection, EvidenceSource
-from .validation import ValidationResult
 from .tasc import Tasc
-
+from .validation import ValidationResult
 
 # ============================================================================
 # Evidence Storage
 # ============================================================================
 
-def store_evidence(memory: ABMemory, evidence: Evidence, moment_id: Optional[int] = None) -> int:
+def store_evidence(memory: ABMemory, evidence: Evidence, moment_id: int | None = None) -> int:
     """Store an evidence item as a Card in AB Memory.
 
     Args:
@@ -78,7 +76,7 @@ def store_evidence(memory: ABMemory, evidence: Evidence, moment_id: Optional[int
     return card_id
 
 
-def load_evidence(memory: ABMemory, card_id: int) -> Optional[Evidence]:
+def load_evidence(memory: ABMemory, card_id: int) -> Evidence | None:
     """Load an evidence item from AB Memory.
 
     Args:
@@ -104,7 +102,7 @@ def load_evidence(memory: ABMemory, card_id: int) -> Optional[Evidence]:
 def store_evidence_collection(
     memory: ABMemory,
     collection: EvidenceCollection,
-    moment_id: Optional[int] = None
+    moment_id: int | None = None
 ) -> int:
     """Store an evidence collection as a Card in AB Memory.
 
@@ -167,7 +165,7 @@ def store_evidence_collection(
 def load_evidence_collection(
     memory: ABMemory,
     card_id: int
-) -> Optional[EvidenceCollection]:
+) -> EvidenceCollection | None:
     """Load an evidence collection from AB Memory.
 
     Args:
@@ -211,7 +209,7 @@ def store_validation_result(
     memory: ABMemory,
     result: ValidationResult,
     tasc_id: str,
-    moment_id: Optional[int] = None
+    moment_id: int | None = None
 ) -> int:
     """Store a validation result as a Card in AB Memory.
 
@@ -276,7 +274,7 @@ def store_validation_result(
 def load_validation_result(
     memory: ABMemory,
     card_id: int
-) -> Optional[Tuple[ValidationResult, str]]:
+) -> tuple[ValidationResult, str] | None:
     """Load a validation result from AB Memory.
 
     Args:
@@ -325,7 +323,7 @@ def load_validation_result(
 def get_validation_history(
     memory: ABMemory,
     tasc_id: str
-) -> List[Tuple[int, ValidationResult]]:
+) -> list[tuple[int, ValidationResult]]:
     """Get validation history for a tasc.
 
     Args:
@@ -359,7 +357,7 @@ def get_validation_history(
 def get_latest_validation(
     memory: ABMemory,
     tasc_id: str
-) -> Optional[ValidationResult]:
+) -> ValidationResult | None:
     """Get the most recent validation result for a tasc.
 
     Args:
@@ -380,9 +378,9 @@ def get_latest_validation(
 def update_validation_confidence(
     memory: ABMemory,
     tasc_id: str,
-    new_evidence: List[Evidence],
-    moment_id: Optional[int] = None
-) -> Optional[ValidationResult]:
+    new_evidence: list[Evidence],
+    moment_id: int | None = None
+) -> ValidationResult | None:
     """Update validation confidence with new evidence (retrospective validation).
 
     This allows confidence scores to be updated as new evidence emerges,
@@ -444,7 +442,7 @@ def search_evidence_by_source(
     memory: ABMemory,
     source: EvidenceSource,
     limit: int = 50
-) -> List[Evidence]:
+) -> list[Evidence]:
     """Search for evidence by source type.
 
     Args:
@@ -475,7 +473,7 @@ def search_evidence_by_text(
     memory: ABMemory,
     search_text: str,
     limit: int = 50
-) -> List[Evidence]:
+) -> list[Evidence]:
     """Search for evidence by text content.
 
     Args:
@@ -508,7 +506,7 @@ def find_similar_validation_cases(
     memory: ABMemory,
     tasc: Tasc,
     limit: int = 10
-) -> List[Tuple[str, ValidationResult]]:
+) -> list[tuple[str, ValidationResult]]:
     """Find similar past validation cases to learn from.
 
     This searches for tascs with similar titles or requirements and
@@ -549,9 +547,9 @@ async def validate_and_store(
     memory: ABMemory,
     tasc: Tasc,
     evidence_collection: EvidenceCollection,
-    moment_id: Optional[int] = None,
+    moment_id: int | None = None,
     debug: bool = False,
-) -> Tuple[ValidationResult, int]:
+) -> tuple[ValidationResult, int]:
     """Complete validation workflow: validate, store evidence, store results.
 
     This is the main entry point for validation with AB Memory persistence.
@@ -584,7 +582,7 @@ async def validate_and_store(
     tasc.validation_status = result.validation_status
 
     if debug:
-        print(f"\nStored in AB Memory:")
+        print("\nStored in AB Memory:")
         print(f"  Evidence Collection: Card {collection_card_id}")
         print(f"  Validation Result: Card {validation_card_id}")
 

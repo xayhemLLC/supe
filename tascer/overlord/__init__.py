@@ -12,9 +12,9 @@ from .decision import (
 )
 from .legality import (
     LegalityCheck,
+    SecurityViolation,
     check_action_legality,
     is_action_legal,
-    SecurityViolation,
 )
 from .prompt import (
     build_action_context,

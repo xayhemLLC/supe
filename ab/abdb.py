@@ -15,8 +15,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
 
 from .models import Buffer, Card, CardStats, Moment
 
@@ -188,28 +187,24 @@ class ABMemory:
         )
         self.conn.commit()
 
-        # Schema Migration: Add 'dna' column if missing
-        self._ensure_column("cards", "dna", "TEXT")
-        self._ensure_column("selves", "dna", "TEXT")
-        
         # Schema Migration: Add 'track' column for dual-track memory
         # Tracks: 'awareness' (knowledge/content), 'execution' (tasc history), 'sensory' (raw input)
         self._ensure_column("cards", "track", "TEXT DEFAULT 'awareness'")
-        
+
         # Schema Migration: Add 'forgotten' column for soft-delete forgetting
         self._ensure_column("cards", "forgotten", "INTEGER DEFAULT 0")
         self._ensure_column("cards", "forgotten_at", "TEXT")
-        
+
         # Schema Migration: Tags and metadata for linking
         self._ensure_column("cards", "tags", "TEXT")  # JSON array
         self._ensure_column("cards", "metadata", "TEXT")  # JSON object
         self._ensure_column("cards", "parent_card_id", "INTEGER")  # For branching
-        
+
         # Schema Migration: Moment extensions for cognitive architecture
         self._ensure_column("moments", "execution_card_id", "INTEGER")
         self._ensure_column("moments", "sensory_card_id", "INTEGER")
         self._ensure_column("moments", "overlord_narration", "TEXT")  # Final note
-        
+
         # Create tracks table if not exists
         cur = self.conn.cursor()
         cur.execute("""
@@ -220,7 +215,7 @@ class ABMemory:
                 config TEXT
             )
         """)
-        
+
         # Create sensory_organs table if not exists
         cur.execute("""
             CREATE TABLE IF NOT EXISTS sensory_organs (
@@ -247,11 +242,11 @@ class ABMemory:
     # ------------------------------------------------------------------
     def create_moment(
         self,
-        timestamp: Optional[str] = None,
-        master_input: Optional[str] = None,
-        master_output: Optional[str] = None,
-        awareness_card_id: Optional[int] = None,
-        master_card_id: Optional[int] = None,
+        timestamp: str | None = None,
+        master_input: str | None = None,
+        master_output: str | None = None,
+        awareness_card_id: int | None = None,
+        master_card_id: int | None = None,
     ) -> Moment:
         """Create a new moment and return the ``Moment`` instance.
 
@@ -269,7 +264,7 @@ class ABMemory:
             The created ``Moment`` instance with assigned ID and
             timestamp.
         """
-        ts = timestamp or datetime.utcnow().isoformat()
+        ts = timestamp or datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO moments (timestamp, master_input, master_output, awareness_card_id, master_card_id) VALUES (?, ?, ?, ?, ?)",
@@ -301,10 +296,10 @@ class ABMemory:
             awareness_card_id=row["awareness_card_id"],
             master_card_id=row["master_card_id"],
         )
-    
-    def get_latest_moment(self) -> Optional[Moment]:
+
+    def get_latest_moment(self) -> Moment | None:
         """Get the most recent moment (present moment).
-        
+
         Returns:
             Most recent Moment or None if no moments exist.
         """
@@ -321,18 +316,18 @@ class ABMemory:
             awareness_card_id=row["awareness_card_id"],
             master_card_id=row["master_card_id"],
         )
-    
+
     def get_moments(
-        self, 
-        direction: str = "back", 
+        self,
+        direction: str = "back",
         limit: int = 10,
-    ) -> List[Moment]:
+    ) -> list[Moment]:
         """Get moments in chronological order.
-        
+
         Args:
             direction: 'back' (oldest first) or 'forward' (newest first).
             limit: Maximum moments to return.
-        
+
         Returns:
             List of Moments.
         """
@@ -351,22 +346,22 @@ class ABMemory:
             )
             for row in rows
         ]
-    
+
     def search_cards(
-        self, 
-        query: str, 
+        self,
+        query: str,
         limit: int = 10,
         exact: bool = False,
-        track: Optional[str] = None,
-    ) -> List[Card]:
+        track: str | None = None,
+    ) -> list[Card]:
         """Search cards by text in master fields.
-        
+
         Args:
             query: Search query.
             limit: Maximum results.
             exact: If True, exact match. If False, contains match.
             track: Filter by track ('awareness', 'execution') or None for all.
-        
+
         Returns:
             List of matching Cards.
         """
@@ -374,40 +369,40 @@ class ABMemory:
         if exact:
             pattern = query
             sql = """
-                SELECT * FROM cards 
+                SELECT * FROM cards
                 WHERE (master_input = ? OR master_output = ? OR label = ?)
             """
             params = [pattern, pattern, pattern]
         else:
             pattern = f"%{query}%"
             sql = """
-                SELECT * FROM cards 
+                SELECT * FROM cards
                 WHERE (master_input LIKE ? OR master_output LIKE ? OR label LIKE ?)
             """
             params = [pattern, pattern, pattern]
-        
+
         if track:
             sql += " AND track = ?"
             params.append(track)
-        
+
         sql += " ORDER BY id DESC LIMIT ?"
         params.append(limit)
-        
+
         cur.execute(sql, params)
         rows = cur.fetchall()
-        
+
         results = []
         for row in rows:
             card = self.get_card(row["id"])
             results.append(card)
         return results
-    
-    def get_cards_by_moment(self, moment_id: int) -> List[Card]:
+
+    def get_cards_by_moment(self, moment_id: int) -> list[Card]:
         """Get all cards associated with a moment.
-        
+
         Args:
             moment_id: Moment ID to query.
-        
+
         Returns:
             List of Cards at that moment.
         """
@@ -415,15 +410,15 @@ class ABMemory:
         cur.execute("SELECT id FROM cards WHERE moment_id = ?", (moment_id,))
         rows = cur.fetchall()
         return [self.get_card(row["id"]) for row in rows]
-    
-    def get_moment_connections(self, moment_id: int) -> List[int]:
+
+    def get_moment_connections(self, moment_id: int) -> list[int]:
         """Get connected moment IDs (for graph traversal).
-        
+
         Moments are connected through cards that reference them.
-        
+
         Args:
             moment_id: Starting moment ID.
-        
+
         Returns:
             List of connected moment IDs.
         """
@@ -441,13 +436,12 @@ class ABMemory:
     def store_card(
         self,
         label: str,
-        buffers: List[Buffer],
-        owner_self: Optional[str] = None,
-        moment_id: Optional[int] = None,
-        created_at: Optional[str] = None,
-        master_input: Optional[str] = None,
-        master_output: Optional[str] = None,
-        dna: Optional[str] = None,
+        buffers: list[Buffer],
+        owner_self: str | None = None,
+        moment_id: int | None = None,
+        created_at: str | None = None,
+        master_input: str | None = None,
+        master_output: str | None = None,
         track: str = "awareness",
     ) -> Card:
         """Persist a card and its buffers into the database.
@@ -459,9 +453,8 @@ class ABMemory:
             moment_id: Optionally associate with an existing moment; if
                 ``None``, a new moment will be created.
             created_at: Override the creation timestamp; defaults to
-                ``datetime.utcnow().isoformat()``.
-            dna: Optional serialized DNA string.
-            track: Memory track - 'awareness' (knowledge/content), 
+                ``datetime.now(timezone.utc).replace(tzinfo=None).isoformat()``.
+            track: Memory track - 'awareness' (knowledge/content),
                    'execution' (tasc history), or 'sensory' (raw input).
 
         Returns:
@@ -471,11 +464,11 @@ class ABMemory:
         if moment_id is None:
             moment = self.create_moment()
             moment_id = moment.id
-        ts = created_at or datetime.utcnow().isoformat()
+        ts = created_at or datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         cur = self.conn.cursor()
         cur.execute(
-            "INSERT INTO cards (label, moment_id, owner_self, created_at, master_input, master_output, dna, track) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (label, moment_id, owner_self, ts, master_input, master_output, dna, track),
+            "INSERT INTO cards (label, moment_id, owner_self, created_at, master_input, master_output, track) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (label, moment_id, owner_self, ts, master_input, master_output, track),
         )
         card_id = cur.lastrowid
         # Insert buffers
@@ -486,10 +479,10 @@ class ABMemory:
                 (card_id, buf.name, headers_json, buf.payload, buf.exe),
             )
         self.conn.commit()
-        
+
         # Initialize card stats so card appears in list_cards_by_strength
         self.init_card_stats(card_id)
-        
+
         return Card(
             id=card_id,
             label=label,
@@ -515,7 +508,7 @@ class ABMemory:
             (card_id,),
         )
         buffer_rows = cur.fetchall()
-        buffers: List[Buffer] = []
+        buffers: list[Buffer] = []
         for b_row in buffer_rows:
             headers = json.loads(b_row["headers"]) if b_row["headers"] else {}
             buffer = Buffer(
@@ -534,14 +527,13 @@ class ABMemory:
             buffers=buffers,
             master_input=row["master_input"],
             master_output=row["master_output"],
-            dna=row["dna"] if "dna" in row.keys() else None,
             track=row["track"] if "track" in row.keys() else "awareness",
         )
 
     # ------------------------------------------------------------------
     # Buffer and card updates
     # ------------------------------------------------------------------
-    def update_card_buffers(self, card_id: int, buffers: List[Buffer]) -> None:
+    def update_card_buffers(self, card_id: int, buffers: list[Buffer]) -> None:
         """Replace all buffers on the given card with a new list.
 
         Args:
@@ -574,8 +566,8 @@ class ABMemory:
     def update_card_master(
         self,
         card_id: int,
-        master_input: Optional[str] = None,
-        master_output: Optional[str] = None,
+        master_input: str | None = None,
+        master_output: str | None = None,
     ) -> None:
         """Update the master input and/or master output for a card.
 
@@ -587,7 +579,7 @@ class ABMemory:
                 leave unchanged.
         """
         fields = []
-        params: List[object] = []
+        params: list[object] = []
         if master_input is not None:
             fields.append("master_input = ?")
             params.append(master_input)
@@ -607,10 +599,10 @@ class ABMemory:
     def update_moment_fields(
         self,
         moment_id: int,
-        master_input: Optional[str] = None,
-        master_output: Optional[str] = None,
-        awareness_card_id: Optional[int] = None,
-        master_card_id: Optional[int] = None,
+        master_input: str | None = None,
+        master_output: str | None = None,
+        awareness_card_id: int | None = None,
+        master_card_id: int | None = None,
     ) -> None:
         """Update fields on a moment.
 
@@ -621,7 +613,7 @@ class ABMemory:
             awareness_card_id: ID of awareness card to associate (optional).
         """
         fields = []
-        params: List[object] = []
+        params: list[object] = []
         if master_input is not None:
             fields.append("master_input = ?")
             params.append(master_input)
@@ -644,7 +636,7 @@ class ABMemory:
         )
         self.conn.commit()
 
-    def find_cards_by_label(self, label: str) -> List[Card]:
+    def find_cards_by_label(self, label: str) -> list[Card]:
         """Return all cards with the given label."""
         cur = self.conn.cursor()
         cur.execute("SELECT id FROM cards WHERE label = ? ORDER BY id ASC", (label,))
@@ -661,9 +653,8 @@ class ABMemory:
     def create_self(
         self,
         name: str,
-        role: Optional[str] = None,
-        subscribed_buffers: Optional[List[str]] = None,
-        dna: Optional[str] = None,
+        role: str | None = None,
+        subscribed_buffers: list[str] | None = None,
     ) -> int:
         """Create a new subself (self) with its own lane card.
 
@@ -676,29 +667,28 @@ class ABMemory:
             role: Optional role (e.g., "planner", "coder").
             subscribed_buffers: Optional list of buffer names this self
                 is interested in. Used for filtering input.
-            dna: Optional serialized DNA string.
 
         Returns:
             The ID of the new subself (row in ``selves`` table).
         """
         # Create an empty lane card
         lane_card = self.store_card(label="lane", buffers=[], owner_self=name)
-        subself_created_at = datetime.utcnow().isoformat()
+        subself_created_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         buffers_json = json.dumps(subscribed_buffers) if subscribed_buffers else None
         cur = self.conn.cursor()
         cur.execute(
-            "INSERT INTO selves (name, role, lane_card_id, subscribed_buffers, created_at, dna) VALUES (?, ?, ?, ?, ?, ?)",
-            (name, role, lane_card.id, buffers_json, subself_created_at, dna),
+            "INSERT INTO selves (name, role, lane_card_id, subscribed_buffers, created_at) VALUES (?, ?, ?, ?, ?)",
+            (name, role, lane_card.id, buffers_json, subself_created_at),
         )
         self.conn.commit()
         return cur.lastrowid
 
-    def list_selves(self) -> List[dict]:
+    def list_selves(self) -> list[dict]:
         """Return a list of all subselves as dictionaries."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM selves ORDER BY id ASC")
         rows = cur.fetchall()
-        selves: List[dict] = []
+        selves: list[dict] = []
         for row in rows:
             buffers = json.loads(row["subscribed_buffers"]) if row["subscribed_buffers"] else []
             selves.append(
@@ -728,7 +718,6 @@ class ABMemory:
             "lane_card_id": row["lane_card_id"],
             "subscribed_buffers": buffers,
             "created_at": row["created_at"],
-            "dna": row["dna"] if "dna" in row.keys() else None,
         }
 
     def delete_self(self, self_id: int) -> None:
@@ -746,7 +735,7 @@ class ABMemory:
         subscriber_card_id: int,
         source_card_id: int,
         buffer_name: str,
-        config: Optional[dict] = None,
+        config: dict | None = None,
     ) -> int:
         """Create a buffer subscription.
 
@@ -756,7 +745,7 @@ class ABMemory:
         options (e.g., filters).  Returns the subscription ID.
         """
         cfg_json = json.dumps(config) if config is not None else None
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO subscriptions (subscriber_card_id, source_card_id, buffer_name, config, created_at) "
@@ -768,14 +757,14 @@ class ABMemory:
 
     def list_subscriptions(
         self,
-        subscriber_card_id: Optional[int] = None,
-        source_card_id: Optional[int] = None,
-    ) -> List[dict]:
+        subscriber_card_id: int | None = None,
+        source_card_id: int | None = None,
+    ) -> list[dict]:
         """List subscriptions filtered by subscriber or source card IDs."""
         cur = self.conn.cursor()
         query = "SELECT * FROM subscriptions"
-        params: List[int] = []
-        conditions: List[str] = []
+        params: list[int] = []
+        conditions: list[str] = []
         if subscriber_card_id is not None:
             conditions.append("subscriber_card_id = ?")
             params.append(subscriber_card_id)
@@ -787,7 +776,7 @@ class ABMemory:
         query += " ORDER BY id ASC"
         cur.execute(query, tuple(params))
         rows = cur.fetchall()
-        subs: List[dict] = []
+        subs: list[dict] = []
         for row in rows:
             cfg = json.loads(row["config"]) if row["config"] else None
             subs.append(
@@ -825,7 +814,7 @@ class ABMemory:
         Returns:
             The ID of the new connection record.
         """
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO connections (source_card_id, target_card_id, relation, strength, created_at) "
@@ -835,7 +824,7 @@ class ABMemory:
         self.conn.commit()
         return cur.lastrowid
 
-    def list_connections(self, card_id: Optional[int] = None) -> List[dict]:
+    def list_connections(self, card_id: int | None = None) -> list[dict]:
         """List connections for a specific card or all cards.
 
         Args:
@@ -856,7 +845,7 @@ class ABMemory:
                 (card_id, card_id),
             )
             rows = cur.fetchall()
-        conns: List[dict] = []
+        conns: list[dict] = []
         for row in rows:
             conns.append(
                 {
@@ -880,7 +869,7 @@ class ABMemory:
         source_card_id: int,
         target_card_id: int,
         confidence: float = 1.0,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """Store a typed semantic relation between two cards.
 
@@ -905,10 +894,10 @@ class ABMemory:
 
     def get_relations(
         self,
-        source_card_id: Optional[int] = None,
-        target_card_id: Optional[int] = None,
-        relation_type: Optional[str] = None,
-    ) -> List[dict]:
+        source_card_id: int | None = None,
+        target_card_id: int | None = None,
+        relation_type: str | None = None,
+    ) -> list[dict]:
         """Get relations matching the specified filters.
 
         Args:
@@ -965,8 +954,8 @@ class ABMemory:
     def get_inverse_relations(
         self,
         card_id: int,
-        relation_type: Optional[str] = None,
-    ) -> List[dict]:
+        relation_type: str | None = None,
+    ) -> list[dict]:
         """Get relations where the specified card is the target.
 
         Args:
@@ -988,7 +977,7 @@ class ABMemory:
         cur.execute("DELETE FROM relations WHERE id = ?", (relation_id,))
         self.conn.commit()
 
-    def get_relation_by_id(self, relation_id: str) -> Optional[dict]:
+    def get_relation_by_id(self, relation_id: str) -> dict | None:
         """Get a specific relation by ID.
 
         Args:
@@ -1017,9 +1006,9 @@ class ABMemory:
 
     def count_relations(
         self,
-        source_card_id: Optional[int] = None,
-        target_card_id: Optional[int] = None,
-        relation_type: Optional[str] = None,
+        source_card_id: int | None = None,
+        target_card_id: int | None = None,
+        relation_type: str | None = None,
     ) -> int:
         """Count relations matching the specified filters.
 
@@ -1102,7 +1091,7 @@ class ABMemory:
             The updated CardStats.
         """
         self.init_card_stats(card_id)
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         cur = self.conn.cursor()
         cur.execute(
             "UPDATE card_stats SET strength = strength * 0.9 + 1.0, "
@@ -1130,7 +1119,7 @@ class ABMemory:
         self.conn.commit()
         return affected
 
-    def list_cards_by_strength(self, limit: int = 10) -> List[CardStats]:
+    def list_cards_by_strength(self, limit: int = 10) -> list[CardStats]:
         """Return cards ordered by strength (highest first).
 
         Args:
@@ -1154,30 +1143,30 @@ class ABMemory:
             )
             for row in rows
         ]
-    
+
     # ------------------------------------------------------------------
     # Forgetting mechanism (cognitive memory model)
     # ------------------------------------------------------------------
-    
+
     def forget(self, card_id: int) -> None:
         """Forget a card (soft delete).
-        
+
         The card is marked as forgotten but can be recovered.
-        
+
         Args:
             card_id: ID of the card to forget.
         """
-        ts = datetime.utcnow().isoformat()
+        ts = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         cur = self.conn.cursor()
         cur.execute(
             "UPDATE cards SET forgotten = 1, forgotten_at = ? WHERE id = ?",
             (ts, card_id)
         )
         self.conn.commit()
-    
+
     def recover(self, card_id: int) -> None:
         """Recover a forgotten card.
-        
+
         Args:
             card_id: ID of the card to recover.
         """
@@ -1187,64 +1176,64 @@ class ABMemory:
             (card_id,)
         )
         self.conn.commit()
-    
+
     def apply_forgetting(
         self,
         strength_threshold: float = 0.1,
         min_age_days: int = 7,
     ) -> int:
         """Forget cards on weak branches.
-        
+
         Rule: If a card's strength < threshold
         AND the card is older than min_age_days
         AND the card hasn't been recalled recently,
         the card is forgotten (soft delete).
-        
+
         This mimics biological memory consolidation.
-        
+
         Args:
             strength_threshold: Cards below this strength are candidates.
             min_age_days: Don't forget cards newer than this.
-        
+
         Returns:
             Number of cards forgotten.
         """
         from datetime import timedelta
-        
-        cutoff = (datetime.utcnow() - timedelta(days=min_age_days)).isoformat()
-        
+
+        cutoff = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=min_age_days)).isoformat()
+
         cur = self.conn.cursor()
-        
+
         # Find weak, old, un-recalled cards
         cur.execute("""
-            SELECT c.id 
+            SELECT c.id
             FROM cards c
             LEFT JOIN card_stats cs ON c.id = cs.card_id
-            WHERE 
+            WHERE
                 c.forgotten = 0
                 AND c.created_at < ?
                 AND (cs.strength IS NULL OR cs.strength < ?)
                 AND (cs.last_recalled IS NULL OR cs.last_recalled < ?)
         """, (cutoff, strength_threshold, cutoff))
-        
+
         to_forget = [row["id"] for row in cur.fetchall()]
-        
+
         if to_forget:
-            ts = datetime.utcnow().isoformat()
+            ts = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             cur.executemany(
                 "UPDATE cards SET forgotten = 1, forgotten_at = ? WHERE id = ?",
                 [(ts, card_id) for card_id in to_forget]
             )
             self.conn.commit()
-        
+
         return len(to_forget)
-    
-    def list_forgotten(self, limit: int = 100) -> List[Card]:
+
+    def list_forgotten(self, limit: int = 100) -> list[Card]:
         """List forgotten cards (for potential recovery).
-        
+
         Args:
             limit: Maximum cards to return.
-        
+
         Returns:
             List of forgotten Cards.
         """

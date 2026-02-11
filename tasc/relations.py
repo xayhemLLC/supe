@@ -11,11 +11,11 @@ sophisticated reasoning capabilities including:
 Relations are Atom-serializable (pindex=12), maintaining architectural consistency.
 """
 
-from dataclasses import dataclass, field, asdict
+import json
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, Optional, List
-import json
+from typing import Any
 
 from tasc.atom import Atom
 
@@ -109,10 +109,10 @@ class Relation:
     source_card_id: int
     target_card_id: int
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: int = field(default_factory=lambda: int(datetime.now().timestamp() * 1000))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -125,7 +125,7 @@ class Relation:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Relation":
+    def from_dict(cls, data: dict[str, Any]) -> "Relation":
         """Create Relation from dictionary."""
         return cls(
             id=data["id"],
@@ -173,7 +173,7 @@ class Relation:
         source_card_id: int,
         target_card_id: int,
         confidence: float = 1.0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "Relation":
         """Factory method for creating relations.
 
@@ -218,7 +218,7 @@ class Relation:
             RelationType.GENERALIZES,
         )
 
-    def get_inverse_type(self) -> Optional[RelationType]:
+    def get_inverse_type(self) -> RelationType | None:
         """Get the inverse relation type if it exists.
 
         Returns:
@@ -254,27 +254,27 @@ class RelationCollection:
     """
     id: str
     description: str
-    relations: List[Relation] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    relations: list[Relation] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: int = field(default_factory=lambda: int(datetime.now().timestamp() * 1000))
 
     def add_relation(self, relation: Relation) -> None:
         """Add a relation to this collection."""
         self.relations.append(relation)
 
-    def get_by_type(self, relation_type: RelationType) -> List[Relation]:
+    def get_by_type(self, relation_type: RelationType) -> list[Relation]:
         """Get all relations of a specific type."""
         return [r for r in self.relations if r.type == relation_type]
 
-    def get_by_source(self, card_id: int) -> List[Relation]:
+    def get_by_source(self, card_id: int) -> list[Relation]:
         """Get all relations with this card as source."""
         return [r for r in self.relations if r.source_card_id == card_id]
 
-    def get_by_target(self, card_id: int) -> List[Relation]:
+    def get_by_target(self, card_id: int) -> list[Relation]:
         """Get all relations with this card as target."""
         return [r for r in self.relations if r.target_card_id == card_id]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -285,7 +285,7 @@ class RelationCollection:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RelationCollection":
+    def from_dict(cls, data: dict[str, Any]) -> "RelationCollection":
         """Create RelationCollection from dictionary."""
         return cls(
             id=data["id"],
@@ -300,7 +300,7 @@ class RelationCollection:
         cls,
         collection_id: str,
         description: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "RelationCollection":
         """Factory method for creating collections.
 
@@ -326,10 +326,10 @@ class RelationCollection:
 # Helper functions for common relation patterns
 
 def create_causal_chain(
-    card_ids: List[int],
+    card_ids: list[int],
     relation_id_prefix: str,
     confidence: float = 1.0,
-) -> List[Relation]:
+) -> list[Relation]:
     """Create a causal chain: A causes B causes C causes D...
 
     Args:
@@ -355,11 +355,11 @@ def create_causal_chain(
 
 
 def create_support_network(
-    evidence_card_ids: List[int],
+    evidence_card_ids: list[int],
     belief_card_id: int,
     relation_id_prefix: str,
-    confidences: Optional[List[float]] = None,
-) -> List[Relation]:
+    confidences: list[float] | None = None,
+) -> list[Relation]:
     """Create support relations from multiple evidence to one belief.
 
     Args:
@@ -389,9 +389,9 @@ def create_support_network(
 
 
 def create_dependency_graph(
-    task_pairs: List[tuple[int, int]],
+    task_pairs: list[tuple[int, int]],
     relation_id_prefix: str,
-) -> List[Relation]:
+) -> list[Relation]:
     """Create DEPENDS_ON relations for task ordering.
 
     Args:

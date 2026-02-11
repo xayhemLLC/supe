@@ -11,14 +11,15 @@ for higher‑level planning and orchestration logic.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from ab import ABMemory
-
-from .tasc import Tasc
-from .ab_integration import store_tasc, load_tasc
-from .ab_integration import attach_buffer_to_tasc  # re-export for convenience
 from ab.models import Buffer  # type: ignore
+
+from .ab_integration import (
+    attach_buffer_to_tasc,  # re-export for convenience
+    load_tasc,
+    store_tasc,
+)
+from .tasc import Tasc
 
 
 class TascQueue:
@@ -27,7 +28,7 @@ class TascQueue:
     def __init__(self, memory: ABMemory) -> None:
         self.memory = memory
 
-    def create_tasc(self, tasc: Tasc, owner_self: Optional[str] = None) -> int:
+    def create_tasc(self, tasc: Tasc, owner_self: str | None = None) -> int:
         """Persist a Tasc and return its card ID."""
         card_id = store_tasc(self.memory, tasc, owner_self=owner_self)
         return card_id
@@ -36,7 +37,7 @@ class TascQueue:
         """Retrieve a Tasc by its card ID."""
         return load_tasc(self.memory, card_id)
 
-    def list_tascs(self) -> List[int]:
+    def list_tascs(self) -> list[int]:
         """Return the card IDs of all Tascs stored in memory."""
         cards = self.memory.find_cards_by_label("tasc")
         return [c.id for c in cards]
@@ -64,7 +65,6 @@ class TascQueue:
             dependencies=current_tasc.dependencies,
         )
         # Encode and replace the tasc payload buffer while preserving attachments
-        from .atom import decode_atom, Atom
         # Build new payload
         new_atom = updated_tasc.to_atom()
         new_payload = new_atom.encode()

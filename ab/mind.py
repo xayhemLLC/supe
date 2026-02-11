@@ -15,26 +15,19 @@ their details.
 
 from __future__ import annotations
 
-import json
-from typing import Dict, List, Optional
-
 from .abdb import ABMemory
+from .actions import registry as action_registry
 from .awareness import create_awareness_card
 from .hardware import get_raw_input_data
-from .actions import registry as action_registry
-from .models import Buffer, Moment, Card
+from .models import Buffer, Card, Moment
 from .overlord import Overlord
-from .subselves import LaneManager
-from tasc.atom import Atom  # type: ignore
-from tasc.atomtypes import registry  # type: ignore
-from tasc.ulist import UList  # type: ignore
 
 
 def create_moment_with_inputs(
     memory: ABMemory,
     master_input: str,
-    raw_inputs: Dict[str, str],
-    owner_self: Optional[str] = None,
+    raw_inputs: dict[str, str],
+    owner_self: str | None = None,
 ) -> Moment:
     """Create a new moment with an awareness card capturing raw inputs.
 
@@ -52,7 +45,7 @@ def create_moment_with_inputs(
         ``master_input`` and ``awareness_card_id`` fields are populated.
     """
     # Build buffers for the awareness card from raw inputs
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     for key, val in raw_inputs.items():
         buf = Buffer(
             name=key,
@@ -72,8 +65,8 @@ def record_master_output(
     memory: ABMemory,
     moment_id: int,
     output: str,
-    buffers: Optional[List[Buffer]] = None,
-    owner_self: Optional[str] = None,
+    buffers: list[Buffer] | None = None,
+    owner_self: str | None = None,
 ) -> int:
     """Record the master output of a moment and persist as a card.
 
@@ -107,9 +100,9 @@ def record_master_output(
 def pulse(
     memory: ABMemory,
     master_input: str,
-    raw_inputs: Dict[str, str],
-    subselves: Dict[str, callable],
-    owner_self: Optional[str] = None,
+    raw_inputs: dict[str, str],
+    subselves: dict[str, callable],
+    owner_self: str | None = None,
 ) -> Card:
     """Execute a full cognitive pulse: input, transform, emit, integrate, record.
 
@@ -146,7 +139,7 @@ def pulse(
     awareness_card_id = moment.awareness_card_id
     assert awareness_card_id is not None
     # 2. Transform: call each subself's branch on the awareness card
-    proposals: List[dict] = []
+    proposals: list[dict] = []
     for name, branch in subselves.items():
         # Each branch returns (text, weight)
         out, weight = branch(memory, awareness_card_id)
@@ -174,9 +167,9 @@ def pulse(
 
 def create_master_card(
     memory: ABMemory,
-    sensor_data: Dict[str, str],
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    sensor_data: dict[str, str],
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Create a master card containing raw sensor and state data.
 
@@ -196,7 +189,7 @@ def create_master_card(
     Returns:
         The ID of the stored master card.
     """
-    buffers: List[Buffer] = []
+    buffers: list[Buffer] = []
     for key, val in sensor_data.items():
         buf = Buffer(
             name=key,
@@ -211,9 +204,9 @@ def create_master_card(
 
 def pulse_supe(
     memory: ABMemory,
-    raw_inputs: Dict[str, str],
-    subselves: Dict[str, callable],
-    owner_self: Optional[str] = None,
+    raw_inputs: dict[str, str],
+    subselves: dict[str, callable],
+    owner_self: str | None = None,
 ) -> Card:
     """Execute an extended cognitive pulse with hardware and action execution.
 
@@ -248,7 +241,7 @@ def pulse_supe(
     # Update the moment with master_card_id and register the master input (we
     # synthesize a master input by concatenating some sensor values and raw_inputs)
     # Synthesise master_input as prompt plus top-level sensor summary
-    master_input_parts: List[str] = []
+    master_input_parts: list[str] = []
     if "prompt" in raw_inputs:
         master_input_parts.append(raw_inputs["prompt"])
     # Include previous_output and threads_of_thought to provide context
@@ -260,7 +253,7 @@ def pulse_supe(
     memory.update_moment_fields(tmp_moment.id, master_input=master_input, master_card_id=master_card_id)
     # 3. Create awareness card and attach it to the existing moment
     # Build buffers for awareness from raw_inputs
-    awareness_buffers: List[Buffer] = []
+    awareness_buffers: list[Buffer] = []
     for key, val in raw_inputs.items():
         buf = Buffer(
             name=key,
@@ -273,7 +266,7 @@ def pulse_supe(
     # Update the moment with the awareness card ID
     memory.update_moment_fields(tmp_moment.id, awareness_card_id=awareness_card_id)
     # 4. Run subselves to produce proposals
-    proposals: List[dict] = []
+    proposals: list[dict] = []
     for name, branch in subselves.items():
         out, weight = branch(memory, awareness_card_id)
         proposals.append({"subself_id": name, "action": out, "priority": weight})

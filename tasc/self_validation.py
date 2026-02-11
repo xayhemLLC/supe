@@ -14,14 +14,15 @@ This enables truly self-validating tascs that prove their own completion
 through formal experimentation, not just assertion.
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
 import asyncio
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
+from .domains import TaskDomain
 from .evidence import Evidence, EvidenceCollection, EvidenceSource
 from .tasc import Tasc
-from .domains import TaskDomain
 
 
 class ExperimentStatus(Enum):
@@ -46,8 +47,8 @@ class ValidationExperiment:
     test_code: str  # Code to run the test
     expected_outcome: str  # What should happen if hypothesis is true
     status: ExperimentStatus = ExperimentStatus.PENDING
-    actual_outcome: Optional[str] = None
-    error_message: Optional[str] = None
+    actual_outcome: str | None = None
+    error_message: str | None = None
     execution_time: float = 0.0
 
     def to_evidence(self) -> Evidence:
@@ -75,7 +76,7 @@ class ExperimentGenerator:
         self,
         tasc: Tasc,
         domain: TaskDomain,
-    ) -> List[ValidationExperiment]:
+    ) -> list[ValidationExperiment]:
         """Generate validation experiments for a tasc.
 
         Args:
@@ -96,7 +97,7 @@ class ExperimentGenerator:
         else:
             return self._generate_generic_experiments(tasc)
 
-    def _generate_debugging_experiments(self, tasc: Tasc) -> List[ValidationExperiment]:
+    def _generate_debugging_experiments(self, tasc: Tasc) -> list[ValidationExperiment]:
         """Generate experiments for debugging tasks.
 
         Experiments test:
@@ -138,7 +139,7 @@ class ExperimentGenerator:
 
         return experiments
 
-    def _generate_feature_experiments(self, tasc: Tasc) -> List[ValidationExperiment]:
+    def _generate_feature_experiments(self, tasc: Tasc) -> list[ValidationExperiment]:
         """Generate experiments for feature implementation.
 
         Experiments test:
@@ -180,7 +181,7 @@ class ExperimentGenerator:
 
         return experiments
 
-    def _generate_refactoring_experiments(self, tasc: Tasc) -> List[ValidationExperiment]:
+    def _generate_refactoring_experiments(self, tasc: Tasc) -> list[ValidationExperiment]:
         """Generate experiments for refactoring tasks.
 
         Experiments test:
@@ -212,7 +213,7 @@ class ExperimentGenerator:
 
         return experiments
 
-    def _generate_performance_experiments(self, tasc: Tasc) -> List[ValidationExperiment]:
+    def _generate_performance_experiments(self, tasc: Tasc) -> list[ValidationExperiment]:
         """Generate experiments for performance optimization.
 
         Experiments test:
@@ -243,7 +244,7 @@ class ExperimentGenerator:
 
         return experiments
 
-    def _generate_generic_experiments(self, tasc: Tasc) -> List[ValidationExperiment]:
+    def _generate_generic_experiments(self, tasc: Tasc) -> list[ValidationExperiment]:
         """Generate generic validation experiments.
 
         For tasks without specific domain knowledge.
@@ -285,7 +286,7 @@ class ExperimentExecutor:
     async def execute_experiment(
         self,
         experiment: ValidationExperiment,
-        executor_func: Optional[Callable] = None,
+        executor_func: Callable | None = None,
     ) -> ValidationExperiment:
         """Execute a single validation experiment.
 
@@ -330,7 +331,7 @@ class ExperimentExecutor:
 
         return experiment
 
-    async def _execute_test_code(self, test_code: str) -> Dict[str, Any]:
+    async def _execute_test_code(self, test_code: str) -> dict[str, Any]:
         """Execute test code and return results.
 
         Args:
@@ -368,9 +369,9 @@ class ExperimentExecutor:
 
     async def execute_all_experiments(
         self,
-        experiments: List[ValidationExperiment],
-        executor_func: Optional[Callable] = None,
-    ) -> List[ValidationExperiment]:
+        experiments: list[ValidationExperiment],
+        executor_func: Callable | None = None,
+    ) -> list[ValidationExperiment]:
         """Execute all experiments in parallel.
 
         Args:
@@ -415,9 +416,9 @@ class SelfValidatingTaskc:
         self.domain = domain
         self.generator = ExperimentGenerator()
         self.executor = ExperimentExecutor()
-        self.experiments: List[ValidationExperiment] = []
+        self.experiments: list[ValidationExperiment] = []
 
-    async def synthesize_validation_experiments(self) -> List[ValidationExperiment]:
+    async def synthesize_validation_experiments(self) -> list[ValidationExperiment]:
         """Generate validation experiments for this tasc.
 
         Returns:
@@ -428,8 +429,8 @@ class SelfValidatingTaskc:
 
     async def execute_validation_experiments(
         self,
-        executor_func: Optional[Callable] = None,
-    ) -> List[ValidationExperiment]:
+        executor_func: Callable | None = None,
+    ) -> list[ValidationExperiment]:
         """Execute all validation experiments.
 
         Args:
@@ -466,7 +467,7 @@ class SelfValidatingTaskc:
 
     async def self_validate(
         self,
-        executor_func: Optional[Callable] = None,
+        executor_func: Callable | None = None,
     ) -> EvidenceCollection:
         """Complete self-validation workflow.
 
@@ -489,7 +490,7 @@ class SelfValidatingTaskc:
 
         return collection
 
-    def get_validation_summary(self) -> Dict[str, Any]:
+    def get_validation_summary(self) -> dict[str, Any]:
         """Get summary of validation experiments.
 
         Returns:

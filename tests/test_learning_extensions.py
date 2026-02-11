@@ -7,22 +7,20 @@ Tests Phase 0 implementation:
 - LearningTascValidation contract
 """
 
-import pytest
 from datetime import datetime
 
-from tasc.tasc import Tasc
 from tasc.atom import decode_atom
 from tasc.atomtypes import registry
+from tasc.tasc import Tasc
+from tascer.contracts import GateResult, LearningTascValidation
 from tascer.gates.confidence_gate import ConfidenceGate
-from tascer.gates.gap_gate import GapGate
 from tascer.gates.experiment_gate import ExperimentGate
+from tascer.gates.gap_gate import GapGate
 from tascer.proofs.learning_proof import (
-    prove_learning_session,
-    prove_experiment_success,
     compute_proof_hash,
+    prove_experiment_success,
+    prove_learning_session,
 )
-from tascer.contracts import LearningTascValidation, GateResult
-
 
 # ============================================================================
 # Tasc Learning Fields Tests

@@ -61,6 +61,7 @@ packages = ["ab", "tasc", "tascer", "supe"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = [".supe", ".tascer"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
@@ -73,5 +74,9 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["ab", "tasc"]
+source = ["ab", "tasc", "tascer", "supe"]
 omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 35
+show_missing = true

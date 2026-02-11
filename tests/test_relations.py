@@ -11,35 +11,37 @@ Tests cover:
 - Evolution tracking
 """
 
-import pytest
-import tempfile
 import os
-from tasc.relations import (
-    Relation,
-    RelationType,
-    RelationCollection,
-    create_causal_chain,
-    create_support_network,
-    create_dependency_graph,
-)
+import tempfile
+
+import pytest
+
+from ab.abdb import ABMemory
+from ab.models import Buffer
 from tasc.relation_storage import (
-    store_relation,
+    calculate_support_strength,
+    check_dependencies_satisfied,
+    count_relations,
+    delete_relation,
+    find_contradictions,
+    get_causal_chain,
+    get_dependencies,
+    get_evolution_chain,
+    get_relation_by_id,
     get_relations_from_card,
     get_relations_to_card,
-    get_relation_by_id,
-    delete_relation,
-    count_relations,
-    get_causal_chain,
     get_support_network,
-    calculate_support_strength,
-    find_contradictions,
-    get_dependencies,
-    check_dependencies_satisfied,
+    store_relation,
     topological_sort_tasks,
-    get_evolution_chain,
 )
-from ab.abdb import ABMemory
-from ab.models import Card, Buffer
+from tasc.relations import (
+    Relation,
+    RelationCollection,
+    RelationType,
+    create_causal_chain,
+    create_dependency_graph,
+    create_support_network,
+)
 
 
 @pytest.fixture

@@ -4,13 +4,13 @@ The Supe provides a goal-oriented async API for planning and executing work.
 
 Example:
     from supe import Supe
-    
+
     supe = Supe()
     result = await supe.exe("Ingest Discord API docs")
     answer = await supe.recall("How do slash commands work?")
 """
 
-from .supe import Supe, AgentPort, RecallResult, ExecutionResult, AgentResponse
+from .supe import AgentPort, AgentResponse, ExecutionResult, RecallResult, Supe
 
 __version__ = "0.1.0"
 

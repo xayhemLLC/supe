@@ -31,11 +31,11 @@ Visual structure:
     [x] web links (conceptual/causal/semantic)
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Callable, Iterator
-from uuid import uuid4
+from typing import Any
 
 
 class LinkType(Enum):
@@ -64,8 +64,8 @@ class CardLink:
     target_id: int
     link_type: LinkType
     strength: float = 1.0  # 0.0-1.0, higher = stronger connection
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
 
 
 @dataclass
@@ -73,11 +73,11 @@ class TreeNode:
     """A moment in the tree with its branching cards."""
     moment_id: int
     timestamp: str
-    card_ids: List[int] = field(default_factory=list)
+    card_ids: list[int] = field(default_factory=list)
 
     # Links to adjacent moments (temporal)
-    prev_moment_id: Optional[int] = None
-    next_moment_id: Optional[int] = None
+    prev_moment_id: int | None = None
+    next_moment_id: int | None = None
 
 
 @dataclass
@@ -88,14 +88,14 @@ class WebNode:
     label: str
 
     # Buffers stored as dict for quick access
-    buffers: Dict[str, Any] = field(default_factory=dict)
+    buffers: dict[str, Any] = field(default_factory=dict)
 
     # Web connections
-    outgoing_links: List[CardLink] = field(default_factory=list)
-    incoming_links: List[CardLink] = field(default_factory=list)
+    outgoing_links: list[CardLink] = field(default_factory=list)
+    incoming_links: list[CardLink] = field(default_factory=list)
 
     # Embedding for semantic traversal
-    embedding: Optional[List[float]] = None
+    embedding: list[float] | None = None
 
     # Memory physics
     strength: float = 1.0
@@ -125,15 +125,15 @@ class TreeWebMemory:
         self.ab_memory = ab_memory
 
         # In-memory indices (can be rebuilt from ABMemory)
-        self.moments: Dict[int, TreeNode] = {}
-        self.cards: Dict[int, WebNode] = {}
-        self.links: List[CardLink] = []
+        self.moments: dict[int, TreeNode] = {}
+        self.cards: dict[int, WebNode] = {}
+        self.links: list[CardLink] = []
 
         # Concept index for fast lookup
-        self.concept_index: Dict[str, Set[int]] = {}  # concept → card_ids
+        self.concept_index: dict[str, set[int]] = {}  # concept → card_ids
 
         # Timeline (ordered moment IDs)
-        self.timeline: List[int] = []
+        self.timeline: list[int] = []
 
     # =========================================================================
     # Tree Operations (Temporal)
@@ -154,8 +154,8 @@ class TreeWebMemory:
         return node
 
     def attach_card(self, card_id: int, moment_id: int, label: str,
-                    buffers: Dict[str, Any] = None,
-                    embedding: List[float] = None) -> WebNode:
+                    buffers: dict[str, Any] = None,
+                    embedding: list[float] = None) -> WebNode:
         """Attach a card to a moment (create a branch)."""
         if moment_id not in self.moments:
             raise ValueError(f"Moment {moment_id} not found")
@@ -187,7 +187,7 @@ class TreeWebMemory:
 
     def link_cards(self, source_id: int, target_id: int,
                    link_type: LinkType, strength: float = 1.0,
-                   metadata: Dict[str, Any] = None) -> CardLink:
+                   metadata: dict[str, Any] = None) -> CardLink:
         """Create a web link between two cards."""
         if source_id not in self.cards or target_id not in self.cards:
             raise ValueError("Both cards must exist")
@@ -206,7 +206,7 @@ class TreeWebMemory:
 
         return link
 
-    def auto_link_by_concepts(self, card_id: int, min_shared: int = 2) -> List[CardLink]:
+    def auto_link_by_concepts(self, card_id: int, min_shared: int = 2) -> list[CardLink]:
         """Automatically create concept links to related cards."""
         if card_id not in self.cards:
             return []
@@ -215,7 +215,7 @@ class TreeWebMemory:
         concepts = card.buffers.get("concepts", [])
 
         # Find cards sharing concepts
-        related_counts: Dict[int, int] = {}
+        related_counts: dict[int, int] = {}
         for concept in concepts:
             for other_id in self.concept_index.get(concept, set()):
                 if other_id != card_id:
@@ -237,7 +237,7 @@ class TreeWebMemory:
         return new_links
 
     def auto_link_by_similarity(self, card_id: int, threshold: float = 0.8,
-                                 max_links: int = 5) -> List[CardLink]:
+                                 max_links: int = 5) -> list[CardLink]:
         """Create semantic links to similar cards via embeddings."""
         if card_id not in self.cards:
             return []
@@ -261,8 +261,8 @@ class TreeWebMemory:
         for other_id, sim in similarities[:max_links]:
             # Check if link already exists
             existing = any(
-                l.target_id == other_id and l.link_type == LinkType.SIMILAR
-                for l in card.outgoing_links
+                link.target_id == other_id and link.link_type == LinkType.SIMILAR
+                for link in card.outgoing_links
             )
             if not existing:
                 link = self.link_cards(
@@ -282,7 +282,7 @@ class TreeWebMemory:
     def traverse_temporal(self, start_moment_id: int,
                           direction: TraversalDirection = TraversalDirection.FORWARD,
                           max_steps: int = 10,
-                          include_cards: bool = True) -> Iterator[Dict]:
+                          include_cards: bool = True) -> Iterator[dict]:
         """Traverse through time along the moment backbone.
 
         Yields:
@@ -325,9 +325,9 @@ class TreeWebMemory:
                     current_id = moment.prev_moment_id
 
     def traverse_conceptual(self, start_card_id: int,
-                            link_types: List[LinkType] = None,
+                            link_types: list[LinkType] = None,
                             max_depth: int = 3,
-                            min_strength: float = 0.5) -> Iterator[Dict]:
+                            min_strength: float = 0.5) -> Iterator[dict]:
         """Traverse the web following concept/causal links.
 
         Uses BFS to explore connected cards.
@@ -369,7 +369,7 @@ class TreeWebMemory:
                     ))
 
     def traverse_causal(self, card_id: int,
-                        direction: str = "effects") -> Iterator[Dict]:
+                        direction: str = "effects") -> Iterator[dict]:
         """Traverse causal chains (causes → effects or effects → causes).
 
         Args:
@@ -407,9 +407,9 @@ class TreeWebMemory:
                         visited.add(link.source_id)
                         queue.append((link.source_id, depth + 1))
 
-    def traverse_semantic(self, query_embedding: List[float],
+    def traverse_semantic(self, query_embedding: list[float],
                           top_k: int = 10,
-                          threshold: float = 0.7) -> List[Dict]:
+                          threshold: float = 0.7) -> list[dict]:
         """Find semantically similar cards via embedding search.
 
         Args:
@@ -439,9 +439,9 @@ class TreeWebMemory:
     # Smart Search (Multi-Strategy)
     # =========================================================================
 
-    def smart_search(self, query: str, query_embedding: List[float] = None,
-                     filters: Dict[str, Any] = None,
-                     strategy: str = "hybrid") -> List[Dict]:
+    def smart_search(self, query: str, query_embedding: list[float] = None,
+                     filters: dict[str, Any] = None,
+                     strategy: str = "hybrid") -> list[dict]:
         """Multi-strategy search combining all traversal methods.
 
         Args:
@@ -453,7 +453,7 @@ class TreeWebMemory:
         Returns:
             Scored and ranked results.
         """
-        results: Dict[int, Dict] = {}
+        results: dict[int, dict] = {}
 
         # Layer 1: Buffer filtering
         candidates = self._filter_by_buffers(filters or {})
@@ -518,7 +518,7 @@ class TreeWebMemory:
     # Helper Methods
     # =========================================================================
 
-    def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
+    def _cosine_similarity(self, a: list[float], b: list[float]) -> float:
         """Compute cosine similarity between two vectors."""
         if len(a) != len(b):
             return 0.0
@@ -532,7 +532,7 @@ class TreeWebMemory:
 
         return dot / (norm_a * norm_b)
 
-    def _filter_by_buffers(self, filters: Dict[str, Any]) -> Set[int]:
+    def _filter_by_buffers(self, filters: dict[str, Any]) -> set[int]:
         """Filter cards by buffer values."""
         if not filters:
             return set(self.cards.keys())
@@ -553,7 +553,7 @@ class TreeWebMemory:
 
         return candidates
 
-    def _keyword_score(self, card: WebNode, keywords: List[str]) -> float:
+    def _keyword_score(self, card: WebNode, keywords: list[str]) -> float:
         """Score card by keyword matches in buffers."""
         score = 0.0
         searchable = ["title", "narrative", "facts", "subtitle"]
@@ -583,7 +583,7 @@ class TreeWebMemory:
             return
 
         # Store as a special "link" card
-        from .models import Card, Buffer
+        from .models import Buffer, Card
 
         link_card = Card(
             label="card_link",
@@ -619,7 +619,7 @@ class TreeWebMemory:
         start: datetime = None,
         end: datetime = None,
         include_cards: bool = True
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Filter moments/cards by timestamp range.
 
         Args:
@@ -687,7 +687,7 @@ class TreeWebMemory:
         contains: str = None,
         regex: str = None,
         exists: bool = None
-    ) -> List[WebNode]:
+    ) -> list[WebNode]:
         """Filter cards by buffer value with flexible matching.
 
         Args:
@@ -757,9 +757,9 @@ class TreeWebMemory:
 
     def filter_compound(
         self,
-        filters: List[Dict[str, Any]],
+        filters: list[dict[str, Any]],
         operator: str = "AND"
-    ) -> List[WebNode]:
+    ) -> list[WebNode]:
         """Apply multiple filters with AND/OR logic.
 
         Args:
@@ -816,7 +816,7 @@ class TreeWebMemory:
     # Word-Based Auto-Linking
     # =========================================================================
 
-    def build_word_index(self, buffers: List[str] = None) -> Dict[str, Set[int]]:
+    def build_word_index(self, buffers: list[str] = None) -> dict[str, set[int]]:
         """Build inverted index of words → card IDs.
 
         Args:
@@ -826,7 +826,7 @@ class TreeWebMemory:
             Dict mapping words to sets of card IDs containing them.
         """
         buffers = buffers or ["title", "narrative", "facts", "subtitle"]
-        word_index: Dict[str, Set[int]] = {}
+        word_index: dict[str, set[int]] = {}
 
         # Stopwords to ignore
         stopwords = {
@@ -868,8 +868,8 @@ class TreeWebMemory:
         self,
         card_id: int,
         min_shared_words: int = 2,
-        buffers: List[str] = None
-    ) -> List[Dict]:
+        buffers: list[str] = None
+    ) -> list[dict]:
         """Find cards related by shared significant words.
 
         Args:
@@ -908,7 +908,7 @@ class TreeWebMemory:
             source_words.update(t for t in tokens if t not in stopwords)
 
         # Find cards with shared words
-        related: Dict[int, Dict] = {}
+        related: dict[int, dict] = {}
 
         for other_id, other_card in self.cards.items():
             if other_id == card_id:
@@ -945,7 +945,7 @@ class TreeWebMemory:
         card_id: int,
         min_shared_words: int = 2,
         max_links: int = 10
-    ) -> List[CardLink]:
+    ) -> list[CardLink]:
         """Automatically create word-based links to related cards.
 
         Args:
@@ -965,8 +965,8 @@ class TreeWebMemory:
             # Check if link already exists
             card = self.cards[card_id]
             existing = any(
-                l.target_id == other_id
-                for l in card.outgoing_links
+                link.target_id == other_id
+                for link in card.outgoing_links
             )
 
             if not existing:
@@ -987,9 +987,9 @@ class TreeWebMemory:
     def search_by_keyword(
         self,
         keyword: str,
-        buffers: List[str] = None,
+        buffers: list[str] = None,
         case_sensitive: bool = False
-    ) -> List[WebNode]:
+    ) -> list[WebNode]:
         """Search for cards containing a specific keyword.
 
         Args:
@@ -1035,10 +1035,10 @@ class TreeWebMemory:
         query: str = None,
         time_start: datetime = None,
         time_end: datetime = None,
-        filters: List[Dict] = None,
-        embedding: List[float] = None,
+        filters: list[dict] = None,
+        embedding: list[float] = None,
         limit: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Advanced multi-criteria search.
 
         Combines:

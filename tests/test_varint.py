@@ -2,7 +2,7 @@
 
 import pytest
 
-from tasc.varint import encode_varint, decode_varint
+from tasc.varint import decode_varint, encode_varint
 
 
 @pytest.mark.parametrize(

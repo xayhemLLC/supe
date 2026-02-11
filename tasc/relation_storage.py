@@ -5,7 +5,7 @@ typed relations between cards. It bridges between the Relation
 dataclass (tasc/relations.py) and the ABMemory database layer.
 """
 
-from typing import List, Optional
+
 from ab.abdb import ABMemory
 from tasc.relations import Relation, RelationType
 
@@ -30,8 +30,8 @@ def store_relation(memory: ABMemory, relation: Relation) -> None:
 def get_relations_from_card(
     memory: ABMemory,
     card_id: int,
-    relation_type: Optional[RelationType] = None,
-) -> List[Relation]:
+    relation_type: RelationType | None = None,
+) -> list[Relation]:
     """Get all relations where the specified card is the source.
 
     Args:
@@ -50,8 +50,8 @@ def get_relations_from_card(
 def get_relations_to_card(
     memory: ABMemory,
     card_id: int,
-    relation_type: Optional[RelationType] = None,
-) -> List[Relation]:
+    relation_type: RelationType | None = None,
+) -> list[Relation]:
     """Get all relations where the specified card is the target.
 
     Args:
@@ -67,7 +67,7 @@ def get_relations_to_card(
     return [_row_to_relation(row) for row in rows]
 
 
-def get_relation_by_id(memory: ABMemory, relation_id: str) -> Optional[Relation]:
+def get_relation_by_id(memory: ABMemory, relation_id: str) -> Relation | None:
     """Get a specific relation by ID.
 
     Args:
@@ -93,9 +93,9 @@ def delete_relation(memory: ABMemory, relation_id: str) -> None:
 
 def count_relations(
     memory: ABMemory,
-    source_card_id: Optional[int] = None,
-    target_card_id: Optional[int] = None,
-    relation_type: Optional[RelationType] = None,
+    source_card_id: int | None = None,
+    target_card_id: int | None = None,
+    relation_type: RelationType | None = None,
 ) -> int:
     """Count relations matching the specified filters.
 
@@ -120,7 +120,7 @@ def get_causal_chain(
     memory: ABMemory,
     start_card_id: int,
     max_depth: int = 10,
-) -> List[Relation]:
+) -> list[Relation]:
     """Trace a causal chain backwards from a card.
 
     Follows CAUSES relations backwards to find root causes.
@@ -158,7 +158,7 @@ def get_causal_chain(
 def get_support_network(
     memory: ABMemory,
     belief_card_id: int,
-) -> List[Relation]:
+) -> list[Relation]:
     """Get all evidence supporting a belief.
 
     Args:
@@ -204,7 +204,7 @@ def calculate_support_strength(
 def find_contradictions(
     memory: ABMemory,
     card_id: int,
-) -> List[Relation]:
+) -> list[Relation]:
     """Find all contradictions involving a specific card.
 
     Args:
@@ -235,7 +235,7 @@ def find_contradictions(
 def get_dependencies(
     memory: ABMemory,
     task_card_id: int,
-) -> List[Relation]:
+) -> list[Relation]:
     """Get all dependencies for a task.
 
     Args:
@@ -251,7 +251,7 @@ def get_dependencies(
 def check_dependencies_satisfied(
     memory: ABMemory,
     task_card_id: int,
-    completed_card_ids: List[int],
+    completed_card_ids: list[int],
 ) -> bool:
     """Check if all dependencies for a task are satisfied.
 
@@ -274,8 +274,8 @@ def check_dependencies_satisfied(
 
 def topological_sort_tasks(
     memory: ABMemory,
-    task_card_ids: List[int],
-) -> List[int]:
+    task_card_ids: list[int],
+) -> list[int]:
     """Sort tasks by dependencies using topological sort.
 
     Args:
@@ -322,7 +322,7 @@ def get_evolution_chain(
     memory: ABMemory,
     start_card_id: int,
     max_depth: int = 10,
-) -> List[Relation]:
+) -> list[Relation]:
     """Trace knowledge evolution through TRANSFORMS relations.
 
     Args:
@@ -381,10 +381,10 @@ def _row_to_relation(row: dict) -> Relation:
 
 def create_support_relations_from_evidence(
     memory: ABMemory,
-    evidence_card_ids: List[int],
+    evidence_card_ids: list[int],
     belief_card_id: int,
     relation_id_prefix: str,
-) -> List[Relation]:
+) -> list[Relation]:
     """Automatically create SUPPORTS relations from evidence to belief.
 
     This is the integration point between evidence-based validation
@@ -431,8 +431,9 @@ def create_causal_relation_from_validation(
     Returns:
         Created CAUSES relation
     """
-    from tasc.relations import Relation, RelationType
     import uuid
+
+    from tasc.relations import Relation, RelationType
 
     relation = Relation.create(
         relation_id=f"causes_{uuid.uuid4().hex[:8]}",

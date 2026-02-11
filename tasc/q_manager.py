@@ -10,14 +10,11 @@ inspect its contents, and modify the order of tasks.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from ab import ABMemory
 from ab.models import Buffer  # type: ignore
 
-from .atom import Atom, decode_atom
+from .atom import Atom
 from .atomtypes import registry
-from .uobj import UObject
 from .ulist import UList
 
 
@@ -27,7 +24,7 @@ class QManager:
     def __init__(self, memory: ABMemory) -> None:
         self.memory = memory
 
-    def create_queue(self, owner_self: Optional[str] = None) -> int:
+    def create_queue(self, owner_self: str | None = None) -> int:
         """Create a new empty Q card and return its card ID."""
         # Empty ulist
         empty_ulist = UList(elements=[])
@@ -36,7 +33,7 @@ class QManager:
         card = self.memory.store_card(label="q", buffers=[buf], owner_self=owner_self)
         return card.id  # type: ignore
 
-    def load_queue(self, q_card_id: int) -> List[int]:
+    def load_queue(self, q_card_id: int) -> list[int]:
         """Return a list of Tasc card IDs stored in the Q.
 
         Args:
@@ -59,8 +56,8 @@ class QManager:
         # Decode ulist of ref atoms
         ulist, offset = UList.decode(q_buf.payload, 0)
         # Convert refs to ints
-        ref_type = registry.get_by_name("ref")
-        card_ids: List[int] = []
+        registry.get_by_name("ref")
+        card_ids: list[int] = []
         for atom in ulist.elements:
             # Each element is an Atom representing a ref; decode string and cast to int
             # However, the Atom stored in UList is the Atom directly, not encoded further.
@@ -107,7 +104,7 @@ class QManager:
             ulist = UList(elements=atoms)
             self._store_ulist(q_card_id, ulist)
 
-    def reorder_queue(self, q_card_id: int, new_order: List[int]) -> None:
+    def reorder_queue(self, q_card_id: int, new_order: list[int]) -> None:
         """Reorder the Q according to the provided list of card IDs."""
         # Verify that new_order contains same elements as current
         current = self.load_queue(q_card_id)

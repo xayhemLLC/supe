@@ -15,8 +15,6 @@ The implementation integrates with the card_stats system to:
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 from .abdb import ABMemory
 from .models import Card
 from .search import search_cards
@@ -25,11 +23,11 @@ from .search import search_cards
 def recall_cards(
     memory: ABMemory,
     query: str,
-    start_card_id: Optional[int] = None,
+    start_card_id: int | None = None,
     top_k: int = 5,
     strengthen: bool = True,
     use_card_stats: bool = True,
-) -> List[Tuple[Card, float]]:
+) -> list[tuple[Card, float]]:
     """Recall cards relevant to the query and starting card.
 
     Args:
@@ -54,7 +52,7 @@ def recall_cards(
     candidates = search_cards(memory, keyword=query)
 
     # Compute scores incorporating card_stats strength
-    scored: List[Tuple[Card, float]] = []
+    scored: list[tuple[Card, float]] = []
     for card in candidates:
         # Base score from card_stats if enabled
         if use_card_stats and card.id is not None:

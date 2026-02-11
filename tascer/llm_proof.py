@@ -16,18 +16,18 @@ import hashlib
 import json
 import os
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 # Import base Tasc from tasc module
 from tasc.tasc import Tasc
 
 # Import validation and contracts
-from .contracts import Context, GateResult, TascValidation
-from .proofs import prove_script_success, prove_tests_passing, prove_lint_passing
-
+from .contracts import GateResult, TascValidation
+from .proofs import prove_lint_passing, prove_script_success, prove_tests_passing
 
 # ---------------------------------------------------------------------------
 # Enums and Types
@@ -73,17 +73,17 @@ class TaskStatus(str, Enum):
 @dataclass
 class ProofRequirement:
     """What constitutes valid proof of completion.
-    
+
     Defines the evidence and validation gates needed to prove a task is done.
     """
     proof_type: ProofType
-    criteria: Dict[str, Any] = field(default_factory=dict)
-    required_evidence: List[str] = field(default_factory=list)
+    criteria: dict[str, Any] = field(default_factory=dict)
+    required_evidence: list[str] = field(default_factory=list)
     timeout_seconds: float = 300
     allow_retry: bool = True
     max_retries: int = 3
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "proof_type": self.proof_type.value,
             "criteria": self.criteria,
@@ -92,9 +92,9 @@ class ProofRequirement:
             "allow_retry": self.allow_retry,
             "max_retries": self.max_retries,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict) -> "ProofRequirement":
+    def from_dict(cls, data: dict) -> "ProofRequirement":
         return cls(
             proof_type=ProofType(data.get("proof_type", "script")),
             criteria=data.get("criteria", {}),
@@ -108,7 +108,7 @@ class ProofRequirement:
 @dataclass
 class TascPlan:
     """A plan that LLMs must follow - the proof-of-work entry point.
-    
+
     Plans are the top-level container for structured work.
     They define a set of Tascs with dependencies and validation requirements.
     Each Tasc's validation is tracked via the validations dict.
@@ -116,16 +116,16 @@ class TascPlan:
     id: str
     title: str
     description: str = ""
-    tascs: List[Tasc] = field(default_factory=list)
-    validations: Dict[str, TascValidation] = field(default_factory=dict)
-    proof_requirements: Dict[str, ProofRequirement] = field(default_factory=dict)
-    validation_requirements: List[str] = field(default_factory=list)
+    tascs: list[Tasc] = field(default_factory=list)
+    validations: dict[str, TascValidation] = field(default_factory=dict)
+    proof_requirements: dict[str, ProofRequirement] = field(default_factory=dict)
+    validation_requirements: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     status: TaskStatus = TaskStatus.PENDING
-    proof_hash: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict:
+    proof_hash: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "title": self.title,
@@ -139,12 +139,12 @@ class TascPlan:
             "proof_hash": self.proof_hash,
             "metadata": self.metadata,
         }
-    
+
     def to_json(self, indent: int = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent)
-    
+
     @classmethod
-    def from_dict(cls, data: Dict) -> "TascPlan":
+    def from_dict(cls, data: dict) -> "TascPlan":
         return cls(
             id=data["id"],
             title=data["title"],
@@ -158,11 +158,11 @@ class TascPlan:
             proof_hash=data.get("proof_hash"),
             metadata=data.get("metadata", {}),
         )
-    
+
     @classmethod
     def from_json(cls, json_str: str) -> "TascPlan":
         return cls.from_dict(json.loads(json_str))
-    
+
     @property
     def progress(self) -> float:
         """Get overall plan completion progress."""
@@ -170,22 +170,22 @@ class TascPlan:
             return 1.0 if self.status == TaskStatus.PROVEN else 0.0
         validated_count = sum(1 for t in self.tascs if t.id in self.validations and self.validations[t.id].validated)
         return validated_count / len(self.tascs)
-    
+
     @property
     def all_validated(self) -> bool:
         """Check if all Tascs are validated."""
         return all(
-            t.id in self.validations and self.validations[t.id].validated 
+            t.id in self.validations and self.validations[t.id].validated
             for t in self.tascs
         )
-    
-    def get_next_tasc(self) -> Optional[Tasc]:
+
+    def get_next_tasc(self) -> Tasc | None:
         """Get the next Tasc that can be worked on."""
         validated_ids = {
-            t.id for t in self.tascs 
+            t.id for t in self.tascs
             if t.id in self.validations and self.validations[t.id].validated
         }
-        
+
         for tasc in self.tascs:
             if tasc.id not in validated_ids:
                 # Check if dependencies are met
@@ -193,8 +193,8 @@ class TascPlan:
                 if deps_met:
                     return tasc
         return None
-    
-    def get_validation(self, tasc_id: str) -> Optional[TascValidation]:
+
+    def get_validation(self, tasc_id: str) -> TascValidation | None:
         """Get the validation for a specific Tasc."""
         return self.validations.get(tasc_id)
 
@@ -206,7 +206,7 @@ class TascPlan:
 @dataclass
 class LLMTaskProof:
     """Cryptographic proof of LLM task completion.
-    
+
     Contains all evidence and validation results needed to verify
     that a task was completed correctly.
     """
@@ -215,14 +215,14 @@ class LLMTaskProof:
     proven: bool
     proof_hash: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    execution_log: Dict[str, Any] = field(default_factory=dict)
-    evidence: Dict[str, Any] = field(default_factory=dict)
-    gate_results: List[GateResult] = field(default_factory=list)
-    context_snapshot: Optional[Dict] = None
+    execution_log: dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
+    gate_results: list[GateResult] = field(default_factory=list)
+    context_snapshot: dict | None = None
     duration_ms: float = 0
     retries: int = 0
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "task_id": self.task_id,
             "plan_id": self.plan_id,
@@ -236,12 +236,12 @@ class LLMTaskProof:
             "duration_ms": self.duration_ms,
             "retries": self.retries,
         }
-    
+
     def verify(self) -> bool:
         """Verify the proof hash is valid."""
         computed = compute_proof_hash(self.to_dict())
         return computed == self.proof_hash
-    
+
     def to_validation(self) -> TascValidation:
         """Convert to TascValidation format."""
         return TascValidation(
@@ -266,11 +266,11 @@ class PlanVerificationReport:
     total_tasks: int
     proven_tasks: int
     failed_tasks: int
-    validations: Dict[str, TascValidation] = field(default_factory=dict)
+    validations: dict[str, TascValidation] = field(default_factory=dict)
     verification_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    overall_proof_hash: Optional[str] = None
-    
-    def to_dict(self) -> Dict:
+    overall_proof_hash: str | None = None
+
+    def to_dict(self) -> dict:
         return {
             "plan_id": self.plan_id,
             "plan_title": self.plan_title,
@@ -288,7 +288,7 @@ class PlanVerificationReport:
 # Core Functions
 # ---------------------------------------------------------------------------
 
-def compute_proof_hash(data: Dict) -> str:
+def compute_proof_hash(data: dict) -> str:
     """Compute a cryptographic hash of proof data."""
     # Remove the proof_hash field itself if present
     data_copy = {k: v for k, v in data.items() if k != "proof_hash"}
@@ -298,21 +298,21 @@ def compute_proof_hash(data: Dict) -> str:
 
 def create_plan(
     title: str,
-    tascs: List[Dict],
+    tascs: list[dict],
     description: str = "",
-    validation_requirements: Optional[List[str]] = None,
+    validation_requirements: list[str] | None = None,
 ) -> TascPlan:
     """Create a new structured plan.
-    
+
     Args:
         title: Human-readable plan title
         tascs: List of Tasc definitions (dicts with id, title, testing_instructions, etc.)
         description: Plan description
         validation_requirements: Overall validation requirements
-    
+
     Returns:
         TascPlan ready for execution
-    
+
     Example:
         plan = create_plan(
             title="Implement Auth",
@@ -327,13 +327,13 @@ def create_plan(
         )
     """
     plan_id = f"plan_{uuid.uuid4().hex[:8]}"
-    
+
     converted_tascs = []
     proof_requirements = {}
-    
+
     for i, tasc_data in enumerate(tascs):
         tasc_id = tasc_data.get("id", f"tasc_{i+1}")
-        
+
         tasc = Tasc(
             id=tasc_id,
             status=tasc_data.get("status", "pending"),
@@ -344,7 +344,7 @@ def create_plan(
             dependencies=tasc_data.get("dependencies", []),
         )
         converted_tascs.append(tasc)
-        
+
         # Add proof requirement if provided
         if "proof_required" in tasc_data:
             proof_requirements[tasc_id] = ProofRequirement.from_dict(tasc_data["proof_required"])
@@ -354,7 +354,7 @@ def create_plan(
                 proof_type=ProofType.SCRIPT,
                 criteria={"expected_exit_codes": [0]},
             )
-    
+
     return TascPlan(
         id=plan_id,
         title=title,
@@ -368,31 +368,31 @@ def create_plan(
 def validate_tasc(
     tasc: Tasc,
     plan: TascPlan,
-    command: Optional[str] = None,
-    cwd: Optional[str] = None,
+    command: str | None = None,
+    cwd: str | None = None,
 ) -> TascValidation:
     """Validate a single Tasc and produce TascValidation.
-    
+
     Args:
         tasc: The Tasc to validate
         plan: Parent TascPlan (for context and proof requirements)
         command: Override command (defaults to tasc.testing_instructions)
         cwd: Working directory
-    
+
     Returns:
         TascValidation with validation results
     """
     import time
     start_time = time.time()
-    
+
     # Determine the command to run
     cmd = command or tasc.command or tasc.testing_instructions
     if not cmd:
         cmd = "echo 'No command specified'"
-    
+
     # Get proof requirement
     proof_req = plan.proof_requirements.get(tasc.id, ProofRequirement(proof_type=ProofType.SCRIPT))
-    
+
     # Execute based on proof type
     if proof_req.proof_type == ProofType.SCRIPT:
         result = prove_script_success(
@@ -406,7 +406,7 @@ def validate_tasc(
         validated = result.proven
         gate_results = result.gate_results
         exit_code = result.exit_code
-        
+
     elif proof_req.proof_type == ProofType.TEST:
         result = prove_tests_passing(
             command=cmd,
@@ -416,7 +416,7 @@ def validate_tasc(
         validated = result.proven
         gate_results = result.gate_results
         exit_code = 0 if validated else 1
-        
+
     elif proof_req.proof_type == ProofType.LINT:
         result = prove_lint_passing(
             command=cmd,
@@ -426,11 +426,11 @@ def validate_tasc(
         validated = result.proven
         gate_results = result.gate_results
         exit_code = 0 if validated else 1
-    
+
     elif proof_req.proof_type == ProofType.MANUAL:
         # Manual approval required - create approval request
-        from .approval import request_approval, get_approval
-        
+        from .approval import get_approval, request_approval
+
         # Check if there's an existing approved request for this tasc
         approval_id = plan.metadata.get(f"approval_{tasc.id}")
         if approval_id:
@@ -482,7 +482,7 @@ def validate_tasc(
             )
             # Store approval ID in plan metadata
             plan.metadata[f"approval_{tasc.id}"] = approval.id
-            
+
             validated = False
             gate_results = [GateResult(
                 gate_name="MANUAL_APPROVAL",
@@ -492,7 +492,7 @@ def validate_tasc(
             )]
             exit_code = -1
             tasc.status = "awaiting_approval"
-        
+
     else:
         # Default behavior
         from .primitives import run_and_observe
@@ -500,10 +500,10 @@ def validate_tasc(
         validated = result.exit_code == 0
         gate_results = []
         exit_code = result.exit_code
-    
+
     duration_ms = (time.time() - start_time) * 1000
     timestamp = datetime.now().isoformat()
-    
+
     # Compute proof hash
     proof_data = {
         "tasc_id": tasc.id,
@@ -514,7 +514,7 @@ def validate_tasc(
         "timestamp": timestamp,
     }
     proof_hash = compute_proof_hash(proof_data)
-    
+
     # Update Tasc proof fields
     if validated:
         tasc.proof_hash = proof_hash
@@ -522,7 +522,7 @@ def validate_tasc(
         tasc.status = "proven"
     else:
         tasc.status = "failed"
-    
+
     # Create TascValidation
     validation = TascValidation(
         tasc_id=tasc.id,
@@ -534,22 +534,22 @@ def validate_tasc(
         command_executed=cmd,
         exit_code=exit_code,
     )
-    
+
     # Store in plan
     plan.validations[tasc.id] = validation
-    
+
     return validation
 
 
 # Legacy function for backwards compatibility
 def prove_task(
     task: Tasc,
-    command: Optional[str] = None,
-    cwd: Optional[str] = None,
+    command: str | None = None,
+    cwd: str | None = None,
     plan_id: str = "standalone",
 ) -> LLMTaskProof:
     """Legacy function - validates a Tasc and returns LLMTaskProof.
-    
+
     For new code, use validate_tasc() instead.
     """
     # Create a temporary plan for standalone validation
@@ -558,9 +558,9 @@ def prove_task(
         title="Standalone",
         tascs=[task],
     )
-    
+
     validation = validate_tasc(task, temp_plan, command, cwd)
-    
+
     # Convert to LLMTaskProof for backwards compatibility
     return LLMTaskProof(
         task_id=task.id,
@@ -577,33 +577,33 @@ def prove_task(
 
 def verify_plan_completion(plan: TascPlan) -> PlanVerificationReport:
     """Verify that an entire plan has been completed with valid proofs.
-    
+
     Args:
         plan: The plan to verify
-    
+
     Returns:
         PlanVerificationReport with verification results
     """
     validated_count = 0
     failed_count = 0
-    
+
     for tasc in plan.tascs:
         validation = plan.validations.get(tasc.id)
         if validation and validation.validated:
             validated_count += 1
         elif validation and not validation.validated:
             failed_count += 1
-    
+
     verified = validated_count == len(plan.tascs) and failed_count == 0
-    
+
     # Compute overall proof hash
     all_hashes = [v.proof_hash for v in plan.validations.values() if v.validated]
     overall_hash = hashlib.sha256("".join(all_hashes).encode()).hexdigest()[:16] if all_hashes else None
-    
+
     if verified:
         plan.status = TaskStatus.PROVEN
         plan.proof_hash = overall_hash
-    
+
     return PlanVerificationReport(
         plan_id=plan.id,
         plan_title=plan.title,
@@ -622,39 +622,39 @@ def verify_plan_completion(plan: TascPlan) -> PlanVerificationReport:
 
 def execute_plan(
     plan: TascPlan,
-    cwd: Optional[str] = None,
-    on_tasc_complete: Optional[Callable[[Tasc, TascValidation], None]] = None,
+    cwd: str | None = None,
+    on_tasc_complete: Callable[[Tasc, TascValidation], None] | None = None,
 ) -> PlanVerificationReport:
     """Execute all Tascs in a plan in dependency order.
-    
+
     Args:
         plan: The plan to execute
         cwd: Working directory
         on_tasc_complete: Callback called after each Tasc completes
-    
+
     Returns:
         PlanVerificationReport with full results
     """
     plan.status = TaskStatus.IN_PROGRESS
-    
+
     while True:
         next_tasc = plan.get_next_tasc()
         if next_tasc is None:
             break
-        
+
         validation = validate_tasc(
             tasc=next_tasc,
             plan=plan,
             cwd=cwd,
         )
-        
+
         if on_tasc_complete:
             on_tasc_complete(next_tasc, validation)
-        
+
         # If Tasc failed, stop execution
         if not validation.validated:
             break
-    
+
     return verify_plan_completion(plan)
 
 
@@ -679,10 +679,10 @@ def save_validation(validation: TascValidation, output_dir: str = ".tascer/proof
     os.makedirs(output_dir, exist_ok=True)
     filename = f"{validation.timestamp.replace(':', '-')}_{validation.tasc_id}.json"
     path = os.path.join(output_dir, filename)
-    
+
     with open(path, 'w') as f:
         json.dump(validation.to_dict(), f, indent=2)
-    
+
     return path
 
 
@@ -692,8 +692,8 @@ def save_proof(proof: LLMTaskProof, output_dir: str = ".tascer/proofs") -> str:
     os.makedirs(output_dir, exist_ok=True)
     filename = f"{proof.timestamp.replace(':', '-')}_{proof.task_id}.json"
     path = os.path.join(output_dir, filename)
-    
+
     with open(path, 'w') as f:
         json.dump(proof.to_dict(), f, indent=2)
-    
+
     return path

@@ -11,24 +11,23 @@ Key Integration Points:
 5. Support networks → Confidence aggregation
 """
 
-from typing import List, Optional, Tuple, Dict, Any
 import uuid
 from datetime import datetime
+from typing import Any
 
 from ab.abdb import ABMemory
-from ab.models import Card, Buffer
+from ab.models import Buffer
+from tasc.domains import TaskDomain
 from tasc.evidence import Evidence, EvidenceCollection, EvidenceSource
-from tasc.relations import Relation, RelationType
 from tasc.relation_storage import (
-    store_relation,
-    get_support_network,
     calculate_support_strength,
+    check_dependencies_satisfied,
     find_contradictions,
     get_dependencies,
-    check_dependencies_satisfied,
+    store_relation,
 )
+from tasc.relations import Relation, RelationType
 from tasc.validation import ValidationResult
-from tasc.domains import TaskDomain
 
 
 class ValidationRelationIntegrator:
@@ -49,7 +48,7 @@ class ValidationRelationIntegrator:
     def store_evidence_as_card(
         self,
         evidence: Evidence,
-        moment_id: Optional[int] = None,
+        moment_id: int | None = None,
     ) -> int:
         """Store evidence as a card in AB Memory.
 
@@ -84,8 +83,8 @@ class ValidationRelationIntegrator:
     def store_belief_as_card(
         self,
         belief_text: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        moment_id: Optional[int] = None,
+        metadata: dict[str, Any] | None = None,
+        moment_id: int | None = None,
     ) -> int:
         """Store a belief as a card in AB Memory.
 
@@ -121,8 +120,8 @@ class ValidationRelationIntegrator:
         self,
         evidence_collection: EvidenceCollection,
         belief_card_id: int,
-        relation_id_prefix: Optional[str] = None,
-    ) -> List[Relation]:
+        relation_id_prefix: str | None = None,
+    ) -> list[Relation]:
         """Automatically create SUPPORTS relations from evidence to belief.
 
         This is called during validation to connect evidence artifacts
@@ -169,7 +168,7 @@ class ValidationRelationIntegrator:
         root_cause_text: str,
         bug_card_id: int,
         confidence: float = 0.95,
-    ) -> Tuple[int, Relation]:
+    ) -> tuple[int, Relation]:
         """Create CAUSES relation from debugging validation.
 
         Automatically links root cause to bug report during debugging validation.
@@ -210,7 +209,7 @@ class ValidationRelationIntegrator:
         self,
         new_evidence_card_id: int,
         validation_result: ValidationResult,
-    ) -> List[Relation]:
+    ) -> list[Relation]:
         """Check for contradictions when adding new evidence.
 
         Automatically detects if new evidence contradicts existing beliefs
@@ -249,7 +248,7 @@ class ValidationRelationIntegrator:
     def check_dependencies_during_validation(
         self,
         task_card_id: int,
-        completed_card_ids: List[int],
+        completed_card_ids: list[int],
         validation_result: ValidationResult,
     ) -> bool:
         """Check if task dependencies are satisfied during validation.
@@ -337,7 +336,7 @@ class ValidationRelationIntegrator:
         hypothesis_card_id: int,
         counterexample_text: str,
         confidence: float = 0.95,
-    ) -> Tuple[int, Relation]:
+    ) -> tuple[int, Relation]:
         """Create INVALIDATES relation when hypothesis fails validation.
 
         Args:
@@ -379,9 +378,9 @@ def integrate_validation_with_relations(
     evidence_collection: EvidenceCollection,
     belief_text: str,
     domain: TaskDomain,
-    task_card_id: Optional[int] = None,
-    completed_task_ids: Optional[List[int]] = None,
-) -> Dict[str, Any]:
+    task_card_id: int | None = None,
+    completed_task_ids: list[int] | None = None,
+) -> dict[str, Any]:
     """Complete integration workflow for validation with relations.
 
     This is the main entry point for integrated validation. It:

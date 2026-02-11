@@ -3,8 +3,8 @@
 These primitives increase autonomy, safety, and debuggability.
 """
 
+from .repro_bundle import ReproBundle, export_repro_bundle
 from .safety import SafetyGuardrails, check_command_safety
-from .repro_bundle import export_repro_bundle, ReproBundle
 
 __all__ = [
     "SafetyGuardrails",

@@ -10,17 +10,17 @@ Patterns are:
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class Pattern:
     """Base pattern object.
-    
+
     Patterns capture recurring behaviors and can be matched
     against new situations for improved decision-making.
     """
-    
+
     pattern_id: str
     pattern_type: str
     name: str
@@ -28,10 +28,10 @@ class Pattern:
     created_at: datetime
     occurrences: int = 1
     confidence: float = 0.5
-    tags: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    tags: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "pattern_id": self.pattern_id,
             "pattern_type": self.pattern_type,
@@ -43,9 +43,9 @@ class Pattern:
             "tags": self.tags,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Pattern":
+    def from_dict(cls, data: dict[str, Any]) -> "Pattern":
         return cls(
             pattern_id=data["pattern_id"],
             pattern_type=data["pattern_type"],
@@ -57,7 +57,7 @@ class Pattern:
             tags=data.get("tags", []),
             metadata=data.get("metadata", {}),
         )
-    
+
     def increment_occurrence(self) -> None:
         """Record another occurrence of this pattern."""
         self.occurrences += 1
@@ -68,21 +68,21 @@ class Pattern:
 @dataclass
 class FailurePattern(Pattern):
     """Pattern for recurring failures.
-    
+
     Captures:
     - Error type and message patterns
     - Context conditions that lead to failure
     - Actions that triggered the failure
     """
-    
+
     error_type: str = ""
     error_pattern: str = ""  # Regex or template
-    trigger_actions: List[str] = field(default_factory=list)
-    context_conditions: Dict[str, Any] = field(default_factory=dict)
-    
+    trigger_actions: list[str] = field(default_factory=list)
+    context_conditions: dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         self.pattern_type = "failure"
-    
+
     def matches(self, error_type: str, error_message: str) -> bool:
         """Check if an error matches this pattern."""
         import re
@@ -96,18 +96,18 @@ class FailurePattern(Pattern):
 @dataclass
 class FixPattern(Pattern):
     """Pattern for successful fixes.
-    
+
     Captures:
     - What problem was fixed
     - What actions led to the fix
     - What evidence confirmed success
     """
-    
+
     problem_signature: str = ""  # How to recognize the problem
-    fix_actions: List[str] = field(default_factory=list)
-    success_evidence: List[str] = field(default_factory=list)
-    failure_pattern_ref: Optional[str] = None  # Links to FailurePattern
-    
+    fix_actions: list[str] = field(default_factory=list)
+    success_evidence: list[str] = field(default_factory=list)
+    failure_pattern_ref: str | None = None  # Links to FailurePattern
+
     def __post_init__(self):
         self.pattern_type = "fix"
 
@@ -115,18 +115,18 @@ class FixPattern(Pattern):
 @dataclass
 class DecisionPattern(Pattern):
     """Pattern for recurring decision points.
-    
+
     Captures:
     - When to make this type of decision
     - What alternatives were considered
     - What the typical best choice is
     """
-    
+
     decision_trigger: str = ""  # Condition that triggers this decision
-    alternatives: List[str] = field(default_factory=list)
+    alternatives: list[str] = field(default_factory=list)
     typical_choice: str = ""
     success_rate: float = 0.0
-    
+
     def __post_init__(self):
         self.pattern_type = "decision"
 
@@ -134,102 +134,102 @@ class DecisionPattern(Pattern):
 @dataclass
 class FrontendPattern(Pattern):
     """Pattern for frontend/UI behaviors.
-    
+
     Captures:
     - UI state transitions
     - User interaction patterns
     - Expected vs actual behavior
     """
-    
+
     framework: str = ""  # react, vue, svelte, etc.
     component_path: str = ""
-    state_before: Dict[str, Any] = field(default_factory=dict)
-    state_after: Dict[str, Any] = field(default_factory=dict)
+    state_before: dict[str, Any] = field(default_factory=dict)
+    state_after: dict[str, Any] = field(default_factory=dict)
     interaction: str = ""  # What triggered the change
-    
+
     def __post_init__(self):
         self.pattern_type = "frontend"
 
 
 class PatternStore:
     """Store and retrieve patterns.
-    
+
     Provides:
     - Pattern storage and indexing
     - Similarity-based retrieval
     - Pattern merging when duplicates found
     """
-    
+
     def __init__(self):
-        self._patterns: Dict[str, Pattern] = {}
-        self._by_type: Dict[str, List[str]] = {}
-        self._by_tag: Dict[str, List[str]] = {}
-    
+        self._patterns: dict[str, Pattern] = {}
+        self._by_type: dict[str, list[str]] = {}
+        self._by_tag: dict[str, list[str]] = {}
+
     def add(self, pattern: Pattern) -> None:
         """Add a pattern to the store."""
         self._patterns[pattern.pattern_id] = pattern
-        
+
         # Index by type
         if pattern.pattern_type not in self._by_type:
             self._by_type[pattern.pattern_type] = []
         self._by_type[pattern.pattern_type].append(pattern.pattern_id)
-        
+
         # Index by tags
         for tag in pattern.tags:
             if tag not in self._by_tag:
                 self._by_tag[tag] = []
             self._by_tag[tag].append(pattern.pattern_id)
-    
-    def get(self, pattern_id: str) -> Optional[Pattern]:
+
+    def get(self, pattern_id: str) -> Pattern | None:
         """Get pattern by ID."""
         return self._patterns.get(pattern_id)
-    
-    def get_by_type(self, pattern_type: str) -> List[Pattern]:
+
+    def get_by_type(self, pattern_type: str) -> list[Pattern]:
         """Get all patterns of a type."""
         ids = self._by_type.get(pattern_type, [])
         return [self._patterns[pid] for pid in ids if pid in self._patterns]
-    
-    def get_by_tag(self, tag: str) -> List[Pattern]:
+
+    def get_by_tag(self, tag: str) -> list[Pattern]:
         """Get all patterns with a tag."""
         ids = self._by_tag.get(tag, [])
         return [self._patterns[pid] for pid in ids if pid in self._patterns]
-    
+
     def find_similar(
         self,
         pattern: Pattern,
         threshold: float = 0.7,
-    ) -> List[tuple[Pattern, float]]:
+    ) -> list[tuple[Pattern, float]]:
         """Find patterns similar to the given one.
-        
+
         Args:
             pattern: Pattern to match against.
             threshold: Minimum similarity score.
-        
+
         Returns:
             List of (pattern, similarity) tuples.
         """
         similar = []
-        
+
         for stored in self._patterns.values():
             if stored.pattern_id == pattern.pattern_id:
                 continue
-            
+
             score = self._compute_similarity(pattern, stored)
             if score >= threshold:
                 similar.append((stored, score))
-        
+
         return sorted(similar, key=lambda x: x[1], reverse=True)
-    
+
     def _compute_similarity(self, p1: Pattern, p2: Pattern) -> float:
         """Compute similarity between two patterns."""
         score = 0.0
         factors = 0
-        
+
         # Type match
         if p1.pattern_type == p2.pattern_type:
             score += 0.3
         factors += 0.3
-        
+
         # Tag overlap
         if p1.tags and p2.tags:
             overlap = set(p1.tags) & set(p2.tags)
@@ -237,7 +237,7 @@ class PatternStore:
             if union:
                 score += 0.3 * (len(overlap) / len(union))
         factors += 0.3
-        
+
         # Name similarity (simple)
         name_words_1 = set(p1.name.lower().split())
         name_words_2 = set(p2.name.lower().split())
@@ -246,12 +246,12 @@ class PatternStore:
             union = name_words_1 | name_words_2
             score += 0.4 * (len(overlap) / len(union))
         factors += 0.4
-        
+
         return score / factors if factors > 0 else 0.0
-    
-    def merge_similar(self, pattern: Pattern) -> Optional[Pattern]:
+
+    def merge_similar(self, pattern: Pattern) -> Pattern | None:
         """Find and merge with similar pattern if exists.
-        
+
         Returns the merged pattern, or None if no merge occurred.
         """
         similar = self.find_similar(pattern, threshold=0.85)
@@ -264,7 +264,7 @@ class PatternStore:
             existing.tags = list(set(existing.tags) | set(pattern.tags))
             return existing
         return None
-    
+
     def add_or_merge(self, pattern: Pattern) -> Pattern:
         """Add pattern, merging if similar exists."""
         merged = self.merge_similar(pattern)
@@ -272,13 +272,13 @@ class PatternStore:
             return merged
         self.add(pattern)
         return pattern
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Serialize store to dictionary."""
         return {
             "patterns": {pid: p.to_dict() for pid, p in self._patterns.items()},
         }
-    
+
     def __len__(self) -> int:
         return len(self._patterns)
 

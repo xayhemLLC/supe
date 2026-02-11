@@ -8,12 +8,12 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..gates.confidence_gate import ConfidenceGate
-from ..gates.gap_gate import GapGate
-from ..gates.experiment_gate import ExperimentGate
 from ..contracts import GateResult
+from ..gates.confidence_gate import ConfidenceGate
+from ..gates.experiment_gate import ExperimentGate
+from ..gates.gap_gate import GapGate
 
 
 @dataclass
@@ -26,8 +26,8 @@ class LearningProofResult:
     questions_total: int
     experiments_passed: int
     experiments_failed: int
-    gaps_identified: List[str] = field(default_factory=list)
-    gate_results: List[GateResult] = field(default_factory=list)
+    gaps_identified: list[str] = field(default_factory=list)
+    gate_results: list[GateResult] = field(default_factory=list)
     mode: str = "INGEST"  # "INGEST" or "EXPLORE"
     session_id: str = ""
     proof_hash: str = ""
@@ -49,7 +49,7 @@ class LearningProofResult:
             return 1.0  # No experiments = no failures
         return self.experiments_passed / total
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "proven": self.proven,
@@ -70,7 +70,7 @@ class LearningProofResult:
         }
 
 
-def compute_proof_hash(data: Dict[str, Any]) -> str:
+def compute_proof_hash(data: dict[str, Any]) -> str:
     """Compute deterministic proof hash from learning data.
 
     Args:
@@ -86,7 +86,7 @@ def compute_proof_hash(data: Dict[str, Any]) -> str:
 
 
 def prove_learning_session(
-    session_data: Dict[str, Any],
+    session_data: dict[str, Any],
     min_confidence: float = 0.7,
     max_gaps: int = 5,
     min_questions_answered: int = 1,
@@ -213,9 +213,9 @@ def prove_learning_session(
 
 
 def prove_experiment_success(
-    experiment_data: Dict[str, Any],
+    experiment_data: dict[str, Any],
     min_pass_rate: float = 0.8,
-    expected_properties: Optional[List[str]] = None,
+    expected_properties: list[str] | None = None,
 ) -> LearningProofResult:
     """Prove that an EXPLORE mode experiment succeeded.
 

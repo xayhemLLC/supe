@@ -7,23 +7,23 @@ These dataclasses define the canonical schemas for:
 - ValidationReport: Full validation report
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
-import json
+from typing import Any
 
 
 @dataclass
 class GitState:
     """Git repository state snapshot."""
-    
+
     branch: str
     commit: str
     dirty: bool
     diff_stat: str
     status: str
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "branch": self.branch,
             "commit": self.commit,
@@ -31,9 +31,9 @@ class GitState:
             "diff_stat": self.diff_stat,
             "status": self.status,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GitState":
+    def from_dict(cls, data: dict[str, Any]) -> "GitState":
         return cls(
             branch=data.get("branch", ""),
             commit=data.get("commit", ""),
@@ -46,43 +46,43 @@ class GitState:
 @dataclass
 class Context:
     """Snapshot describing the world in which a tasc runs.
-    
+
     Required fields capture enough state to reproduce and audit the tasc.
     Artifact stored at: context/<run_id>/<tasc_id>.json
     """
-    
+
     run_id: str
     tasc_id: str
     timestamp_start: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    timestamp_end: Optional[str] = None
-    
+    timestamp_end: str | None = None
+
     # Environment
     repo_root: str = ""
     cwd: str = ""
     os_name: str = ""
     arch: str = ""
-    
+
     # Toolchain versions
-    toolchain_versions: Dict[str, str] = field(default_factory=dict)
-    
+    toolchain_versions: dict[str, str] = field(default_factory=dict)
+
     # Git state
-    git_state: Optional[GitState] = None
-    
+    git_state: GitState | None = None
+
     # Environment variables (only allowlisted, never secrets)
-    env_allowlist: Dict[str, str] = field(default_factory=dict)
-    
+    env_allowlist: dict[str, str] = field(default_factory=dict)
+
     # Network
     network_mode: str = "online"  # online | offline
-    hostnames_ports: List[str] = field(default_factory=list)
-    
+    hostnames_ports: list[str] = field(default_factory=list)
+
     # Permissions granted to action
-    permissions_granted: List[str] = field(default_factory=list)
-    
+    permissions_granted: list[str] = field(default_factory=list)
+
     # Plugin-provided state (dynamic per-ability)
     # Example: {"browser": {"type": "cdp", "headless": true, "url": "..."}}
-    plugin_state: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    plugin_state: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "run_id": self.run_id,
             "tasc_id": self.tasc_id,
@@ -100,9 +100,9 @@ class Context:
             "permissions_granted": self.permissions_granted,
             "plugin_state": self.plugin_state,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Context":
+    def from_dict(cls, data: dict[str, Any]) -> "Context":
         git_data = data.get("git_state")
         return cls(
             run_id=data.get("run_id", ""),
@@ -121,32 +121,32 @@ class Context:
             permissions_granted=data.get("permissions_granted", []),
             plugin_state=data.get("plugin_state", {}),
         )
-    
+
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
-    
+
     def finalize(self) -> None:
         """Set the end timestamp."""
-        self.timestamp_end = datetime.utcnow().isoformat()
+        self.timestamp_end = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
 @dataclass
 class ErrorInfo:
     """Structured error information."""
-    
+
     error_type: str
     message: str
-    traceback: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    traceback: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "error_type": self.error_type,
             "message": self.message,
             "traceback": self.traceback,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ErrorInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "ErrorInfo":
         return cls(
             error_type=data.get("error_type", ""),
             message=data.get("message", ""),
@@ -157,34 +157,34 @@ class ErrorInfo:
 @dataclass
 class ActionSpec:
     """Specification for an executable action.
-    
+
     Defines inputs, permissions, operation type, and expected evidence.
     """
-    
+
     id: str
     name: str
     version: str = "1.0"
-    
+
     # Input schema (JSON Schema style)
-    inputs_schema: Dict[str, Any] = field(default_factory=dict)
-    
+    inputs_schema: dict[str, Any] = field(default_factory=dict)
+
     # Required permissions
-    permissions_required: List[str] = field(default_factory=list)
+    permissions_required: list[str] = field(default_factory=list)
     # Valid permissions: terminal, network, fs_read, fs_write, secrets, browser
-    
+
     # Operation specification
     op_kind: str = "command"  # script | command | endpoint | function | browser_task
     op_ref: str = ""  # path/command/url/function reference
-    
+
     # Response contract
-    response_contract: Dict[str, str] = field(default_factory=dict)
+    response_contract: dict[str, str] = field(default_factory=dict)
     # Keys: success, fail, timeout, partial with semantic descriptions
-    
+
     # Expected evidence types
-    evidence_expected: List[str] = field(default_factory=list)
+    evidence_expected: list[str] = field(default_factory=list)
     # Valid types: stdout, stderr, exit_code, diff, screenshot, file, http_response
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -196,9 +196,9 @@ class ActionSpec:
             "response_contract": self.response_contract,
             "evidence_expected": self.evidence_expected,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ActionSpec":
+    def from_dict(cls, data: dict[str, Any]) -> "ActionSpec":
         return cls(
             id=data.get("id", ""),
             name=data.get("name", ""),
@@ -215,29 +215,29 @@ class ActionSpec:
 @dataclass
 class ActionResult:
     """Result of executing an action.
-    
+
     Captures status, outputs, parsed results, and evidence paths.
     """
-    
+
     status: str  # success | fail | timeout | partial
-    
+
     # Operation result (exit code, HTTP status, return value)
-    op_result: Union[int, str, Dict[str, Any]] = 0
-    
+    op_result: int | str | dict[str, Any] = 0
+
     # Parsed/extracted results (jsonpath, regex extractions)
-    parsed: Dict[str, Any] = field(default_factory=dict)
-    
+    parsed: dict[str, Any] = field(default_factory=dict)
+
     # Paths to evidence artifacts
-    evidence_paths: List[str] = field(default_factory=list)
-    
+    evidence_paths: list[str] = field(default_factory=list)
+
     # Error info (if failed)
-    error: Optional[ErrorInfo] = None
-    
+    error: ErrorInfo | None = None
+
     # Metrics
-    metrics: Dict[str, float] = field(default_factory=dict)
+    metrics: dict[str, float] = field(default_factory=dict)
     # Common: duration_ms, bytes_read, bytes_written
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
             "op_result": self.op_result,
@@ -246,9 +246,9 @@ class ActionResult:
             "error": self.error.to_dict() if self.error else None,
             "metrics": self.metrics,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ActionResult":
+    def from_dict(cls, data: dict[str, Any]) -> "ActionResult":
         error_data = data.get("error")
         return cls(
             status=data.get("status", "fail"),
@@ -263,22 +263,22 @@ class ActionResult:
 @dataclass
 class GateResult:
     """Result of a validation gate check."""
-    
+
     gate_name: str
     passed: bool
     message: str
-    evidence: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "gate_name": self.gate_name,
             "passed": self.passed,
             "message": self.message,
             "evidence": self.evidence,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GateResult":
+    def from_dict(cls, data: dict[str, Any]) -> "GateResult":
         return cls(
             gate_name=data.get("gate_name", ""),
             passed=data.get("passed", False),
@@ -288,25 +288,38 @@ class GateResult:
 
 
 @dataclass
+class ValidationRecord:
+    """Record passed to gates for validation.
+
+    Contains tool inputs, outputs, and context for gate evaluation.
+    """
+
+    tool_name: str
+    tool_input: dict[str, Any]
+    tool_output: dict[str, Any]
+    context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class TascValidation:
     """Validation result for a single Tasc step.
-    
+
     Ties a Tasc ID to its validation gates, proof hash, and timing.
     This is used by TascPlan to track validation state for each Tasc.
     """
-    
+
     tasc_id: str
     validated: bool
     proof_hash: str
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
     duration_ms: float = 0
-    gate_results: List[GateResult] = field(default_factory=list)
-    evidence_paths: List[str] = field(default_factory=list)
+    gate_results: list[GateResult] = field(default_factory=list)
+    evidence_paths: list[str] = field(default_factory=list)
     command_executed: str = ""
     exit_code: int = 0
-    error_message: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    error_message: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tasc_id": self.tasc_id,
             "validated": self.validated,
@@ -319,9 +332,9 @@ class TascValidation:
             "exit_code": self.exit_code,
             "error_message": self.error_message,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TascValidation":
+    def from_dict(cls, data: dict[str, Any]) -> "TascValidation":
         return cls(
             tasc_id=data.get("tasc_id", ""),
             validated=data.get("validated", False),
@@ -334,7 +347,7 @@ class TascValidation:
             exit_code=data.get("exit_code", 0),
             error_message=data.get("error_message"),
         )
-    
+
     def verify(self) -> bool:
         """Verify that the proof hash is consistent with the data."""
         import hashlib
@@ -343,7 +356,7 @@ class TascValidation:
         content = json.dumps(data, sort_keys=True, default=str)
         computed = hashlib.sha256(content.encode()).hexdigest()[:16]
         return computed == self.proof_hash
-    
+
     @property
     def all_gates_passed(self) -> bool:
         """Check if all gates passed."""
@@ -368,11 +381,11 @@ class LearningTascValidation(TascValidation):
     questions_total: int = 0
     experiments_passed: int = 0
     experiments_failed: int = 0
-    gaps_identified: List[str] = field(default_factory=list)
+    gaps_identified: list[str] = field(default_factory=list)
     next_review_at: str = ""
     mode: str = "INGEST"  # "INGEST" or "EXPLORE"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary including parent fields."""
         base = super().to_dict()
         base.update({
@@ -391,7 +404,7 @@ class LearningTascValidation(TascValidation):
         return base
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LearningTascValidation":
+    def from_dict(cls, data: dict[str, Any]) -> "LearningTascValidation":
         """Create from dictionary."""
         return cls(
             tasc_id=data.get("tasc_id", ""),
@@ -434,35 +447,35 @@ class LearningTascValidation(TascValidation):
 @dataclass
 class ValidationReport:
     """Full validation report for a tasc run.
-    
+
     Aggregates context, action result, and gate results into
     a complete audit trail.
     """
-    
+
     run_id: str
     tasc_id: str
-    
+
     # Captured context
     context: Context
-    
+
     # Action executed
     action_spec: ActionSpec
     action_result: ActionResult
-    
+
     # Gate results
-    gates_passed: List[GateResult] = field(default_factory=list)
-    gates_failed: List[GateResult] = field(default_factory=list)
-    
+    gates_passed: list[GateResult] = field(default_factory=list)
+    gates_failed: list[GateResult] = field(default_factory=list)
+
     # Overall status
     overall_status: str = "pending"  # pass | fail | partial
-    
+
     # Evidence index (name -> artifact path)
-    evidence_index: Dict[str, str] = field(default_factory=dict)
-    
+    evidence_index: dict[str, str] = field(default_factory=dict)
+
     # Human-readable summary
     summary: str = ""
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "run_id": self.run_id,
             "tasc_id": self.tasc_id,
@@ -475,9 +488,9 @@ class ValidationReport:
             "evidence_index": self.evidence_index,
             "summary": self.summary,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ValidationReport":
+    def from_dict(cls, data: dict[str, Any]) -> "ValidationReport":
         return cls(
             run_id=data.get("run_id", ""),
             tasc_id=data.get("tasc_id", ""),
@@ -490,10 +503,10 @@ class ValidationReport:
             evidence_index=data.get("evidence_index", {}),
             summary=data.get("summary", ""),
         )
-    
+
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
-    
+
     def compute_overall_status(self) -> None:
         """Compute overall status from gate results."""
         if self.gates_failed:
@@ -505,7 +518,7 @@ class ValidationReport:
             self.overall_status = "pass"
         else:
             self.overall_status = "pending"
-    
+
     def generate_summary(self) -> None:
         """Generate a human-readable summary."""
         lines = [

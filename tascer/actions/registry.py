@@ -3,23 +3,22 @@
 Central registry for all action types with metadata, handlers, and lookup.
 """
 
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
-from .base import ActionType, ActionMetadata, AgentAction, ActionResult
-
+from .base import ActionMetadata, ActionResult, ActionType, AgentAction
 
 # Handler type: function that takes action and returns result
 ActionHandler = Callable[[AgentAction], ActionResult]
 
 # Global registry
-_action_metadata: Dict[ActionType, ActionMetadata] = {}
-_action_handlers: Dict[ActionType, ActionHandler] = {}
+_action_metadata: dict[ActionType, ActionMetadata] = {}
+_action_handlers: dict[ActionType, ActionHandler] = {}
 
 
 def register_action(
     action_type: ActionType,
     metadata: ActionMetadata,
-    handler: Optional[ActionHandler] = None,
+    handler: ActionHandler | None = None,
 ) -> None:
     """Register an action type with its metadata and optional handler."""
     _action_metadata[action_type] = metadata
@@ -27,17 +26,17 @@ def register_action(
         _action_handlers[action_type] = handler
 
 
-def get_action_handler(action_type: ActionType) -> Optional[ActionHandler]:
+def get_action_handler(action_type: ActionType) -> ActionHandler | None:
     """Get the handler for an action type."""
     return _action_handlers.get(action_type)
 
 
-def get_action_metadata(action_type: ActionType) -> Optional[ActionMetadata]:
+def get_action_metadata(action_type: ActionType) -> ActionMetadata | None:
     """Get metadata for an action type."""
     return _action_metadata.get(action_type)
 
 
-def list_action_types() -> List[ActionType]:
+def list_action_types() -> list[ActionType]:
     """List all registered action types."""
     return list(_action_metadata.keys())
 

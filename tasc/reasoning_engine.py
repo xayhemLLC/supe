@@ -11,17 +11,16 @@ Provides sophisticated reasoning capabilities using typed semantic relations:
 This is Layer 7 of the cognitive architecture.
 """
 
-from typing import List, Optional, Set, Tuple, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from ab.abdb import ABMemory
-from tasc.relations import Relation, RelationType
 from tasc.relation_storage import (
     get_relations_from_card,
     get_relations_to_card,
-    store_relation,
 )
+from tasc.relations import Relation, RelationType
 
 
 class InferenceDirection(Enum):
@@ -33,8 +32,8 @@ class InferenceDirection(Enum):
 @dataclass
 class InferencePath:
     """A path through the knowledge graph."""
-    cards: List[int] = field(default_factory=list)
-    relations: List[Relation] = field(default_factory=list)
+    cards: list[int] = field(default_factory=list)
+    relations: list[Relation] = field(default_factory=list)
     confidence: float = 1.0
     length: int = 0
 
@@ -53,7 +52,7 @@ class BeliefRevision:
     original_confidence: float
     revised_confidence: float
     reason: str
-    contradicting_cards: List[int] = field(default_factory=list)
+    contradicting_cards: list[int] = field(default_factory=list)
 
 
 class ReasoningEngine:
@@ -77,7 +76,7 @@ class ReasoningEngine:
         relation_type: RelationType,
         direction: InferenceDirection = InferenceDirection.FORWARD,
         max_depth: int = 10,
-    ) -> List[InferencePath]:
+    ) -> list[InferencePath]:
         """Find all cards reachable through transitive relations.
 
         For transitive relations (CAUSES, IMPLIES, DEPENDS_ON, etc.),
@@ -136,7 +135,7 @@ class ReasoningEngine:
         end_card_id: int,
         relation_type: RelationType,
         direction: InferenceDirection = InferenceDirection.FORWARD,
-    ) -> Optional[InferencePath]:
+    ) -> InferencePath | None:
         """Find shortest path between two cards.
 
         Args:
@@ -188,7 +187,7 @@ class ReasoningEngine:
         self,
         effect_card_id: int,
         max_depth: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze complete causal chain for an effect.
 
         Traces CAUSES relations backwards to find all contributing factors,
@@ -257,9 +256,9 @@ class ReasoningEngine:
 
     def forward_chain(
         self,
-        premise_card_ids: List[int],
+        premise_card_ids: list[int],
         max_hops: int = 5,
-    ) -> List[Tuple[int, float]]:
+    ) -> list[tuple[int, float]]:
         """Forward chaining: derive conclusions from premises.
 
         Follows IMPLIES relations forward from given premises to find
@@ -292,9 +291,9 @@ class ReasoningEngine:
     def backward_chain(
         self,
         goal_card_id: int,
-        known_facts: Set[int],
+        known_facts: set[int],
         max_hops: int = 5,
-    ) -> Tuple[bool, float, List[int]]:
+    ) -> tuple[bool, float, list[int]]:
         """Backward chaining: check if goal is derivable from known facts.
 
         Traces IMPLIES relations backwards from goal to see if any known
@@ -332,7 +331,7 @@ class ReasoningEngine:
     # Belief Revision
     # ==========================================================================
 
-    def detect_all_contradictions(self) -> List[Tuple[int, int, float]]:
+    def detect_all_contradictions(self) -> list[tuple[int, int, float]]:
         """Detect all contradictions in the knowledge graph.
 
         Returns:
@@ -393,7 +392,7 @@ class ReasoningEngine:
 
         return revision
 
-    def auto_revise_all_contradicted_beliefs(self) -> List[BeliefRevision]:
+    def auto_revise_all_contradicted_beliefs(self) -> list[BeliefRevision]:
         """Automatically revise all beliefs with contradictions.
 
         Returns:
@@ -421,7 +420,7 @@ class ReasoningEngine:
         initial_confidence: float,
         propagation_factor: float = 0.9,
         max_hops: int = 5,
-    ) -> Dict[int, float]:
+    ) -> dict[int, float]:
         """Propagate confidence through network.
 
         Spreads confidence from source card through relations,

@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 from .abdb import ABMemory
 from .models import Moment
@@ -43,9 +42,9 @@ def get_moments_between(
     memory: ABMemory,
     start_ts: str,
     end_ts: str,
-    limit: Optional[int] = None,
-    offset: Optional[int] = None,
-) -> List[Moment]:
+    limit: int | None = None,
+    offset: int | None = None,
+) -> list[Moment]:
     """Return moments with timestamps between ``start_ts`` and ``end_ts``.
 
     Args:
@@ -60,7 +59,7 @@ def get_moments_between(
     """
     cur = memory.conn.cursor()
     query = "SELECT id, timestamp FROM moments WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC"
-    params: List[object] = [start_ts, end_ts]
+    params: list[object] = [start_ts, end_ts]
     if limit is not None:
         query += " LIMIT ?"
         params.append(limit)
@@ -75,7 +74,7 @@ def get_moments_between(
     return [Moment(id=row["id"], timestamp=row["timestamp"]) for row in rows]
 
 
-def paginate_moments(memory: ABMemory, page: int = 0, page_size: int = 50) -> Tuple[List[Moment], int]:
+def paginate_moments(memory: ABMemory, page: int = 0, page_size: int = 50) -> tuple[list[Moment], int]:
     """Return a page of moments along with total count.
 
     Args:
@@ -102,7 +101,7 @@ def paginate_moments(memory: ABMemory, page: int = 0, page_size: int = 50) -> Tu
     return moments, total_count
 
 
-def group_moments_by_day(memory: ABMemory) -> Dict[str, List[Moment]]:
+def group_moments_by_day(memory: ABMemory) -> dict[str, list[Moment]]:
     """Group all moments by calendar day (YYYY-MM-DD).
 
     Returns a dictionary mapping date strings to lists of moments
@@ -111,7 +110,7 @@ def group_moments_by_day(memory: ABMemory) -> Dict[str, List[Moment]]:
     cur = memory.conn.cursor()
     cur.execute("SELECT id, timestamp FROM moments ORDER BY timestamp ASC")
     rows = cur.fetchall()
-    groups: Dict[str, List[Moment]] = defaultdict(list)
+    groups: dict[str, list[Moment]] = defaultdict(list)
     for row in rows:
         dt = _parse_iso(row["timestamp"])
         key = dt.date().isoformat()
@@ -119,12 +118,12 @@ def group_moments_by_day(memory: ABMemory) -> Dict[str, List[Moment]]:
     return groups
 
 
-def group_moments_by_week(memory: ABMemory) -> Dict[str, List[Moment]]:
+def group_moments_by_week(memory: ABMemory) -> dict[str, list[Moment]]:
     """Group all moments by ISO week (YYYY-Www)."""
     cur = memory.conn.cursor()
     cur.execute("SELECT id, timestamp FROM moments ORDER BY timestamp ASC")
     rows = cur.fetchall()
-    groups: Dict[str, List[Moment]] = defaultdict(list)
+    groups: dict[str, list[Moment]] = defaultdict(list)
     for row in rows:
         dt = _parse_iso(row["timestamp"])
         year, week, _ = dt.isocalendar()

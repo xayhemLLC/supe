@@ -7,13 +7,13 @@ Defines the core building blocks for team styles:
 - BaseTeam: Abstract team implementation
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 from uuid import uuid4
-import asyncio
 
 
 class TeamStyle(Enum):
@@ -61,7 +61,7 @@ class CeremonyConfig:
     ceremony_type: CeremonyType
     frequency: str = "daily"      # "daily", "weekly", "sprint", "on-demand"
     duration_minutes: int = 15
-    required_roles: List[AgentRole] = field(default_factory=list)
+    required_roles: list[AgentRole] = field(default_factory=list)
     auto_trigger: bool = True
 
 
@@ -78,9 +78,9 @@ class ValidationConfig:
     store_to_memory: bool = True
 
     # Gate configurations
-    pre_commit_gates: List[str] = field(default_factory=lambda: ["lint", "type_check"])
-    pre_merge_gates: List[str] = field(default_factory=lambda: ["tests_pass", "review_approved"])
-    post_deploy_gates: List[str] = field(default_factory=list)
+    pre_commit_gates: list[str] = field(default_factory=lambda: ["lint", "type_check"])
+    pre_merge_gates: list[str] = field(default_factory=lambda: ["tests_pass", "review_approved"])
+    post_deploy_gates: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -94,10 +94,10 @@ class TeamConfig:
     style: TeamStyle
 
     # Team composition
-    roles: Dict[AgentRole, int] = field(default_factory=dict)
+    roles: dict[AgentRole, int] = field(default_factory=dict)
 
     # Process configuration
-    ceremonies: List[CeremonyConfig] = field(default_factory=list)
+    ceremonies: list[CeremonyConfig] = field(default_factory=list)
     validation: ValidationConfig = field(default_factory=ValidationConfig)
 
     # Resource limits
@@ -111,7 +111,7 @@ class TeamConfig:
 
     # Metadata
     created_at: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def total_agents(self) -> int:
         """Total number of agents in team."""
@@ -129,18 +129,18 @@ class TaskAssignment:
     id: str = field(default_factory=lambda: str(uuid4())[:8])
     title: str = ""
     description: str = ""
-    assigned_to: Optional[str] = None
+    assigned_to: str | None = None
     status: str = "pending"  # pending, in_progress, review, done, blocked
     priority: int = 5
 
     # Tracking
     created_at: datetime = field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Evidence
-    proof_hash: Optional[str] = None
-    files_changed: List[str] = field(default_factory=list)
+    proof_hash: str | None = None
+    files_changed: list[str] = field(default_factory=list)
 
     def start(self, agent_id: str) -> None:
         self.assigned_to = agent_id
@@ -157,14 +157,14 @@ class MessageBus:
     """Simple message bus for inter-agent communication."""
 
     def __init__(self):
-        self._queues: Dict[str, asyncio.Queue] = {}
-        self._history: List[Dict[str, Any]] = []
+        self._queues: dict[str, asyncio.Queue] = {}
+        self._history: list[dict[str, Any]] = []
 
     def register(self, agent_id: str) -> None:
         if agent_id not in self._queues:
             self._queues[agent_id] = asyncio.Queue()
 
-    async def send(self, sender: str, recipient: str, content: Dict[str, Any]) -> None:
+    async def send(self, sender: str, recipient: str, content: dict[str, Any]) -> None:
         msg = {
             "id": str(uuid4())[:8],
             "sender": sender,
@@ -177,12 +177,12 @@ class MessageBus:
         if recipient in self._queues:
             await self._queues[recipient].put(msg)
 
-    async def broadcast(self, sender: str, content: Dict[str, Any]) -> None:
+    async def broadcast(self, sender: str, content: dict[str, Any]) -> None:
         for agent_id in self._queues:
             if agent_id != sender:
                 await self.send(sender, agent_id, content)
 
-    async def receive(self, agent_id: str, timeout: float = 1.0) -> Optional[Dict[str, Any]]:
+    async def receive(self, agent_id: str, timeout: float = 1.0) -> dict[str, Any] | None:
         if agent_id not in self._queues:
             return None
         try:
@@ -200,8 +200,8 @@ class BaseTeam(ABC):
     def __init__(self, config: TeamConfig):
         self.config = config
         self.message_bus = MessageBus()
-        self.agents: Dict[str, Any] = {}
-        self.tasks: Dict[str, TaskAssignment] = {}
+        self.agents: dict[str, Any] = {}
+        self.tasks: dict[str, TaskAssignment] = {}
         self._running = False
         self._cycle_count = 0
 
@@ -229,7 +229,7 @@ class BaseTeam(ABC):
         goal: str,
         max_tasks: int = 8,
         context: str = None,
-    ) -> List[TaskAssignment]:
+    ) -> list[TaskAssignment]:
         """Auto-discover tasks from a goal description using LLM.
 
         Args:
@@ -274,9 +274,9 @@ class BaseTeam(ABC):
     def discover_from_issues(
         self,
         repo: str = None,
-        labels: List[str] = None,
+        labels: list[str] = None,
         limit: int = 10,
-    ) -> List[TaskAssignment]:
+    ) -> list[TaskAssignment]:
         """Auto-discover tasks from GitHub issues.
 
         Args:
@@ -290,8 +290,8 @@ class BaseTeam(ABC):
         Example:
             tasks = team.discover_from_issues(labels=["good-first-issue"])
         """
-        import subprocess
         import json
+        import subprocess
 
         cmd = ["gh", "issue", "list", "--json", "number,title,body,labels", "--limit", str(limit)]
 
@@ -311,7 +311,7 @@ class BaseTeam(ABC):
         for i, issue in enumerate(issues):
             # Priority based on labels
             priority = 5
-            label_names = [l.get("name", "") for l in issue.get("labels", [])]
+            label_names = [label.get("name", "") for label in issue.get("labels", [])]
             if "critical" in label_names or "urgent" in label_names:
                 priority = 1
             elif "bug" in label_names:
@@ -331,8 +331,8 @@ class BaseTeam(ABC):
     def discover_from_codebase(
         self,
         path: str = ".",
-        patterns: List[str] = None,
-    ) -> List[TaskAssignment]:
+        patterns: list[str] = None,
+    ) -> list[TaskAssignment]:
         """Auto-discover tasks from codebase TODOs, FIXMEs, etc.
 
         Args:
@@ -396,7 +396,7 @@ class BaseTeam(ABC):
 
         return created
 
-    def discover_from_plan(self, plan_path: str) -> List[TaskAssignment]:
+    def discover_from_plan(self, plan_path: str) -> list[TaskAssignment]:
         """Load tasks from a supe plan JSON file.
 
         Args:
@@ -429,7 +429,7 @@ class BaseTeam(ABC):
 
         return created
 
-    def discover_from_diff(self, base: str = "main") -> List[TaskAssignment]:
+    def discover_from_diff(self, base: str = "main") -> list[TaskAssignment]:
         """Auto-discover review tasks from git diff.
 
         Args:
@@ -465,12 +465,12 @@ class BaseTeam(ABC):
 
         return created
 
-    def get_pending_tasks(self) -> List[TaskAssignment]:
+    def get_pending_tasks(self) -> list[TaskAssignment]:
         """Get tasks waiting to be worked on."""
         pending = [t for t in self.tasks.values() if t.status == "pending"]
         return sorted(pending, key=lambda t: t.priority)
 
-    def get_in_progress_tasks(self) -> List[TaskAssignment]:
+    def get_in_progress_tasks(self) -> list[TaskAssignment]:
         """Get tasks currently being worked on."""
         return [t for t in self.tasks.values() if t.status == "in_progress"]
 
@@ -496,7 +496,7 @@ class BaseTeam(ABC):
 
         return True
 
-    async def run_cycle(self) -> Dict[str, Any]:
+    async def run_cycle(self) -> dict[str, Any]:
         """Run one orchestration cycle."""
         self._cycle_count += 1
 
@@ -519,7 +519,7 @@ class BaseTeam(ABC):
             "in_progress": len(self.get_in_progress_tasks()),
         }
 
-    async def run(self, max_cycles: int = None) -> Dict[str, Any]:
+    async def run(self, max_cycles: int = None) -> dict[str, Any]:
         """Run the team autonomously."""
         self._running = True
 
@@ -554,7 +554,7 @@ class BaseTeam(ABC):
         """Stop the team."""
         self._running = False
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get team status."""
         return {
             "name": self.config.name,

@@ -14,12 +14,12 @@ Key principles:
 This replaces traditional binary validators with a probabilistic, evidence-driven approach.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+import shlex
 import subprocess
+from dataclasses import dataclass, field
 
-from .tasc import Tasc
 from .evidence import Evidence, EvidenceCollection, EvidenceSource
+from .tasc import Tasc
 
 
 @dataclass
@@ -45,20 +45,20 @@ class ValidationResult:
     cited_evidence_count: int
 
     # Missing requirements
-    missing_evidence_types: List[str] = field(default_factory=list)
-    missing_process_steps: List[str] = field(default_factory=list)
+    missing_evidence_types: list[str] = field(default_factory=list)
+    missing_process_steps: list[str] = field(default_factory=list)
 
     # Objective check results
-    objective_checks: Dict[str, bool] = field(default_factory=dict)
+    objective_checks: dict[str, bool] = field(default_factory=dict)
 
     # Review requirements
     requires_human_review: bool = False
-    review_reasons: List[str] = field(default_factory=list)
+    review_reasons: list[str] = field(default_factory=list)
 
     # Status
     validation_status: str = "pending"  # "pending", "partial", "complete", "failed"
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         return {
             "overall_confidence": self.overall_confidence,
@@ -168,7 +168,7 @@ class UnifiedValidator:
         missing_evidence = self._check_missing_evidence(tasc, evidence_collection)
 
         if self.debug:
-            print(f"\nValidation Results:")
+            print("\nValidation Results:")
             print(f"  Overall Confidence: {overall_confidence:.2f}")
             print(f"  Evidence Factor: {evidence_factor:.2f}")
             print(f"  Process Factor: {process_factor:.2f}")
@@ -193,7 +193,7 @@ class UnifiedValidator:
             validation_status=status,
         )
 
-    def _evaluate_evidence_quality(self, evidence_list: List[Evidence]) -> float:
+    def _evaluate_evidence_quality(self, evidence_list: list[Evidence]) -> float:
         """Evaluate quality of evidence using learning system methodology.
 
         This is identical to supe/learning/states/evaluate.py:101-151.
@@ -250,7 +250,7 @@ class UnifiedValidator:
         )
 
         if self.debug:
-            print(f"\n  Evidence Quality Breakdown:")
+            print("\n  Evidence Quality Breakdown:")
             print(f"    Count Factor: {count_factor:.2f} ({evidence_count} items)")
             print(f"    Diversity Factor: {diversity_factor:.2f} ({len(sources)} sources)")
             print(f"    Validation Factor: {validation_factor:.2f} ({validated_count} validated)")
@@ -261,7 +261,7 @@ class UnifiedValidator:
 
     def _evaluate_process_adherence(
         self, tasc: Tasc, evidence_collection: EvidenceCollection
-    ) -> Tuple[float, List[str]]:
+    ) -> tuple[float, list[str]]:
         """Evaluate whether required process steps were followed.
 
         This checks if the task followed a rigorous process (e.g., hypothesis,
@@ -289,7 +289,7 @@ class UnifiedValidator:
         process_factor = 0.8 + (completion_rate * 0.2)  # Range: 0.8-1.0
 
         if self.debug:
-            print(f"\n  Process Adherence:")
+            print("\n  Process Adherence:")
             print(f"    Required: {required_types}")
             print(f"    Present: {list(present_sources)}")
             print(f"    Missing: {missing}")
@@ -299,7 +299,7 @@ class UnifiedValidator:
 
     async def _run_objective_checks(
         self, tasc: Tasc
-    ) -> Tuple[float, Dict[str, bool]]:
+    ) -> tuple[float, dict[str, bool]]:
         """Run objective validation checks (tests, builds, linting).
 
         Args:
@@ -314,13 +314,15 @@ class UnifiedValidator:
         if tasc.testing_instructions:
             try:
                 # Run the validation command
+                command = shlex.split(tasc.testing_instructions)
                 result = subprocess.run(
-                    tasc.testing_instructions,
-                    shell=True,
+                    command,
                     capture_output=True,
                     timeout=300,  # 5 minute timeout
                 )
                 results["command_execution"] = result.returncode == 0
+            except ValueError:
+                results["command_execution"] = False
             except subprocess.TimeoutExpired:
                 results["command_execution"] = False
             except Exception:
@@ -333,7 +335,7 @@ class UnifiedValidator:
             objective_factor = 1.0 if all(results.values()) else 0.0
 
         if self.debug:
-            print(f"\n  Objective Checks:")
+            print("\n  Objective Checks:")
             for check, passed in results.items():
                 print(f"    {check}: {'✓' if passed else '✗'}")
 
@@ -342,8 +344,8 @@ class UnifiedValidator:
     def _determine_status(
         self,
         confidence: float,
-        missing_steps: List[str],
-        objective_checks: Dict[str, bool],
+        missing_steps: list[str],
+        objective_checks: dict[str, bool],
     ) -> str:
         """Determine validation status based on confidence and checks.
 
@@ -374,8 +376,8 @@ class UnifiedValidator:
         confidence: float,
         evidence_factor: float,
         objective_factor: float,
-        missing_steps: List[str],
-    ) -> Tuple[bool, List[str]]:
+        missing_steps: list[str],
+    ) -> tuple[bool, list[str]]:
         """Determine if human review is required.
 
         Args:
@@ -409,7 +411,7 @@ class UnifiedValidator:
 
     def _check_missing_evidence(
         self, tasc: Tasc, evidence_collection: EvidenceCollection
-    ) -> List[str]:
+    ) -> list[str]:
         """Check for missing required evidence types.
 
         Args:
@@ -465,36 +467,36 @@ def create_validation_summary(result: ValidationResult) -> str:
 
     lines = [
         f"\n{'='*60}",
-        f"VALIDATION SUMMARY",
+        "VALIDATION SUMMARY",
         f"{'='*60}",
         f"\n{status_emoji.get(result.validation_status, '?')} Status: {result.validation_status.upper()}",
         f"\nOverall Confidence: {result.overall_confidence:.1%}",
         f"\n{'─'*60}",
-        f"\nFactor Breakdown:",
+        "\nFactor Breakdown:",
         f"  • Evidence Quality:  {result.evidence_factor:.2f} (count={result.evidence_count}, diversity={result.source_diversity})",
         f"  • Process Adherence: {result.process_factor:.2f}",
         f"  • Objective Checks:  {result.objective_factor:.2f}",
     ]
 
     if result.missing_evidence_types:
-        lines.append(f"\nMissing Evidence:")
+        lines.append("\nMissing Evidence:")
         for missing in result.missing_evidence_types:
             lines.append(f"  • {missing}")
 
     if result.missing_process_steps:
-        lines.append(f"\nMissing Process Steps:")
+        lines.append("\nMissing Process Steps:")
         for missing in result.missing_process_steps:
             lines.append(f"  • {missing}")
 
     if result.objective_checks:
-        lines.append(f"\nObjective Checks:")
+        lines.append("\nObjective Checks:")
         for check, passed in result.objective_checks.items():
             status = "✓" if passed else "✗"
             lines.append(f"  {status} {check}")
 
     if result.requires_human_review:
-        lines.append(f"\n⚠️  HUMAN REVIEW REQUIRED")
-        lines.append(f"\nReasons:")
+        lines.append("\n⚠️  HUMAN REVIEW REQUIRED")
+        lines.append("\nReasons:")
         for reason in result.review_reasons:
             lines.append(f"  • {reason}")
 

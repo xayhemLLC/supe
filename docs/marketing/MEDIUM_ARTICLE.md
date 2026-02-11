@@ -1,6 +1,6 @@
-# Why Your AI Agent Needs a Memory (And Proof of What It Did)
+# Why Your AI Agent Needs a Brain (Not Just Memory)
 
-*The case for validation gates, audit trails, and persistent recall in AI agent systems*
+*Validation gates, proof-of-work audit trails, neural recall, and cognitive storage for AI agent systems*
 
 ---
 
@@ -17,75 +17,29 @@ This scenario isn't hypothetical. As AI agents become more capable and more auto
 - **No pre-execution validation** — The agent decides to run a command, and it just... runs.
 - **No audit trails** — Logs might show what happened, but nothing proves the agent was supposed to do it.
 - **No persistent memory** — Each session starts fresh. The agent can't learn from past executions.
+- **No cognitive architecture** — Flat storage with no understanding of relationships between memories.
 
-## The Three Missing Pieces
+## The Five Missing Pieces
 
-After building several agent systems and experiencing various degrees of "oh no," I identified three capabilities that every serious agent deployment needs:
+After building several agent systems, I identified five capabilities that every serious agent deployment needs:
 
 ### 1. Validation Gates
 
 Before an agent executes any tool, something should check: "Is this allowed?"
 
-This isn't about AI safety in the philosophical sense. It's about practical constraints:
+```python
+@agent.register_gate("safe_commands")
+def safe_commands(record, phase) -> GateResult:
+    if "rm -rf" in record.tool_input.get("command", ""):
+        return GateResult("safe_commands", False, "BLOCKED: dangerous")
+    return GateResult("safe_commands", True, "OK")
+```
 
-- The code review bot shouldn't push to main
-- The data analysis agent shouldn't delete records
-- The RE agent shouldn't modify game binaries
-
-These constraints are domain-specific and change constantly. You need a way to express them in code, not configuration files.
+10 lines. No DSL. No config files. Just Python functions.
 
 ### 2. Proof-of-Work Audit Trails
 
-When something goes wrong, you need to know:
-- Exactly what the agent did
-- In what order
-- With what inputs and outputs
-- And proof that the logs weren't tampered with
-
-For regulated industries, this isn't optional. For everyone else, it's insurance.
-
-### 3. Persistent Recall
-
-Agents should remember what they've done. Not just within a session, but across sessions. And you should be able to query that memory:
-
-- "What did the agent do with authentication files?"
-- "Show me all database queries from last week"
-- "Find similar operations to this one"
-
-## Enter Supe
-
-I built [Supe](https://github.com/xayhemLLC/supe) to address these gaps. It's an open-source Python library that wraps AI agent SDKs with validation, proof-of-work, and recall capabilities.
-
-### Gates: Just Python Functions
-
-A gate is a function that runs before (pre) or after (post) a tool execution:
-
-```python
-from tascer.contracts import GateResult
-
-@agent.register_gate("safe_commands")
-def safe_commands(record, phase) -> GateResult:
-    """Block dangerous shell commands."""
-    if phase != "pre":
-        return GateResult("safe_commands", True, "Post-check skipped")
-
-    cmd = record.tool_input.get("command", "")
-    dangerous = ["rm -rf", "DROP TABLE", "> /dev/sda"]
-
-    for pattern in dangerous:
-        if pattern in cmd:
-            return GateResult("safe_commands", False, f"BLOCKED: {pattern}")
-
-    return GateResult("safe_commands", True, f"Allowed")
-```
-
-That's it. No DSL to learn. No YAML to configure. Just a function that returns pass/fail.
-
-Want read-only mode? Another gate. Want to whitelist specific commands? Another gate. Want to rate-limit API calls? You get the idea.
-
-### Proofs: Tamper-Evident Logging
-
-Every tool execution generates a proof:
+Every tool execution generates a cryptographic proof:
 
 ```
 SHA256(tool_name + tool_input + tool_output + timestamp + previous_proof)
@@ -94,38 +48,85 @@ SHA256(tool_name + tool_input + tool_output + timestamp + previous_proof)
 The proofs chain together. Modify any execution record, and all subsequent proofs become invalid.
 
 ```python
-# After running operations
 assert agent.verify_proofs()  # Returns False if anything was tampered
-
-# Export for compliance
 agent.export_report("audit_trail.json")
 ```
 
-This isn't cryptographic security theater. It's practical tamper detection for audit logs.
+### 3. Neural Memory (Not Just Storage)
 
-### Recall: Semantic Search Over Executions
+Traditional memory: "Store this. Retrieve that."
 
-Every execution is stored as a Card in AB Memory, Supe's storage engine. You can query them semantically:
+Neural memory: "These concepts fired together, wire them together."
 
 ```python
-# Keyword search with neural spreading activation
-results = agent.recall("player struct", top_k=5)
+from ab.neural_memory import NeuralMemory
 
-# Filter by tool type
-bash_history = agent.recall_tool("Bash")
+neural = NeuralMemory()
+neural.add_card(1, {"title": "OAuth Auth", "type": "feature"})
+neural.add_card(2, {"title": "Login Page", "type": "feature"})
 
-# Find similar past executions
-similar = agent.recall_similar({"file_path": "/app/config.py"})
+# Co-activated cards strengthen connections
+neural.connect(1, 2)  # Hebbian learning
 
-# Get full session history
-history = agent.recall_session()
+# Query spreads activation through network
+results = neural.recall("authentication login", top_k=5)
 ```
 
-The neural spreading activation isn't just keyword matching—it understands conceptual relationships between executions.
+Connections strengthen with use (potentiation) and weaken with disuse (depression). Hubs emerge. Fundamental branches form. Like a real brain.
 
-## A Real Example: Reverse Engineering Workflow
+### 4. Cognitive Storage Hierarchy
 
-Here's how I use Supe for reverse engineering game binaries:
+Not flat key-value storage. A real hierarchy:
+
+**Moments** → Sessions of work
+  **Cards** → Units of knowledge
+    **Buffers** → Raw data payloads
+
+```python
+from ab import ABMemory, Buffer
+
+ab = ABMemory(".tascer/memory.sqlite")
+
+moment = ab.create_moment(master_input="Analysis session")
+card = ab.store_card(
+    label="analysis:player_struct",
+    buffers=[
+        Buffer(name="definition", payload=b"struct Player { int health; }"),
+        Buffer(name="offsets", payload=b'{"health": "0x10"}'),
+    ],
+    moment_id=moment.id,
+)
+```
+
+### 5. Semantic Relations
+
+Knowledge isn't isolated. It's connected:
+
+```python
+from tasc.relations import Relation, RelationType, RelationCollection
+
+# 7 relation types: CAUSES, IMPLIES, CONTRADICTS, SUPPORTS, DEPENDS_ON, EQUALS, TRANSFORMS
+relations = [
+    Relation.create("r1", RelationType.SUPPORTS, card1.id, card2.id, 0.9),
+    Relation.create("r2", RelationType.DEPENDS_ON, card1.id, card3.id, 0.8),
+]
+```
+
+## Enter Supe
+
+I built [Supe](https://github.com/xayhemLLC/supe) to address these gaps. It's an open-source Python library that wraps AI agent SDKs with validation, proof-of-work, neural memory, and cognitive storage.
+
+### The Full Stack
+
+| Component | Purpose |
+|-----------|---------|
+| **AB Memory** | Cognitive storage (moments, cards, buffers) |
+| **Neural Memory** | Hebbian learning, spreading activation |
+| **Tasc** | Task management with 14 evidence types |
+| **Tascer** | Validation gates, proofs, recall |
+| **Relations** | 7 typed semantic connections |
+
+### A Real Example: Reverse Engineering Workflow
 
 ```python
 from ab import ABMemory
@@ -171,34 +172,92 @@ def read_only_mode(record, phase) -> GateResult:
 ```
 
 Now Claude can:
-- ✅ Run Ghidra analysis
-- ✅ Extract strings from binaries
-- ✅ Read game files
-- ❌ Execute arbitrary shell commands
-- ❌ Modify game files
-- ❌ Access system directories
+- ghidra --analyze game.exe
+- strings game.exe
+- Read game files
 
-And I have a complete, tamper-evident log of everything it did.
+And cannot:
+- Execute arbitrary shell commands
+- Modify game files
+- Access system directories
+
+And you have a complete, tamper-evident log with cryptographic proofs.
+
+### Task Management with Domain Inference
+
+```python
+from tasc.tasc import Tasc
+from tasc.domains import infer_domain_from_title
+
+task = Tasc(
+    id="task-001",
+    status="pending",
+    title="Fix security vulnerability in auth",
+)
+
+domain = infer_domain_from_title(task.title)
+# Returns: TaskDomain.SECURITY
+
+# 7 domains: DEBUGGING, DESIGN, REFACTORING, SECURITY, TESTING, DOCUMENTATION, DEVELOPMENT
+```
+
+### Evidence-Based Validation
+
+14 evidence types for task completion:
+
+```python
+from tasc.evidence import Evidence, EvidenceSource
+
+evidence = [
+    Evidence.create("Tests pass", EvidenceSource.TEST, ["pytest: 42 passed"]),
+    Evidence.create("Code reviewed", EvidenceSource.PEER_REVIEW, ["PR #123"]),
+    Evidence.create("Scan clean", EvidenceSource.SECURITY_SCAN, ["snyk: 0 vulns"]),
+]
+```
+
+### Cryptographic Proof Chains
+
+```python
+from tascer.llm_proof import LLMTaskProof, compute_proof_hash, create_plan
+
+# Create a structured plan
+plan = create_plan(
+    title="Security Audit",
+    tascs=[
+        {"id": "t1", "title": "Run security scan"},
+        {"id": "t2", "title": "Review findings"},
+        {"id": "t3", "title": "Apply patches"},
+    ],
+)
+
+# Each task completion generates a verifiable proof
+proof = LLMTaskProof(
+    task_id="t1",
+    plan_id=plan.id,
+    proven=True,
+    proof_hash=computed_hash,
+    evidence={"exit_code": 0, "output": "No vulnerabilities found"},
+)
+
+assert proof.verify()  # Cryptographically verified
+```
 
 ## The Design Philosophy
 
-A few principles guided Supe's design:
-
 **1. Gates are code, not configuration.**
+YAML configs are great until you need conditional logic. Gates are Python functions because validation logic is often complex.
 
-YAML and JSON configs are great until you need conditional logic. Gates are Python functions because validation logic is often complex and domain-specific.
+**2. Memory is neural, not flat.**
+Storing data is easy. The hard part is recalling relevant data. Hebbian learning and spreading activation make recall intelligent.
 
-**2. Proofs are practical, not theatrical.**
+**3. Proofs are practical, not theatrical.**
+SHA256 tamper detection for audit logs. Good enough for compliance, simple enough to understand.
 
-The proof-of-work system isn't blockchain-grade cryptography. It's practical tamper detection for audit logs. Good enough for compliance, simple enough to understand.
+**4. Relations are first-class.**
+Knowledge isn't isolated. SUPPORTS, CONTRADICTS, DEPENDS_ON, and more capture real semantic relationships.
 
-**3. Memory is queryable, not just storable.**
-
-Storing executions is easy. The hard part is retrieving relevant ones. Neural spreading activation lets you query by concept, not just keyword.
-
-**4. Composition over configuration.**
-
-Want to combine multiple gates? Just list them. They run in order, first failure stops execution. No special syntax needed.
+**5. Composition over configuration.**
+Want multiple gates? List them. They run in order. First failure blocks. No special syntax.
 
 ## Getting Started
 
@@ -209,21 +268,32 @@ pip install supe
 pip install supe[anthropic]
 ```
 
-Check out the [GitHub repo](https://github.com/xayhemLLC/supe) for full documentation and examples.
+Run the demo:
+```bash
+python scripts/demo_full_capabilities.py
+```
 
-## What's Next?
+## What's Included
 
-Supe is open source and actively developed. Areas I'm exploring:
+- **343 tests passing**
+- MIT license
+- Python 3.10+
+- SQLite storage (no external deps)
+- Full type hints
+- Async support
 
-- **More gates**: Rate limiting, cost tracking, API quotas
-- **Integrations**: LangChain, LlamaIndex, OpenAI SDK wrapper
-- **Visualization**: Audit trail dashboard
-- **Distributed proofs**: Multi-agent proof chains
+## What's Next
 
-If you're building agent systems and care about validation and auditability, I'd love to hear from you. Open an issue, submit a PR, or just star the repo.
+Areas being explored:
+- More gate types (rate limiting, cost tracking)
+- More integrations (LangChain, OpenAI)
+- Visualization dashboard
+- Distributed proof chains
+
+GitHub: [github.com/xayhemLLC/supe](https://github.com/xayhemLLC/supe)
 
 Because the next time your AI agent does something unexpected, you should be able to prove exactly what happened.
 
 ---
 
-*[Supe](https://github.com/xayhemLLC/supe) is MIT licensed and available on PyPI. 343 tests passing.*
+*[Supe](https://github.com/xayhemLLC/supe) is MIT licensed and available on PyPI.*

@@ -10,11 +10,9 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
-from tasc.tasc import Tasc
-from .llm_proof import TascPlan, create_plan, ProofType, ProofRequirement
-
+from .llm_proof import TascPlan, create_plan
 
 # ---------------------------------------------------------------------------
 # Tasc Citations - Reference other tascs as evidence/prior work
@@ -23,7 +21,7 @@ from .llm_proof import TascPlan, create_plan, ProofType, ProofRequirement
 @dataclass
 class TascCitation:
     """A citation to another Tasc or TascValidation.
-    
+
     Allows tascs to reference prior work, evidence, or related tasks.
     This enables:
     - Building on proven solutions
@@ -34,9 +32,9 @@ class TascCitation:
     cited_tasc_id: str   # The tasc being cited
     citation_type: Literal["evidence", "prerequisite", "related", "supersedes", "derived_from"]
     description: str = ""
-    proof_hash: Optional[str] = None  # Proof hash of cited tasc (for verification)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    proof_hash: str | None = None  # Proof hash of cited tasc (for verification)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "source_tasc_id": self.source_tasc_id,
             "cited_tasc_id": self.cited_tasc_id,
@@ -44,9 +42,9 @@ class TascCitation:
             "description": self.description,
             "proof_hash": self.proof_hash,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TascCitation":
+    def from_dict(cls, data: dict[str, Any]) -> "TascCitation":
         return cls(
             source_tasc_id=data["source_tasc_id"],
             cited_tasc_id=data["cited_tasc_id"],
@@ -63,7 +61,7 @@ class TascCitation:
 @dataclass
 class PlanMetrics:
     """Metrics for tracking plan execution performance.
-    
+
     Used to:
     - Benchmark agent performance over time
     - Identify slow/failing patterns
@@ -73,24 +71,24 @@ class PlanMetrics:
     total_tascs: int
     successful_tascs: int
     failed_tascs: int
-    
+
     # Timing
     total_duration_ms: float = 0
     avg_tasc_duration_ms: float = 0
     max_tasc_duration_ms: float = 0
-    
+
     # Quality
     first_pass_success_rate: float = 0  # % of tascs that passed on first try
     retry_count: int = 0
-    
+
     # Citations
     citations_made: int = 0
     citations_verified: int = 0  # Citations with valid proof hashes
-    
+
     # Timestamp
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "plan_id": self.plan_id,
             "total_tascs": self.total_tascs,
@@ -110,7 +108,7 @@ class PlanMetrics:
 @dataclass
 class BenchmarkSuite:
     """A collection of standardized test cases for agent benchmarking.
-    
+
     Categories:
     - Syntax/import checks
     - Unit test execution
@@ -120,8 +118,8 @@ class BenchmarkSuite:
     """
     name: str
     description: str
-    test_cases: List[Dict[str, Any]] = field(default_factory=list)
-    
+    test_cases: list[dict[str, Any]] = field(default_factory=list)
+
     @classmethod
     def create_standard_suite(cls) -> "BenchmarkSuite":
         """Create the standard benchmark suite for agent testing."""
@@ -177,12 +175,12 @@ class PlanGenerationRequest:
     """Request for generating a TascPlan from natural language."""
     goal: str
     context: str = ""  # Codebase summary, constraints
-    constraints: List[str] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
     max_tascs: int = 10
     require_approval: bool = True  # Add manual approval gate?
-    
+
     # Optional: previous work to cite
-    prior_tasc_ids: List[str] = field(default_factory=list)
+    prior_tasc_ids: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -191,19 +189,19 @@ class GeneratedPlan:
     plan: TascPlan
     reasoning: str  # Why this plan was chosen
     confidence: float  # 0-1 confidence score
-    citations: List[TascCitation] = field(default_factory=list)
+    citations: list[TascCitation] = field(default_factory=list)
     requires_approval: bool = True
 
 
 def generate_plan_prompt(request: PlanGenerationRequest) -> str:
     """Generate the prompt for LLM plan generation.
-    
+
     This prompt template guides LLMs to create well-structured,
     validatable TascPlans.
     """
     constraints_text = "\n".join(f"- {c}" for c in request.constraints) if request.constraints else "None specified"
     prior_work = "\n".join(f"- {tid}" for tid in request.prior_tasc_ids) if request.prior_tasc_ids else "None"
-    
+
     return f"""You are a PLANNER creating a TascPlan for the following goal.
 
 ## Goal
@@ -268,7 +266,7 @@ def parse_generated_plan(
     request: PlanGenerationRequest,
 ) -> GeneratedPlan:
     """Parse LLM response into a GeneratedPlan.
-    
+
     Handles JSON extraction and validation.
     """
     # Extract JSON from response (handle markdown code blocks)
@@ -281,12 +279,12 @@ def parse_generated_plan(
         start = response.find("```") + 3
         end = response.find("```", start)
         json_str = response[start:end].strip()
-    
+
     try:
         data = json.loads(json_str)
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse LLM response as JSON: {e}")
-    
+
     # Build tascs
     tascs = []
     for t in data.get("tascs", []):
@@ -297,7 +295,7 @@ def parse_generated_plan(
             "desired_outcome": t.get("desired_outcome", ""),
             "dependencies": t.get("dependencies", []),
         }
-        
+
         # Handle proof requirements
         if t.get("proof_required"):
             proof_req = t["proof_required"]
@@ -305,9 +303,9 @@ def parse_generated_plan(
                 tasc_dict["proof_required"] = proof_req
             elif proof_req == "manual":
                 tasc_dict["proof_required"] = {"proof_type": "manual"}
-        
+
         tascs.append(tasc_dict)
-    
+
     # Add approval gate if requested
     if request.require_approval and tascs:
         # Find the last non-approval tasc
@@ -319,13 +317,13 @@ def parse_generated_plan(
             "proof_required": {"proof_type": "manual"},
             "dependencies": [last_id],
         })
-    
+
     # Create plan
     plan = create_plan(
         title=data.get("title", request.goal[:50]),
         tascs=tascs,
     )
-    
+
     # Parse citations
     citations = []
     for c in data.get("citations", []):
@@ -335,7 +333,7 @@ def parse_generated_plan(
             citation_type=c.get("citation_type", "related"),
             description=c.get("description", ""),
         ))
-    
+
     return GeneratedPlan(
         plan=plan,
         reasoning=data.get("reasoning", ""),
@@ -351,7 +349,7 @@ def calculate_plan_metrics(plan: TascPlan) -> PlanMetrics:
     successful = 0
     failed = 0
     durations = []
-    
+
     for tasc in plan.tascs:
         val = plan.validations.get(tasc.id)
         if val:
@@ -360,11 +358,11 @@ def calculate_plan_metrics(plan: TascPlan) -> PlanMetrics:
             else:
                 failed += 1
             durations.append(val.duration_ms)
-    
+
     total_duration = sum(durations)
     avg_duration = total_duration / len(durations) if durations else 0
     max_duration = max(durations) if durations else 0
-    
+
     return PlanMetrics(
         plan_id=plan.id,
         total_tascs=total,
@@ -383,32 +381,32 @@ def calculate_plan_metrics(plan: TascPlan) -> PlanMetrics:
 
 class CitationStore:
     """Store and retrieve tasc citations."""
-    
+
     def __init__(self, path: str = ".tascer/citations.json"):
         self.path = path
         self._ensure_file()
-    
+
     def _ensure_file(self):
         import os
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         if not os.path.exists(self.path):
             self._save([])
-    
-    def _load(self) -> List[Dict]:
+
+    def _load(self) -> list[dict]:
         with open(self.path) as f:
             return json.load(f)
-    
-    def _save(self, data: List[Dict]):
+
+    def _save(self, data: list[dict]):
         with open(self.path, 'w') as f:
             json.dump(data, f, indent=2)
-    
+
     def add(self, citation: TascCitation):
         """Add a citation."""
         data = self._load()
         data.append(citation.to_dict())
         self._save(data)
-    
-    def get_citations_for(self, tasc_id: str) -> List[TascCitation]:
+
+    def get_citations_for(self, tasc_id: str) -> list[TascCitation]:
         """Get citations made by a tasc."""
         data = self._load()
         return [
@@ -416,8 +414,8 @@ class CitationStore:
             for c in data
             if c["source_tasc_id"] == tasc_id
         ]
-    
-    def get_cited_by(self, tasc_id: str) -> List[TascCitation]:
+
+    def get_cited_by(self, tasc_id: str) -> list[TascCitation]:
         """Get tascs that cite this tasc."""
         data = self._load()
         return [
@@ -425,21 +423,21 @@ class CitationStore:
             for c in data
             if c["cited_tasc_id"] == tasc_id
         ]
-    
+
     def verify_citation(self, citation: TascCitation, proof_store_path: str = ".tascer/proofs") -> bool:
         """Verify a citation's proof hash matches stored proof."""
         import os
         if not citation.proof_hash:
             return False
-        
+
         # Look for proof file
         proof_file = os.path.join(proof_store_path, f"{citation.cited_tasc_id}.json")
         if not os.path.exists(proof_file):
             return False
-        
+
         with open(proof_file) as f:
             proof = json.load(f)
-        
+
         return proof.get("proof_hash") == citation.proof_hash
 
 
@@ -448,7 +446,7 @@ def cite_tasc(
     cited_tasc_id: str,
     citation_type: str = "related",
     description: str = "",
-    proof_hash: Optional[str] = None,
+    proof_hash: str | None = None,
 ) -> TascCitation:
     """Create a citation from one tasc to another.
 
@@ -484,10 +482,10 @@ def cite_tasc(
 def generate_plan(
     goal: str,
     context: str = "",
-    constraints: List[str] = None,
+    constraints: list[str] = None,
     max_tascs: int = 10,
     require_approval: bool = True,
-    prior_tasc_ids: List[str] = None,
+    prior_tasc_ids: list[str] = None,
     use_claude: bool = True,
     **llm_kwargs,
 ) -> GeneratedPlan:

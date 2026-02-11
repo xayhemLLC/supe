@@ -11,7 +11,7 @@ Atom-based architecture of the Tasc system.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from .atom import Atom
@@ -44,6 +44,45 @@ class EvidenceSource(Enum):
     REGRESSION_TEST = "regression_test"  # Tests added to prevent recurrence
 
 
+class ValidationMethod(Enum):
+    """The 7 canonical methods for validating task completion.
+
+    Every tasc should have at least one validation method specified.
+    These methods define HOW the evidence was verified, not WHERE it came from.
+    """
+    AUTOMATED_TEST = "automated_test"      # Test suite execution (unit, integration)
+    MANUAL_REVIEW = "manual_review"        # Human inspection, code review, QA
+    STATIC_ANALYSIS = "static_analysis"    # Linting, type checking, code quality
+    BENCHMARK = "benchmark"                # Performance validation, load testing
+    INTEGRATION_TEST = "integration_test"  # E2E testing, system integration
+    SECURITY_SCAN = "security_scan"        # Security analysis, vulnerability scanning
+    USER_ACCEPTANCE = "user_acceptance"    # UAT, user validation, stakeholder sign-off
+
+    @classmethod
+    def from_string(cls, value: str) -> "ValidationMethod":
+        """Convert string to ValidationMethod, with fallback for legacy data."""
+        if not value:
+            return cls.MANUAL_REVIEW  # Default fallback
+        try:
+            return cls(value.lower().replace(" ", "_").replace("-", "_"))
+        except ValueError:
+            # Map common legacy strings
+            legacy_map = {
+                "manual": cls.MANUAL_REVIEW,
+                "test": cls.AUTOMATED_TEST,
+                "tests": cls.AUTOMATED_TEST,
+                "experimental": cls.AUTOMATED_TEST,
+                "lint": cls.STATIC_ANALYSIS,
+                "linting": cls.STATIC_ANALYSIS,
+                "security": cls.SECURITY_SCAN,
+                "uat": cls.USER_ACCEPTANCE,
+                "e2e": cls.INTEGRATION_TEST,
+                "perf": cls.BENCHMARK,
+                "performance": cls.BENCHMARK,
+            }
+            return legacy_map.get(value.lower(), cls.MANUAL_REVIEW)
+
+
 @dataclass
 class Evidence:
     """Evidence supporting task completion or validation.
@@ -52,7 +91,7 @@ class Evidence:
     - Has a unique ID
     - Comes from a specific source
     - Contains traceable citations
-    - Can be validated
+    - Can be validated using one of 7 canonical methods
     - Has a confidence score
 
     Evidence can be encoded as Atoms for storage in the Tasc system.
@@ -61,15 +100,20 @@ class Evidence:
     id: str
     text: str
     source: EvidenceSource
-    citations: List[str] = field(default_factory=list)
+    citations: list[str] = field(default_factory=list)
     validated: bool = False
-    validation_method: str = ""
+    validation_method: ValidationMethod | None = None
     confidence: float = 1.0
     created_at: int = field(default_factory=lambda: int(datetime.now().timestamp() * 1000))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Handle legacy string validation_method values."""
+        if isinstance(self.validation_method, str):
+            self.validation_method = ValidationMethod.from_string(self.validation_method) if self.validation_method else None
 
     @classmethod
-    def create(cls, text: str, source: EvidenceSource, citations: List[str]) -> "Evidence":
+    def create(cls, text: str, source: EvidenceSource, citations: list[str]) -> "Evidence":
         """Factory method to create new evidence."""
         return cls(
             id=str(uuid4()),
@@ -78,30 +122,42 @@ class Evidence:
             citations=citations,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
+        # Handle validation_method being either enum or legacy string
+        vm = self.validation_method
+        if isinstance(vm, ValidationMethod):
+            vm_value = vm.value
+        elif isinstance(vm, str):
+            vm_value = vm
+        else:
+            vm_value = ""
+
         return {
             "id": self.id,
             "text": self.text,
             "source": self.source.value,
             "citations": self.citations,
             "validated": self.validated,
-            "validation_method": self.validation_method,
+            "validation_method": vm_value,
             "confidence": float(self.confidence),
             "created_at": self.created_at,
             "metadata": self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Evidence":
+    def from_dict(cls, data: dict[str, Any]) -> "Evidence":
         """Create Evidence from dictionary."""
+        vm_value = data.get("validation_method", "")
+        validation_method = ValidationMethod.from_string(vm_value) if vm_value else None
+
         return cls(
             id=data["id"],
             text=data["text"],
             source=EvidenceSource(data["source"]),
             citations=data.get("citations", []),
             validated=data.get("validated", False),
-            validation_method=data.get("validation_method", ""),
+            validation_method=validation_method,
             confidence=float(data.get("confidence", 1.0)),
             created_at=int(data.get("created_at", int(datetime.now().timestamp() * 1000))),
             metadata=data.get("metadata", {}),
@@ -111,6 +167,15 @@ class Evidence:
         """Convert to UObject for Atom encoding."""
         import json
 
+        # Handle validation_method being either enum or legacy string
+        vm = self.validation_method
+        if isinstance(vm, ValidationMethod):
+            vm_value = vm.value
+        elif isinstance(vm, str):
+            vm_value = vm
+        else:
+            vm_value = ""
+
         data = {
             "kind": "evidence",
             "id": self.id,
@@ -118,7 +183,7 @@ class Evidence:
             "source": self.source.value,
             "citations": json.dumps(self.citations),
             "validated": "1" if self.validated else "0",
-            "validation_method": self.validation_method,
+            "validation_method": vm_value,
             "confidence": str(self.confidence),
             "created_at": str(self.created_at),
             "metadata": json.dumps(self.metadata),
@@ -140,15 +205,18 @@ class Evidence:
         if data.get("citations"):
             try:
                 citations = json.loads(data["citations"])
-            except:
+            except Exception:
                 citations = []
 
         metadata = {}
         if data.get("metadata"):
             try:
                 metadata = json.loads(data["metadata"])
-            except:
+            except Exception:
                 metadata = {}
+
+        vm_value = data.get("validation_method", "")
+        validation_method = ValidationMethod.from_string(vm_value) if vm_value else None
 
         return cls(
             id=data["id"],
@@ -156,7 +224,7 @@ class Evidence:
             source=EvidenceSource(data["source"]),
             citations=citations,
             validated=data.get("validated") == "1",
-            validation_method=data.get("validation_method", ""),
+            validation_method=validation_method,
             confidence=float(data.get("confidence", "1.0")),
             created_at=int(data.get("created_at", str(int(datetime.now().timestamp() * 1000)))),
             metadata=metadata,
@@ -192,7 +260,7 @@ class EvidenceCollection:
 
     id: str
     tasc_id: str  # The tasc this evidence collection validates
-    evidence_items: List[Evidence] = field(default_factory=list)
+    evidence_items: list[Evidence] = field(default_factory=list)
     created_at: int = field(default_factory=lambda: int(datetime.now().timestamp() * 1000))
 
     @classmethod
@@ -207,11 +275,11 @@ class EvidenceCollection:
         """Add an evidence item to the collection."""
         self.evidence_items.append(evidence)
 
-    def get_evidence_by_source(self, source: EvidenceSource) -> List[Evidence]:
+    def get_evidence_by_source(self, source: EvidenceSource) -> list[Evidence]:
         """Get all evidence from a specific source."""
         return [e for e in self.evidence_items if e.source == source]
 
-    def get_validated_evidence(self) -> List[Evidence]:
+    def get_validated_evidence(self) -> list[Evidence]:
         """Get all validated evidence."""
         return [e for e in self.evidence_items if e.validated]
 
@@ -219,7 +287,7 @@ class EvidenceCollection:
         """Get the number of unique evidence sources."""
         return len(set(e.source for e in self.evidence_items))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -229,7 +297,7 @@ class EvidenceCollection:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EvidenceCollection":
+    def from_dict(cls, data: dict[str, Any]) -> "EvidenceCollection":
         """Create EvidenceCollection from dictionary."""
         return cls(
             id=data["id"],
@@ -265,7 +333,7 @@ class EvidenceCollection:
 # Helper functions for evidence collection
 
 def collect_test_evidence(
-    test_results: Dict[str, Any],
+    test_results: dict[str, Any],
     test_command: str = ""
 ) -> Evidence:
     """Create evidence from test results.
@@ -302,7 +370,7 @@ def collect_code_evidence(
     line_start: int,
     line_end: int,
     description: str,
-    commit_hash: Optional[str] = None
+    commit_hash: str | None = None
 ) -> Evidence:
     """Create evidence from code changes.
 

@@ -16,23 +16,22 @@ import os
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
 
 
 @dataclass
 class TerminalResult:
     """Result of a terminal command execution."""
-    
+
     exit_code: int
     stdout: str
     stderr: str
     duration_ms: float
     cwd: str
-    env_snapshot: Dict[str, str] = field(default_factory=dict)
+    env_snapshot: dict[str, str] = field(default_factory=dict)
     completion_mode: str = "process_exit"  # process_exit | sentinel | file_hook | timeout
     timed_out: bool = False
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "exit_code": self.exit_code,
             "stdout": self.stdout,
@@ -46,19 +45,19 @@ class TerminalResult:
 
 
 def run_and_observe(
-    command: Union[str, List[str]],
-    cwd: Optional[str] = None,
+    command: str | list[str],
+    cwd: str | None = None,
     timeout_sec: float = 60,
-    completion_sentinel: Optional[str] = None,
-    completion_file: Optional[str] = None,
-    env_allowlist: Optional[List[str]] = None,
-    env_override: Optional[Dict[str, str]] = None,
+    completion_sentinel: str | None = None,
+    completion_file: str | None = None,
+    env_allowlist: list[str] | None = None,
+    env_override: dict[str, str] | None = None,
     shell: bool = False,
 ) -> TerminalResult:
     """Run a terminal command and capture outputs deterministically.
-    
+
     TASC_CORE_TERMINAL_RUN_AND_OBSERVE implementation.
-    
+
     Args:
         command: Command to run (string or list of args).
         cwd: Working directory. Defaults to current directory.
@@ -68,29 +67,29 @@ def run_and_observe(
         env_allowlist: Env vars to capture in result (never secrets!).
         env_override: Additional env vars to set for the command.
         shell: Whether to run through shell.
-    
+
     Returns:
         TerminalResult with captured outputs and timing.
     """
     if cwd is None:
         cwd = os.getcwd()
-    
+
     # Prepare environment
     env = os.environ.copy()
     if env_override:
         env.update(env_override)
-    
+
     # Capture allowed env vars
     captured_env = {}
     if env_allowlist:
         for var in env_allowlist:
             if var in env:
                 captured_env[var] = env[var]
-    
+
     start_time = time.perf_counter()
     timed_out = False
     completion_mode = "process_exit"
-    
+
     try:
         # If using sentinel or file hook, we need to handle differently
         if completion_sentinel or completion_file:
@@ -139,10 +138,10 @@ def run_and_observe(
         stdout = ""
         stderr = str(e)
         exit_code = -1
-    
+
     end_time = time.perf_counter()
     duration_ms = (end_time - start_time) * 1000
-    
+
     return TerminalResult(
         exit_code=exit_code,
         stdout=stdout,
@@ -156,20 +155,20 @@ def run_and_observe(
 
 
 def _run_with_hooks(
-    command: Union[str, List[str]],
+    command: str | list[str],
     cwd: str,
-    env: Dict[str, str],
+    env: dict[str, str],
     timeout_sec: float,
-    completion_sentinel: Optional[str],
-    completion_file: Optional[str],
+    completion_sentinel: str | None,
+    completion_file: str | None,
     shell: bool,
-) -> Dict:
+) -> dict:
     """Run a command with sentinel or file completion detection."""
-    stdout_lines: List[str] = []
-    stderr_lines: List[str] = []
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
     completion_mode = "process_exit"
     timed_out = False
-    
+
     proc = subprocess.Popen(
         command,
         cwd=cwd,
@@ -179,9 +178,9 @@ def _run_with_hooks(
         text=True,
         shell=shell,
     )
-    
+
     start_time = time.time()
-    
+
     try:
         while True:
             # Check timeout
@@ -191,32 +190,32 @@ def _run_with_hooks(
                 timed_out = True
                 completion_mode = "timeout"
                 break
-            
+
             # Check if process exited
             poll = proc.poll()
             if poll is not None:
                 completion_mode = "process_exit"
                 break
-            
+
             # Check file hook
             if completion_file and os.path.exists(completion_file):
                 proc.terminate()
                 completion_mode = "file_hook"
                 break
-            
+
             # Read available output (non-blocking would be better, but keeping simple)
             time.sleep(0.1)
-        
+
         # Collect remaining output
         stdout_text, stderr_text = proc.communicate(timeout=5)
         stdout_lines.append(stdout_text)
         stderr_lines.append(stderr_text)
-        
+
         # Check for sentinel in stdout
         full_stdout = "".join(stdout_lines)
         if completion_sentinel and completion_sentinel in full_stdout:
             completion_mode = "sentinel"
-        
+
         return {
             "stdout": full_stdout,
             "stderr": "".join(stderr_lines),
@@ -238,12 +237,12 @@ def _run_with_hooks(
 @dataclass
 class StreamChunk:
     """A chunk of streaming output."""
-    
+
     stream: str  # "stdout" or "stderr"
     content: str
     timestamp: float
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "stream": self.stream,
             "content": self.content,
@@ -254,16 +253,16 @@ class StreamChunk:
 @dataclass
 class WatchResult:
     """Result of watching a long-running command."""
-    
-    exit_code: Optional[int]
-    chunks: List[StreamChunk]
+
+    exit_code: int | None
+    chunks: list[StreamChunk]
     completion_mode: str
     started_at: float
-    ended_at: Optional[float]
+    ended_at: float | None
     pid: int
     still_running: bool = False
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "exit_code": self.exit_code,
             "chunks": [c.to_dict() for c in self.chunks],
@@ -273,12 +272,12 @@ class WatchResult:
             "pid": self.pid,
             "still_running": self.still_running,
         }
-    
+
     @property
     def stdout(self) -> str:
         """Get all stdout as single string."""
         return "".join(c.content for c in self.chunks if c.stream == "stdout")
-    
+
     @property
     def stderr(self) -> str:
         """Get all stderr as single string."""
@@ -286,22 +285,22 @@ class WatchResult:
 
 
 def terminal_watch(
-    command: Union[str, List[str]],
-    cwd: Optional[str] = None,
+    command: str | list[str],
+    cwd: str | None = None,
     max_wait_sec: float = 60,
     check_interval_sec: float = 0.5,
-    completion_sentinel: Optional[str] = None,
-    completion_file: Optional[str] = None,
+    completion_sentinel: str | None = None,
+    completion_file: str | None = None,
     shell: bool = False,
-    env_override: Optional[Dict[str, str]] = None,
+    env_override: dict[str, str] | None = None,
 ) -> WatchResult:
     """Watch a long-running command with streaming output.
-    
+
     ACTION: terminal.watch
-    
+
     Unlike run_and_observe, this streams output in chunks and can
     detect completion via sentinel or file hooks while the process runs.
-    
+
     Args:
         command: Command to run.
         cwd: Working directory.
@@ -311,22 +310,22 @@ def terminal_watch(
         completion_file: File whose appearance indicates completion.
         shell: Run through shell.
         env_override: Additional environment variables.
-    
+
     Returns:
         WatchResult with streaming chunks and completion status.
     """
     if cwd is None:
         cwd = os.getcwd()
-    
+
     # Prepare environment
     env = os.environ.copy()
     if env_override:
         env.update(env_override)
-    
+
     started_at = time.time()
-    chunks: List[StreamChunk] = []
+    chunks: list[StreamChunk] = []
     completion_mode = "process_exit"
-    
+
     proc = subprocess.Popen(
         command,
         cwd=cwd,
@@ -336,30 +335,30 @@ def terminal_watch(
         text=True,
         shell=shell,
     )
-    
+
     try:
         while True:
             elapsed = time.time() - started_at
-            
+
             # Check timeout
             if elapsed > max_wait_sec:
                 completion_mode = "timeout"
                 break
-            
+
             # Check if process exited
             if proc.poll() is not None:
                 completion_mode = "process_exit"
                 break
-            
+
             # Check file hook
             if completion_file and os.path.exists(completion_file):
                 completion_mode = "file_hook"
                 break
-            
+
             # Read available output
             # Note: This is simplified - real implementation would use select/poll
             time.sleep(check_interval_sec)
-            
+
             # Try to read without blocking (simplified approach)
             try:
                 if proc.stdout and proc.stdout.readable():
@@ -376,7 +375,7 @@ def terminal_watch(
                             break
             except Exception:
                 pass
-        
+
         # Collect remaining output
         if completion_mode != "timeout":
             remaining_stdout, remaining_stderr = proc.communicate(timeout=5)
@@ -392,7 +391,7 @@ def terminal_watch(
                     content=remaining_stderr,
                     timestamp=time.time(),
                 ))
-        
+
         return WatchResult(
             exit_code=proc.returncode,
             chunks=chunks,
@@ -402,8 +401,8 @@ def terminal_watch(
             pid=proc.pid,
             still_running=proc.poll() is None,
         )
-        
-    except Exception as e:
+
+    except Exception:
         proc.kill()
         return WatchResult(
             exit_code=-1,

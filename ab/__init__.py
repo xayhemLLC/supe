@@ -22,16 +22,51 @@ Key components:
 """
 
 from .abdb import ABMemory  # noqa: F401
-from .models import Moment, Card, Buffer, CardStats  # noqa: F401
-from .moment_ledger import get_moments_between, paginate_moments, group_moments_by_day, group_moments_by_week  # noqa: F401
-from .subselves import LaneManager, propagate_subscriptions  # noqa: F401
-from .overlord import Overlord  # noqa: F401
-from .search import search_cards, search_payload_keyword  # noqa: F401
-from .awareness import create_awareness_card, subscribe_to_awareness, update_awareness_buffer  # noqa: F401
-from .transforms import TransformRegistry, registry as transform_registry, apply_transform  # noqa: F401
-from .decay import decay_formula, apply_decay_to_all, get_stale_cards  # noqa: F401
-from .self_agent import Self, Proposal, PlannerSelf, ArchitectSelf, ExecutorSelf, SelfRegistry, self_registry  # noqa: F401
-from .rfs_recall import rfs_recall, attention_jump, build_recall_chain, get_connection_graph  # noqa: F401
-from .vector_search import semantic_search, find_similar_cards, embed_text, cosine_similarity  # noqa: F401
-from .debug import DebugPrinter, MemoryInspector, Colors, trace, visualize_card, visualize_buffer  # noqa: F401
+from .awareness import (  # noqa: F401
+    create_awareness_card,
+    subscribe_to_awareness,
+    update_awareness_buffer,
+)
 from .benchmark import Benchmark, run_benchmarks, time_operation  # noqa: F401
+from .debug import (  # noqa: F401
+    Colors,
+    DebugPrinter,
+    MemoryInspector,
+    trace,
+    visualize_buffer,
+    visualize_card,
+)
+from .decay import apply_decay_to_all, decay_formula, get_stale_cards  # noqa: F401
+from .models import Buffer, Card, CardStats, Moment  # noqa: F401
+from .moment_ledger import (  # noqa: F401
+    get_moments_between,
+    group_moments_by_day,
+    group_moments_by_week,
+    paginate_moments,
+)
+from .overlord import Overlord  # noqa: F401
+from .rfs_recall import (  # noqa: F401
+    attention_jump,
+    build_recall_chain,
+    get_connection_graph,
+    rfs_recall,
+)
+from .search import search_cards, search_payload_keyword  # noqa: F401
+from .self_agent import (  # noqa: F401
+    ArchitectSelf,
+    ExecutorSelf,
+    PlannerSelf,
+    Proposal,
+    Self,
+    SelfRegistry,
+    self_registry,
+)
+from .subselves import LaneManager, propagate_subscriptions  # noqa: F401
+from .transforms import TransformRegistry, apply_transform  # noqa: F401
+from .transforms import registry as transform_registry  # noqa: F401
+from .vector_search import (  # noqa: F401
+    cosine_similarity,
+    embed_text,
+    find_similar_cards,
+    semantic_search,
+)

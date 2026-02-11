@@ -9,21 +9,18 @@ the payload back into a ``Tasc`` instance.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ab import ABMemory
+from ab.models import Buffer  # type: ignore  # Buffer is defined in ab_core
 
-from .atom import Atom
 from .atomtypes import registry
 from .tasc import Tasc
-from ab.models import Buffer  # type: ignore  # Buffer is defined in ab_core
 
 
 def store_tasc(
     memory: ABMemory,
     tasc: Tasc,
-    owner_self: Optional[str] = None,
-    moment_id: Optional[int] = None,
+    owner_self: str | None = None,
+    moment_id: int | None = None,
 ) -> int:
     """Store a Tasc in AB memory and return the card ID.
 

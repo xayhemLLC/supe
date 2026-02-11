@@ -5,10 +5,9 @@ import pytest
 from tasc.atomtypes import (
     AtomType,
     AtomTypeRegistry,
-    registry,
-    init_default_atomtypes,
-    _encode_string,
     _decode_string,
+    _encode_string,
+    registry,
 )
 
 

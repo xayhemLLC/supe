@@ -11,8 +11,9 @@ Before every action:
 
 import os
 import re
+import shlex
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 
 class SecurityViolation(Exception):
@@ -23,15 +24,15 @@ class SecurityViolation(Exception):
 @dataclass
 class LegalityCheck:
     """Result of legality check for an action."""
-    
+
     is_legal: bool
     action_id: str
-    violations: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    violations: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     requires_escalation: bool = False
-    escalation_reason: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    escalation_reason: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "is_legal": self.is_legal,
             "action_id": self.action_id,
@@ -72,17 +73,64 @@ SECRET_PATTERNS = [
 MAX_DIFF_LINES = 5000
 MAX_AFFECTED_FILES = 100
 
+# Commands allowed for terminal.run by default (non-privileged mode)
+ALLOWED_TERMINAL_COMMANDS = {
+    "awk",
+    "bash",
+    "cat",
+    "cd",
+    "command",
+    "cut",
+    "echo",
+    "env",
+    "find",
+    "git",
+    "grep",
+    "head",
+    "ls",
+    "make",
+    "mkdir",
+    "mv",
+    "node",
+    "npm",
+    "npx",
+    "pip",
+    "pip3",
+    "pnpm",
+    "pwd",
+    "pytest",
+    "python",
+    "python3",
+    "rg",
+    "ruff",
+    "sed",
+    "sh",
+    "sort",
+    "tail",
+    "touch",
+    "tr",
+    "uniq",
+    "uv",
+    "wc",
+    "which",
+    "yarn",
+    "zsh",
+}
+
+# Block shell composition/chaining in non-privileged mode.
+DISALLOWED_SHELL_TOKENS = (";", "&&", "||", "|", "`", "$(", ">", "<")
+
 
 def check_action_legality(
     action_id: str,
-    inputs: Dict[str, Any],
-    permissions: Set[str],
-    repo_root: Optional[str] = None,
+    inputs: dict[str, Any],
+    permissions: set[str],
+    repo_root: str | None = None,
     in_sandbox: bool = False,
     has_checkpoint: bool = False,
 ) -> LegalityCheck:
     """Check if an action is legal given current context.
-    
+
     Args:
         action_id: Action to execute.
         inputs: Action inputs/arguments.
@@ -90,7 +138,7 @@ def check_action_legality(
         repo_root: Repository root for scope checking.
         in_sandbox: Whether in sandbox mode.
         has_checkpoint: Whether checkpoint is active.
-    
+
     Returns:
         LegalityCheck with violations and warnings.
     """
@@ -98,21 +146,44 @@ def check_action_legality(
     warnings = []
     requires_escalation = False
     escalation_reason = None
-    
+
     # Check for destructive patterns in commands
     command = inputs.get("command", "")
     if isinstance(command, str):
         for pattern in DESTRUCTIVE_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
                 violations.append(f"Destructive pattern detected: {pattern}")
-    
+
+        if action_id == "terminal.run":
+            if not command.strip():
+                violations.append("Command cannot be empty")
+            elif "terminal_unrestricted" not in permissions:
+                if any(token in command for token in DISALLOWED_SHELL_TOKENS):
+                    violations.append(
+                        "Shell metacharacters/chaining are blocked in safe mode"
+                    )
+                else:
+                    try:
+                        parts = shlex.split(command)
+                    except ValueError as exc:
+                        violations.append(f"Invalid command syntax: {exc}")
+                    else:
+                        if not parts:
+                            violations.append("Command cannot be empty")
+                        else:
+                            base_cmd = os.path.basename(parts[0])
+                            if base_cmd not in ALLOWED_TERMINAL_COMMANDS:
+                                violations.append(
+                                    f"Command '{base_cmd}' is not allowlisted for safe mode"
+                                )
+
     # Check for secret leakage in outputs/inputs
     for key, value in inputs.items():
         if isinstance(value, str):
             for pattern in SECRET_PATTERNS:
                 if re.search(pattern, value, re.IGNORECASE):
                     warnings.append(f"Potential secret in input '{key}'")
-    
+
     # Scope checking - ensure paths are within repo root
     if repo_root:
         for key in ["path", "file", "target", "destination"]:
@@ -122,7 +193,7 @@ def check_action_legality(
                     violations.append(
                         f"Path '{path}' is outside repository root"
                     )
-    
+
     # Check mutation actions require checkpoint
     mutation_actions = {
         "file.write", "file.patch", "file.delete",
@@ -133,21 +204,21 @@ def check_action_legality(
         violations.append(
             f"Action '{action_id}' requires active checkpoint"
         )
-    
+
     # Check sandbox-only actions
     sandbox_only_actions = {"frontend.inject"}
     if action_id in sandbox_only_actions and not in_sandbox:
         violations.append(
             f"Action '{action_id}' can only run in sandbox mode"
         )
-    
+
     # Check gated actions
     gated_actions = {"git.commit"}
     if action_id in gated_actions:
         if "gated_actions" not in permissions:
             requires_escalation = True
             escalation_reason = f"Action '{action_id}' requires explicit approval"
-    
+
     # Estimate blast radius for file operations
     if action_id == "file.delete":
         pattern = inputs.get("pattern", "")
@@ -155,7 +226,7 @@ def check_action_legality(
             warnings.append("Glob pattern in delete - verify scope")
             requires_escalation = True
             escalation_reason = "Bulk delete requires approval"
-    
+
     # Check permissions
     action_permissions = {
         "terminal.run": {"terminal"},
@@ -169,12 +240,12 @@ def check_action_legality(
         "browser.capture": {"browser"},
         "process.start": {"process"},
     }
-    
+
     required_perms = action_permissions.get(action_id, set())
     missing_perms = required_perms - permissions
     if missing_perms:
         violations.append(f"Missing permissions: {', '.join(missing_perms)}")
-    
+
     return LegalityCheck(
         is_legal=len(violations) == 0,
         action_id=action_id,
@@ -187,8 +258,8 @@ def check_action_legality(
 
 def is_action_legal(
     action_id: str,
-    inputs: Dict[str, Any],
-    permissions: Set[str],
+    inputs: dict[str, Any],
+    permissions: set[str],
     **kwargs,
 ) -> bool:
     """Quick check if action is legal."""
@@ -196,18 +267,18 @@ def is_action_legal(
     return check.is_legal
 
 
-def check_command_safety(command: str) -> tuple[bool, List[str]]:
+def check_command_safety(command: str) -> tuple[bool, list[str]]:
     """Check if a shell command is safe to run.
-    
+
     Returns:
         Tuple of (is_safe, list of concerns).
     """
     concerns = []
-    
+
     for pattern in DESTRUCTIVE_PATTERNS:
         if re.search(pattern, command, re.IGNORECASE):
             concerns.append(f"Matches destructive pattern: {pattern}")
-    
+
     # Check for common dangerous commands
     dangerous_commands = [
         "shutdown", "reboot", "halt",
@@ -218,16 +289,16 @@ def check_command_safety(command: str) -> tuple[bool, List[str]]:
     for cmd in dangerous_commands:
         if cmd in command.lower():
             concerns.append(f"Contains dangerous command: {cmd.strip()}")
-    
+
     return len(concerns) == 0, concerns
 
 
 def estimate_blast_radius(
     action_id: str,
-    inputs: Dict[str, Any],
-) -> Dict[str, Any]:
+    inputs: dict[str, Any],
+) -> dict[str, Any]:
     """Estimate the blast radius of an action.
-    
+
     Returns:
         Dict with estimated impact metrics.
     """

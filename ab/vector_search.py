@@ -15,20 +15,19 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from typing import Dict, List, Optional, Set, Tuple
 
 from .abdb import ABMemory
 from .models import Card
 
 
-def tokenize(text: str) -> List[str]:
+def tokenize(text: str) -> list[str]:
     """Simple tokenizer: lowercase and split on non-alphanumeric."""
     text = text.lower()
     tokens = re.findall(r"\b[a-z0-9]+\b", text)
     return tokens
 
 
-def embed_text(text: str, vocabulary: Optional[Set[str]] = None) -> Dict[str, float]:
+def embed_text(text: str, vocabulary: set[str] | None = None) -> dict[str, float]:
     """Create a bag-of-words embedding for text.
 
     Args:
@@ -56,7 +55,7 @@ def embed_text(text: str, vocabulary: Optional[Set[str]] = None) -> Dict[str, fl
     return {k: v / norm for k, v in counts.items()}
 
 
-def cosine_similarity(vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
+def cosine_similarity(vec1: dict[str, float], vec2: dict[str, float]) -> float:
     """Calculate cosine similarity between two sparse vectors.
 
     Args:
@@ -76,14 +75,14 @@ def cosine_similarity(vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
 
     # Compute dot product
     dot_product = sum(vec1.get(k, 0) * vec2.get(k, 0) for k in all_keys)
-    
+
     # Compute magnitudes
     mag1 = math.sqrt(sum(v * v for v in vec1.values()))
     mag2 = math.sqrt(sum(v * v for v in vec2.values()))
-    
+
     if mag1 == 0 or mag2 == 0:
         return 0.0
-    
+
     return dot_product / (mag1 * mag2)
 
 
@@ -115,7 +114,7 @@ def extract_card_text(card: Card) -> str:
     return " ".join(texts)
 
 
-def build_vocabulary(memory: ABMemory, min_freq: int = 2) -> Set[str]:
+def build_vocabulary(memory: ABMemory, min_freq: int = 2) -> set[str]:
     """Build vocabulary from all cards in memory.
 
     Args:
@@ -143,9 +142,9 @@ def semantic_search(
     memory: ABMemory,
     query: str,
     top_k: int = 10,
-    vocabulary: Optional[Set[str]] = None,
-    label_filter: Optional[str] = None,
-) -> List[Tuple[Card, float]]:
+    vocabulary: set[str] | None = None,
+    label_filter: str | None = None,
+) -> list[tuple[Card, float]]:
     """Search for cards semantically similar to a query.
 
     Uses bag-of-words cosine similarity for matching.
@@ -171,7 +170,7 @@ def semantic_search(
         cur.execute("SELECT id FROM cards")
     card_ids = [row["id"] for row in cur.fetchall()]
 
-    results: List[Tuple[Card, float]] = []
+    results: list[tuple[Card, float]] = []
     for card_id in card_ids:
         card = memory.get_card(card_id)
         card_text = extract_card_text(card)
@@ -195,8 +194,8 @@ def find_similar_cards(
     memory: ABMemory,
     source_card_id: int,
     top_k: int = 5,
-    vocabulary: Optional[Set[str]] = None,
-) -> List[Tuple[Card, float]]:
+    vocabulary: set[str] | None = None,
+) -> list[tuple[Card, float]]:
     """Find cards similar to a given card.
 
     Args:
@@ -219,7 +218,7 @@ def find_similar_cards(
     cur.execute("SELECT id FROM cards WHERE id != ?", (source_card_id,))
     card_ids = [row["id"] for row in cur.fetchall()]
 
-    results: List[Tuple[Card, float]] = []
+    results: list[tuple[Card, float]] = []
     for card_id in card_ids:
         card = memory.get_card(card_id)
         card_text = extract_card_text(card)

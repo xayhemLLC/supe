@@ -1,17 +1,16 @@
 """Tests for Tascer SDK wrapper - TascerAgent and related classes."""
 
 import json
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, patch, MagicMock
 
+import pytest
+
+from tascer.contracts import Context, GateResult, GitState
 from tascer.sdk_wrapper import (
     TascerAgent,
     TascerAgentOptions,
-    ToolValidationConfig,
     ToolExecutionRecord,
+    ToolValidationConfig,
 )
-from tascer.contracts import GateResult, Context, GitState
 
 
 class TestToolValidationConfig:

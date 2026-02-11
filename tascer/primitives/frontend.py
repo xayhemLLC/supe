@@ -11,13 +11,12 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .browser import (
-    browser_evaluate,
     browser_capture,
+    browser_evaluate,
     is_browser_available,
-    BrowserNotAvailableError,
 )
 
 
@@ -34,13 +33,13 @@ class FrameworkType:
 @dataclass
 class ComponentInfo:
     """Information about a UI component."""
-    
+
     name: str
-    props: Dict[str, Any]
-    state: Dict[str, Any]
-    children: List["ComponentInfo"] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    props: dict[str, Any]
+    state: dict[str, Any]
+    children: list["ComponentInfo"] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "props": self.props,
@@ -52,17 +51,17 @@ class ComponentInfo:
 @dataclass
 class FrontendState:
     """Captured frontend state."""
-    
+
     timestamp: datetime
     framework: str
     state_hash: str
-    dom_snapshot: Optional[str] = None
-    component_tree: Optional[ComponentInfo] = None
-    app_state: Dict[str, Any] = field(default_factory=dict)
+    dom_snapshot: str | None = None
+    component_tree: ComponentInfo | None = None
+    app_state: dict[str, Any] = field(default_factory=dict)
     url: str = ""
     title: str = ""
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "timestamp": self.timestamp.isoformat(),
             "framework": self.framework,
@@ -78,13 +77,13 @@ class FrontendState:
 @dataclass
 class InjectionResult:
     """Result of frontend instrumentation injection."""
-    
+
     injection_id: str
     script_hash: str
     success: bool
-    error: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "injection_id": self.injection_id,
             "script_hash": self.script_hash,
@@ -105,22 +104,22 @@ DETECT_FRAMEWORK_JS = """
     if (window.React || window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
         return "react";
     }
-    
+
     // Vue
     if (window.Vue || window.__VUE__) {
         return "vue";
     }
-    
+
     // Angular
     if (window.ng || document.querySelector('[ng-version]')) {
         return "angular";
     }
-    
+
     // Svelte
     if (document.querySelector('[class*="svelte"]')) {
         return "svelte";
     }
-    
+
     return "vanilla";
 })()
 """
@@ -133,10 +132,10 @@ GET_REACT_STATE_JS = """
         if (!rootEl || !rootEl._reactRootContainer) {
             return null;
         }
-        
+
         const fiber = rootEl._reactRootContainer._internalRoot?.current;
         if (!fiber) return null;
-        
+
         // Get basic component info
         const components = [];
         let node = fiber.child;
@@ -149,7 +148,7 @@ GET_REACT_STATE_JS = """
             }
             node = node.sibling;
         }
-        
+
         return { components };
     } catch (e) {
         return { error: e.message };
@@ -161,12 +160,12 @@ GET_REACT_STATE_JS = """
 GET_VUE_STATE_JS = """
 (() => {
     try {
-        const root = document.querySelector('[data-v-app]') || 
+        const root = document.querySelector('[data-v-app]') ||
                      document.getElementById('app');
         if (!root || !root.__vue_app__) {
             return null;
         }
-        
+
         const app = root.__vue_app__;
         return {
             components: [],
@@ -179,22 +178,22 @@ GET_VUE_STATE_JS = """
 """
 
 
-def detect_framework(url: Optional[str] = None) -> str:
+def detect_framework(url: str | None = None) -> str:
     """Detect the frontend framework in use.
-    
+
     Args:
         url: Optional URL to navigate to first.
-    
+
     Returns:
         FrameworkType constant.
     """
     if not is_browser_available():
         return FrameworkType.UNKNOWN
-    
+
     try:
         if url:
             browser_capture(url=url, capture_screenshot=False)
-        
+
         result = browser_evaluate(DETECT_FRAMEWORK_JS)
         return result.result or FrameworkType.UNKNOWN
     except Exception:
@@ -207,17 +206,17 @@ def frontend_state_dump(
     capture_app_state: bool = True,
 ) -> FrontendState:
     """Capture framework-agnostic frontend state.
-    
+
     ACTION: frontend.state.dump
-    
+
     Args:
         capture_dom: Include DOM snapshot.
         capture_components: Include component tree.
         capture_app_state: Include app state (Redux, Vuex, etc.).
-    
+
     Returns:
         FrontendState with captured data.
-    
+
     Raises:
         FrontendNotAvailableError: Frontend capture not configured.
     """
@@ -225,20 +224,20 @@ def frontend_state_dump(
         raise FrontendNotAvailableError(
             "Browser not available. Install Playwright: pip install playwright"
         )
-    
+
     # Detect framework
     framework = detect_framework()
-    
+
     # Capture browser state
     browser_state = browser_capture(
         capture_screenshot=False,
         capture_dom=capture_dom,
     )
-    
+
     # Get framework-specific state
     app_state = {}
     component_tree = None
-    
+
     if capture_app_state or capture_components:
         try:
             if framework == FrameworkType.REACT:
@@ -251,7 +250,7 @@ def frontend_state_dump(
                     app_state = result.result
         except Exception:
             pass
-    
+
     # Compute state hash
     state_content = json.dumps({
         "url": browser_state.url,
@@ -259,7 +258,7 @@ def frontend_state_dump(
         "app_state": app_state,
     }, sort_keys=True)
     state_hash = hashlib.sha256(state_content.encode()).hexdigest()[:16]
-    
+
     return FrontendState(
         timestamp=datetime.now(),
         framework=framework,
@@ -278,19 +277,19 @@ def frontend_inject(
     cleanup_on_navigation: bool = True,
 ) -> InjectionResult:
     """Inject temporary dev instrumentation.
-    
+
     ACTION: frontend.inject
-    
+
     WARNING: This is a mutation action.
-    
+
     Args:
         script: JavaScript code to inject.
         scope: Injection scope (temporary, session, persistent).
         cleanup_on_navigation: Remove injection on page navigation.
-    
+
     Returns:
         InjectionResult with injection ID for cleanup.
-    
+
     Raises:
         FrontendNotAvailableError: Frontend capture not configured.
     """
@@ -298,11 +297,11 @@ def frontend_inject(
         raise FrontendNotAvailableError(
             "Browser not available. Install Playwright: pip install playwright"
         )
-    
+
     # Generate injection ID
     script_hash = hashlib.sha256(script.encode()).hexdigest()[:12]
     injection_id = f"inject_{script_hash}_{int(datetime.now().timestamp())}"
-    
+
     try:
         # Wrap script to be removable
         wrapped_script = f"""
@@ -317,9 +316,9 @@ def frontend_inject(
             }}
         }})()
         """
-        
+
         result = browser_evaluate(wrapped_script)
-        
+
         if result.error:
             return InjectionResult(
                 injection_id=injection_id,
@@ -327,13 +326,13 @@ def frontend_inject(
                 success=False,
                 error=result.error,
             )
-        
+
         return InjectionResult(
             injection_id=injection_id,
             script_hash=script_hash,
             success=True,
         )
-    
+
     except Exception as e:
         return InjectionResult(
             injection_id=injection_id,
@@ -346,13 +345,13 @@ def frontend_inject(
 def compare_states(
     before: FrontendState,
     after: FrontendState,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compare two frontend states.
-    
+
     Args:
         before: State before action.
         after: State after action.
-    
+
     Returns:
         Dict describing differences.
     """

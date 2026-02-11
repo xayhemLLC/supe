@@ -144,6 +144,14 @@ supe metrics             # Show metrics
 supe benchmark           # Run benchmarks
 supe audit <run_id>      # Export audit report
 
+# Memory queries (supe memory)
+supe memory search <query>   # Keyword search
+supe memory semantic <query> # Vector similarity search
+supe memory recall <query>   # Neural spreading activation
+supe memory timeline         # Time range queries
+supe memory card <id>        # Show card details
+supe memory context <tool>   # Preview auto-context
+
 # Task management (supe tasc)
 supe tasc save [name]    # Save current work
 supe tasc list           # List all tascs

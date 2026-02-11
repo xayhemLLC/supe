@@ -95,22 +95,3 @@ jobs:
         with:
           name: supe-linux-x64
           path: dist/supe-linux-x64.tar.gz
-
-  release:
-    needs: [build-windows, build-macos, build-linux]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            artifacts/supe-windows-x64/supe-windows-x64.zip
-            artifacts/supe-macos-x64/supe-macos-x64.zip
-            artifacts/supe-linux-x64/supe-linux-x64.tar.gz
-          generate_release_notes: true

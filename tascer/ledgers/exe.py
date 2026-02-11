@@ -10,11 +10,10 @@ This is INTENT - the record of thinking and decision-making.
 Separated from reality (Moments) for forensic analysis.
 """
 
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class DecisionType(Enum):
@@ -43,20 +42,20 @@ class StopReason(Enum):
 @dataclass
 class ConfidenceScore:
     """Confidence scoring for a decision."""
-    
+
     value: float  # 0.0 to 1.0
     uncertainty: float = 0.0  # Epistemic uncertainty
-    calibration_note: Optional[str] = None  # Why this confidence
-    
-    def to_dict(self) -> Dict[str, Any]:
+    calibration_note: str | None = None  # Why this confidence
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "value": self.value,
             "uncertainty": self.uncertainty,
             "calibration_note": self.calibration_note,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ConfidenceScore":
+    def from_dict(cls, data: dict[str, Any]) -> "ConfidenceScore":
         return cls(
             value=data["value"],
             uncertainty=data.get("uncertainty", 0.0),
@@ -67,50 +66,50 @@ class ConfidenceScore:
 @dataclass
 class Decision:
     """A single decision in the Exe Ledger.
-    
+
     Represents a moment of intent - what the agent was thinking
     and why it made a particular choice.
     """
-    
+
     # Identity
     decision_id: str
     run_id: str
     sequence_num: int
-    
+
     # Timing
     timestamp: datetime
-    
+
     # Decision type
     decision_type: DecisionType
-    
+
     # What action this relates to (if any)
-    action_id: Optional[str] = None
-    
+    action_id: str | None = None
+
     # The reasoning/narrative
     narrative: str = ""
-    
+
     # Alternatives considered
-    alternatives: List[str] = field(default_factory=list)
-    
+    alternatives: list[str] = field(default_factory=list)
+
     # Why rejected (for REJECT decisions)
-    rejection_reason: Optional[str] = None
-    
+    rejection_reason: str | None = None
+
     # Stop reason (for STOP decisions)
-    stop_reason: Optional[StopReason] = None
-    
+    stop_reason: StopReason | None = None
+
     # Confidence/uncertainty
-    confidence: Optional[ConfidenceScore] = None
-    
+    confidence: ConfidenceScore | None = None
+
     # Expected information gain
-    expected_info_gain: Optional[float] = None
-    
+    expected_info_gain: float | None = None
+
     # Cross-reference to Moments entry
-    moment_ref: Optional[str] = None
-    
+    moment_ref: str | None = None
+
     # Additional metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "decision_id": self.decision_id,
             "run_id": self.run_id,
@@ -127,9 +126,9 @@ class Decision:
             "moment_ref": self.moment_ref,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Decision":
+    def from_dict(cls, data: dict[str, Any]) -> "Decision":
         return cls(
             decision_id=data["decision_id"],
             run_id=data["run_id"],
@@ -150,24 +149,24 @@ class Decision:
 
 class ExeLedger:
     """Decision tree of intent.
-    
+
     The Exe Ledger records what the agent was thinking and
     why it made decisions. This allows:
     - Forensic analysis of decision-making
     - Comparison with reality (Moments)
     - Debugging and improvement
     """
-    
+
     def __init__(self, run_id: str):
         """Initialize ledger for a run.
-        
+
         Args:
             run_id: Unique identifier for this run.
         """
         self.run_id = run_id
-        self._decisions: List[Decision] = []
+        self._decisions: list[Decision] = []
         self._sequence = 0
-    
+
     def _create_decision(
         self,
         decision_type: DecisionType,
@@ -175,7 +174,7 @@ class ExeLedger:
     ) -> Decision:
         """Create and append a new decision."""
         self._sequence += 1
-        
+
         decision = Decision(
             decision_id=f"{self.run_id}_d{self._sequence}",
             run_id=self.run_id,
@@ -184,14 +183,14 @@ class ExeLedger:
             decision_type=decision_type,
             **kwargs,
         )
-        
+
         self._decisions.append(decision)
         return decision
-    
+
     def record_narrative(
         self,
         narrative: str,
-        confidence: Optional[ConfidenceScore] = None,
+        confidence: ConfidenceScore | None = None,
     ) -> Decision:
         """Record an Overlord narrative/reasoning snapshot."""
         return self._create_decision(
@@ -199,14 +198,14 @@ class ExeLedger:
             narrative=narrative,
             confidence=confidence,
         )
-    
+
     def record_proposal(
         self,
         action_id: str,
         narrative: str,
-        alternatives: Optional[List[str]] = None,
-        expected_info_gain: Optional[float] = None,
-        confidence: Optional[ConfidenceScore] = None,
+        alternatives: list[str] | None = None,
+        expected_info_gain: float | None = None,
+        confidence: ConfidenceScore | None = None,
     ) -> Decision:
         """Record a proposed action with rationale."""
         return self._create_decision(
@@ -217,12 +216,12 @@ class ExeLedger:
             expected_info_gain=expected_info_gain,
             confidence=confidence,
         )
-    
+
     def record_execution(
         self,
         action_id: str,
-        moment_ref: Optional[str] = None,
-        confidence: Optional[ConfidenceScore] = None,
+        moment_ref: str | None = None,
+        confidence: ConfidenceScore | None = None,
     ) -> Decision:
         """Record decision to execute an action."""
         return self._create_decision(
@@ -231,7 +230,7 @@ class ExeLedger:
             moment_ref=moment_ref,
             confidence=confidence,
         )
-    
+
     def record_rejection(
         self,
         action_id: str,
@@ -243,7 +242,7 @@ class ExeLedger:
             action_id=action_id,
             rejection_reason=reason,
         )
-    
+
     def record_stop(
         self,
         reason: StopReason,
@@ -255,11 +254,11 @@ class ExeLedger:
             stop_reason=reason,
             narrative=narrative,
         )
-    
+
     def record_backtrack(
         self,
         narrative: str,
-        from_moment_ref: Optional[str] = None,
+        from_moment_ref: str | None = None,
     ) -> Decision:
         """Record decision to backtrack/retry."""
         return self._create_decision(
@@ -267,37 +266,37 @@ class ExeLedger:
             narrative=narrative,
             moment_ref=from_moment_ref,
         )
-    
-    def get_all(self) -> List[Decision]:
+
+    def get_all(self) -> list[Decision]:
         """Get all decisions (read-only copy)."""
         return list(self._decisions)
-    
-    def get_by_action(self, action_id: str) -> List[Decision]:
+
+    def get_by_action(self, action_id: str) -> list[Decision]:
         """Get all decisions for a specific action."""
         return [d for d in self._decisions if d.action_id == action_id]
-    
-    def get_by_type(self, decision_type: DecisionType) -> List[Decision]:
+
+    def get_by_type(self, decision_type: DecisionType) -> list[Decision]:
         """Get all decisions of a specific type."""
         return [d for d in self._decisions if d.decision_type == decision_type]
-    
-    def get_proposals(self) -> List[Decision]:
+
+    def get_proposals(self) -> list[Decision]:
         """Get all proposed actions."""
         return self.get_by_type(DecisionType.PROPOSE)
-    
-    def get_rejections(self) -> List[Decision]:
+
+    def get_rejections(self) -> list[Decision]:
         """Get all rejected actions."""
         return self.get_by_type(DecisionType.REJECT)
-    
-    def get_stop_decision(self) -> Optional[Decision]:
+
+    def get_stop_decision(self) -> Decision | None:
         """Get the stop decision if any."""
         stops = self.get_by_type(DecisionType.STOP)
         return stops[-1] if stops else None
-    
-    def get_latest(self, n: int = 1) -> List[Decision]:
+
+    def get_latest(self, n: int = 1) -> list[Decision]:
         """Get the latest N decisions."""
         return self._decisions[-n:] if self._decisions else []
-    
-    def get_average_confidence(self) -> Optional[float]:
+
+    def get_average_confidence(self) -> float | None:
         """Calculate average confidence across all decisions."""
         confidences = [
             d.confidence.value
@@ -305,21 +304,21 @@ class ExeLedger:
             if d.confidence is not None
         ]
         return sum(confidences) / len(confidences) if confidences else None
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Serialize ledger to dictionary."""
         return {
             "run_id": self.run_id,
             "decisions": [d.to_dict() for d in self._decisions],
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExeLedger":
+    def from_dict(cls, data: dict[str, Any]) -> "ExeLedger":
         """Deserialize ledger from dictionary."""
         ledger = cls(run_id=data["run_id"])
         ledger._decisions = [Decision.from_dict(d) for d in data["decisions"]]
         ledger._sequence = len(ledger._decisions)
         return ledger
-    
+
     def __len__(self) -> int:
         return len(self._decisions)

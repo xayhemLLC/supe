@@ -20,7 +20,6 @@ requirements based on best practices.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
 
 from .evidence import EvidenceSource
 
@@ -52,13 +51,13 @@ class DomainRequirements:
     domain: TaskDomain
 
     # Required evidence sources (must be present for high confidence)
-    required_sources: List[EvidenceSource]
+    required_sources: list[EvidenceSource]
 
     # Optional evidence sources (boost confidence if present)
-    optional_sources: List[EvidenceSource] = field(default_factory=list)
+    optional_sources: list[EvidenceSource] = field(default_factory=list)
 
     # Source weights (multipliers for evidence quality scoring)
-    source_weights: Dict[EvidenceSource, float] = field(default_factory=dict)
+    source_weights: dict[EvidenceSource, float] = field(default_factory=dict)
 
     # Minimum confidence threshold for this domain
     min_confidence: float = 0.7
@@ -67,7 +66,7 @@ class DomainRequirements:
     description: str = ""
 
     # Process template (recommended steps)
-    process_template: List[str] = field(default_factory=list)
+    process_template: list[str] = field(default_factory=list)
 
 
 # ============================================================================
@@ -279,7 +278,7 @@ PERFORMANCE_REQUIREMENTS = DomainRequirements(
 )
 
 # Registry of all domain requirements
-DOMAIN_REGISTRY: Dict[TaskDomain, DomainRequirements] = {
+DOMAIN_REGISTRY: dict[TaskDomain, DomainRequirements] = {
     TaskDomain.DEBUGGING: DEBUGGING_REQUIREMENTS,
     TaskDomain.DESIGN: DESIGN_REQUIREMENTS,
     TaskDomain.RESEARCH: RESEARCH_REQUIREMENTS,
@@ -357,7 +356,7 @@ def infer_domain_from_title(title: str) -> TaskDomain:
     return TaskDomain.GENERAL
 
 
-def get_required_evidence_types(domain: TaskDomain) -> List[str]:
+def get_required_evidence_types(domain: TaskDomain) -> list[str]:
     """Get list of required evidence source names for a domain.
 
     Args:
@@ -370,7 +369,7 @@ def get_required_evidence_types(domain: TaskDomain) -> List[str]:
     return [source.value for source in requirements.required_sources]
 
 
-def apply_domain_to_tasc(tasc, domain: Optional[TaskDomain] = None):
+def apply_domain_to_tasc(tasc, domain: TaskDomain | None = None):
     """Apply domain-specific requirements to a tasc.
 
     This sets the required_evidence_types field based on the domain.

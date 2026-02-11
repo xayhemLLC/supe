@@ -13,8 +13,6 @@ Key functions:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
-
 from .abdb import ABMemory
 from .models import Card
 
@@ -22,9 +20,9 @@ from .models import Card
 def attention_jump(
     memory: ABMemory,
     card_id: int,
-    relation_filter: Optional[str] = None,
+    relation_filter: str | None = None,
     direction: str = "outgoing",  # "outgoing", "incoming", or "both"
-) -> List[Tuple[int, str, float]]:
+) -> list[tuple[int, str, float]]:
     """Jump to related cards via connections.
 
     Args:
@@ -37,7 +35,7 @@ def attention_jump(
         List of tuples (target_card_id, relation, connection_strength).
     """
     connections = memory.list_connections(card_id=card_id)
-    results: List[Tuple[int, str, float]] = []
+    results: list[tuple[int, str, float]] = []
 
     for conn in connections:
         source = conn["source_card_id"]
@@ -66,9 +64,9 @@ def rfs_recall(
     start_card_id: int,
     max_hops: int = 3,
     max_results: int = 10,
-    relation_filter: Optional[str] = None,
+    relation_filter: str | None = None,
     strengthen_path: bool = True,
-) -> List[Tuple[Card, float, List[int]]]:
+) -> list[tuple[Card, float, list[int]]]:
     """Recursive Feature Similarity recall with multi-hop traversal.
 
     Starting from a card, traverse connections to find related cards.
@@ -89,12 +87,12 @@ def rfs_recall(
         - score: Accumulated path score
         - path: List of card_ids in the path from start to this card
     """
-    visited: Set[int] = {start_card_id}
-    results: List[Tuple[int, float, List[int]]] = []
+    visited: set[int] = {start_card_id}
+    results: list[tuple[int, float, list[int]]] = []
 
     # BFS with score accumulation
     # Queue items: (card_id, accumulated_score, path)
-    queue: List[Tuple[int, float, List[int]]] = [(start_card_id, 1.0, [start_card_id])]
+    queue: list[tuple[int, float, list[int]]] = [(start_card_id, 1.0, [start_card_id])]
 
     while queue:
         current_id, current_score, path = queue.pop(0)
@@ -124,7 +122,7 @@ def rfs_recall(
     results = results[:max_results]
 
     # Fetch full cards and recall them
-    final_results: List[Tuple[Card, float, List[int]]] = []
+    final_results: list[tuple[Card, float, list[int]]] = []
     for card_id, score, path in results:
         card = memory.get_card(card_id)
         memory.recall_card(card_id)  # Update memory physics
@@ -137,8 +135,8 @@ def build_recall_chain(
     memory: ABMemory,
     start_card_id: int,
     chain_length: int = 5,
-    relation_filter: Optional[str] = None,
-) -> List[Card]:
+    relation_filter: str | None = None,
+) -> list[Card]:
     """Build a linear chain of related memories.
 
     Starting from a card, follow the strongest connection at each
@@ -153,9 +151,9 @@ def build_recall_chain(
     Returns:
         List of Cards forming the chain (including start).
     """
-    chain: List[Card] = []
+    chain: list[Card] = []
     current_id = start_card_id
-    visited: Set[int] = set()
+    visited: set[int] = set()
 
     for _ in range(chain_length):
         if current_id in visited:
@@ -203,7 +201,7 @@ def get_connection_graph(
     memory: ABMemory,
     center_card_id: int,
     depth: int = 2,
-) -> Dict[int, List[Tuple[int, str]]]:
+) -> dict[int, list[tuple[int, str]]]:
     """Build a local connection graph around a card.
 
     Args:
@@ -214,12 +212,12 @@ def get_connection_graph(
     Returns:
         Dict mapping card_id to list of (connected_card_id, relation).
     """
-    graph: Dict[int, List[Tuple[int, str]]] = {}
-    frontier: Set[int] = {center_card_id}
-    visited: Set[int] = set()
+    graph: dict[int, list[tuple[int, str]]] = {}
+    frontier: set[int] = {center_card_id}
+    visited: set[int] = set()
 
     for _ in range(depth):
-        next_frontier: Set[int] = set()
+        next_frontier: set[int] = set()
         for card_id in frontier:
             if card_id in visited:
                 continue
