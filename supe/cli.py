@@ -31,6 +31,7 @@ from supe.memory_paths import (
 from supe.memory_paths import (
     get_global_db_path as _get_global_db_path,
 )
+from supe.types.cli import type_group as _type_group
 
 console = Console()
 
@@ -62,6 +63,9 @@ def cli(ctx, version):
             "[dim]Run 'supe --help' for all commands[/dim]",
             border_style="cyan",
         ))
+
+
+cli.add_command(_type_group)
 
 
 # ---------------------------------------------------------------------------
