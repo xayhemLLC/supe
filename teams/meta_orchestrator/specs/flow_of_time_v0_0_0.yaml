@@ -1,0 +1,272 @@
+Bundle:
+  name: supe-meta-orchestrator-fot-v0
+  version: "0.0.0"
+  conventions:
+    plural: { tasc: "Tasc", plural: "Tascs" }
+    names:
+      operators_are_ops: true
+      template_short_name: "Template"
+      nub_is_moment: true
+    ids:
+      scheme: snowflake64
+      encoding: decimal_string
+      sid_field: "sid"
+
+FlowOfTimeSpec:
+  name: Flow of Time (FoT)
+  version: "0.0.0"
+  states:
+    - nub::enter
+    - nub::absorb
+    - nub::store
+    - nub::route
+    - nub::transform
+    - nub::finalize
+    - nub::overlord_commit
+    - nub::exit
+    - nub::hold
+    - nub::error
+
+  initialization:
+    requires:
+      - MasterBufferRegistry
+      - BufferGraph
+      - LedgerRegistry
+      - OverlordRuleset
+    nub_next_contract:
+      IN:
+        - prev_exit_pack
+        - sys_inputs
+        - context_ref
+        - constraints_pack
+        - budget
+      OUT:
+        - nub_exit_pack
+        - next_moment_refs
+        - audit_records
+
+  buffers:
+    registry:
+      - { name: master_input, kind: input }
+      - { name: sensory_input, kind: input }
+      - { name: exec_track_in, kind: track_in }
+      - { name: awareness_track_in, kind: track_in }
+      - { name: git_ledger, kind: ledger }
+      - { name: jira_ledger, kind: ledger }
+      - { name: notion_ledger, kind: ledger }
+      - { name: discord_ledger, kind: ledger }
+      - { name: web_ledger, kind: ledger }
+      - { name: overlord_inbox, kind: inbox }
+      - { name: overlord_outbox, kind: outbox }
+
+  ledgers:
+    kinds: [GitLedger, JiraLedger, NotionLedger, DiscordLedger, WebLedger, CustomLedger]
+    ledger_ref_contract:
+      methods:
+        - name: query
+          IN: [query_plan, cursor, budget]
+          OUT: [items, next_cursor, evidence_pack]
+        - name: summarize
+          IN: [items, goal, budget]
+          OUT: [summary_artifact, pointers]
+
+  routing:
+    engine:
+      token:
+        fields: [sid, buffer_sid, hop_count, provenance, budget_used]
+      bounds:
+        max_hops: 12
+        max_tokens: 200
+        max_ms: 8000
+      node_transform_policy:
+        on_fail: pass_through_with_error
+        on_not_applicable: pass_through
+
+  overlord:
+    inbox: overlord_inbox
+    outbox: overlord_outbox
+    commit_outputs:
+      awareness_track:
+        must_include:
+          - objective
+          - decisions
+          - constraints
+          - top_risks
+          - open_questions
+          - ledger_pointers
+      execution_track:
+        must_include:
+          - next_actions
+          - gates_and_signoffs
+          - artifacts_to_produce
+          - stop_conditions
+          - wip_budget
+    ltm_policy:
+      promote_to_cards_if:
+        - strength_above_threshold
+        - repeated_reference
+        - tagged_important
+      compression:
+        allowed: true
+        mode: lossy_summary
+
+Ops:
+  - { name: Ask, IN: [question, context, budget], OUT: [answers, decisions, constraints_delta] }
+  - { name: Search, IN: [query_plan, ledger_kind, filters, budget], OUT: [evidence_pack, pointers, cursor_delta] }
+  - { name: ShaveContext, IN: [goal, constraints, budget], OUT: [context_slices, query_plan] }
+  - { name: Simplify, IN: [artifacts], OUT: [reduced_artifacts] }
+  - { name: Plan, IN: [problem_contract, decision_log, system_map], OUT: [execution_plan, validation_plan, rollout_plan] }
+  - { name: Execute, IN: [approved_plan, context], OUT: [changeset, proofs] }
+  - { name: Validate, IN: [changeset, constraints], OUT: [validation_report, pass_fail] }
+  - { name: Ship, IN: [validation_report, rollout_plan], OUT: [deployment, release_notes] }
+  - { name: Outtake, IN: [deployment, validation_report], OUT: [learning_note, tool_forge_requests] }
+  - { name: ToolForge, IN: [pain_signal, examples, desired_constraint], OUT: [new_template, new_gate, new_constraint, new_op] }
+
+ArtifactTypes:
+  - { name: Ticket }
+  - { name: ProblemContract }
+  - { name: DecisionLog }
+  - { name: SystemMap }
+  - { name: ConstraintsPack }
+  - { name: QueryPlan }
+  - { name: EvidencePack }
+  - { name: ExecutionPlan }
+  - { name: ValidationPlan }
+  - { name: RolloutPlan }
+  - { name: ApprovedPlan }
+  - { name: ChangeSet }
+  - { name: ValidationReport }
+  - { name: Deployment }
+  - { name: ReleaseNotes }
+  - { name: LearningNote }
+  - { name: ToolForgeRequest }
+
+Gates:
+  - { name: SafeActionsGate, phase: pre, validator: { type: code, ref: gate_safe_actions } }
+  - { name: PostChecksGate, phase: post, validator: { type: code, ref: gate_post_checks } }
+  - { name: HumanApprovalGate, phase: post, validator: { type: human, ref: role:Approver }, decisions: [hold] }
+  - { name: IntakeSufficiencyGate, phase: post, validator: { type: policy, ref: policy:intake_sufficiency_v1 } }
+  - { name: PlanQualityGate, phase: post, validator: { type: policy, ref: policy:plan_quality_v1 } }
+  - { name: ReleaseReadyGate, phase: pre, validator: { type: policy, ref: policy:release_ready_v1 } }
+  - { name: ObservabilityOkGate, phase: post, validator: { type: policy, ref: policy:observability_ok_v1 } }
+
+Signoffs:
+  - { name: PeerReviewSignoff, required: true, approvers: [role:BackendEngineer], mode: any_one, quorum: 1 }
+  - { name: ScopeChangeSignoffIfNeeded, required: false, approvers: [role:PM], mode: any_one, quorum: 1 }
+  - { name: ReleaseManagerSignoffIfProd, required: false, approvers: [role:CTO], mode: any_one, quorum: 1 }
+
+Templates:
+  BE_PrimaryFlow:
+    pillars: [INTAKE, PLAN, REVIEW, EXECUTE, VALIDATE, SHIP, OUTTAKE]
+
+  INTAKE:
+    kind: pillar
+    max_execution_depth_distance: 4
+    ops: [ShaveContext, Search, Ask, Simplify]
+    IN: [Ticket]
+    OUT: [ProblemContract, DecisionLog, SystemMap, ConstraintsPack, QueryPlan]
+    gates:
+      pre: []
+      post: [IntakeSufficiencyGate]
+    signoffs:
+      post: [ScopeChangeSignoffIfNeeded]
+    composed_of:
+      - ACT_CONTEXT_SHAVE
+      - ACT_TARGETED_SEARCH
+      - ACT_CLARIFY_QUESTIONS
+      - ACT_INTAKE_SYNTHESIS
+
+  ACT_CONTEXT_SHAVE:
+    kind: action
+    max_execution_depth_distance: 2
+    ops: [ShaveContext]
+    IN: [Ticket]
+    OUT: [QueryPlan, ConstraintsPack]
+
+  ACT_TARGETED_SEARCH:
+    kind: action
+    max_execution_depth_distance: 2
+    ops: [Search]
+    IN: [QueryPlan]
+    OUT: [EvidencePack, SystemMap]
+
+  ACT_CLARIFY_QUESTIONS:
+    kind: action
+    max_execution_depth_distance: 2
+    ops: [Ask]
+    IN: [EvidencePack]
+    OUT: [DecisionLog]
+
+  ACT_INTAKE_SYNTHESIS:
+    kind: action
+    max_execution_depth_distance: 2
+    ops: [Simplify]
+    IN: [DecisionLog, SystemMap]
+    OUT: [ProblemContract]
+
+  PLAN:
+    kind: pillar
+    max_execution_depth_distance: 3
+    ops: [Plan]
+    IN: [ProblemContract, DecisionLog, SystemMap, ConstraintsPack]
+    OUT: [ExecutionPlan, ValidationPlan, RolloutPlan]
+    gates: { post: [PlanQualityGate] }
+    signoffs: { post: [PeerReviewSignoff] }
+
+  REVIEW:
+    kind: pillar
+    max_execution_depth_distance: 2
+    ops: [Ask, Simplify]
+    IN: [ExecutionPlan]
+    OUT: [ApprovedPlan]
+    gates: { post: [HumanApprovalGate] }
+    signoffs: { post: [PeerReviewSignoff] }
+
+  EXECUTE:
+    kind: pillar
+    max_execution_depth_distance: 6
+    ops: [Execute]
+    IN: [ApprovedPlan]
+    OUT: [ChangeSet]
+    gates: { pre: [SafeActionsGate], post: [PostChecksGate] }
+
+  VALIDATE:
+    kind: pillar
+    max_execution_depth_distance: 4
+    ops: [Validate]
+    IN: [ChangeSet]
+    OUT: [ValidationReport]
+    gates: { post: [PostChecksGate] }
+
+  SHIP:
+    kind: pillar
+    max_execution_depth_distance: 4
+    ops: [Ship]
+    IN: [ValidationReport, RolloutPlan]
+    OUT: [Deployment, ReleaseNotes]
+    gates: { pre: [ReleaseReadyGate], post: [ObservabilityOkGate] }
+    signoffs: { pre: [ReleaseManagerSignoffIfProd] }
+
+  OUTTAKE:
+    kind: pillar
+    max_execution_depth_distance: 2
+    ops: [Outtake, ToolForge]
+    IN: [Deployment, ValidationReport]
+    OUT: [LearningNote, ToolForgeRequest]
+    gates: { post: [] }
+
+Workflows:
+  - { name: Workflow_BE_Primary, role: BackendEngineer, pillars: [INTAKE, PLAN, REVIEW, EXECUTE, VALIDATE, SHIP, OUTTAKE] }
+
+MetaOrchestrator:
+  location: "teams/meta_orchestrator"
+  operates_in_domains: [Any]
+  steps_are_tascs: true
+  uses: [FlowOfTimeSpec]
+  pipeline:
+    - select_or_synthesize_workflow
+    - init_pillars
+    - init_gates_and_signoffs
+    - execute_with_audit
+    - tool_forge_if_missing
+    - fot::next

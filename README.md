@@ -185,6 +185,55 @@ cd supe && pip install -e .
 python scripts/demo_tascer_re_workflow.py
 ```
 
+Flow of Time (FoT) + Meta-Orchestrator demos:
+
+```bash
+# Supe Types (role-style entrypoints)
+uv run supe type list
+
+# Backend Engineer daily loop
+uv run supe type backend-engineer --objective "Implement API rate limiting" --ticket "API-123"
+
+# PM / GFX designer style loops
+uv run supe type pm --objective "Draft next sprint goals"
+uv run supe type gfx-designer --objective "Design gfx subagent contract"
+
+# End-to-end workflow on current repo (safe dry-run commands)
+uv run python examples/fot_repo_delivery_demo.py
+
+# Optional: run execute/validate commands through Tascer proof lifecycle
+uv run python examples/fot_repo_delivery_demo.py --run-commands
+
+# Show hold -> resume behavior for human gates/signoffs
+uv run python examples/fot_hold_resume_demo.py
+
+# Create and run three starter developer teams
+uv run python examples/fot_developer_team_demo.py
+
+# Run all company profile team sets (startup/growth/enterprise/agency/open-source)
+uv run python examples/fot_company_team_sets_demo.py
+
+# Walkthrough: core org pillar -> team pillars -> individual backend dev pillar
+uv run python examples/fot_org_hierarchy_walkthrough.py
+
+# Broad matrix of team/hierarchy/FoT scenarios
+uv run python examples/fot_scenario_matrix_demo.py
+
+# Daily backend dev loop (ticket/objective driven)
+uv run python examples/fot_daily_backend_loop.py \
+  --objective "Implement API rate limiting for tenant endpoints" \
+  --ticket "API-123" \
+  --deploy-target staging
+
+# Production run requires release signoffs (otherwise status=hold)
+uv run python examples/fot_daily_backend_loop.py \
+  --objective "Ship API-123 to production" \
+  --ticket "API-123" \
+  --deploy-target prod \
+  --release-manager \
+  --cto-signoff
+```
+
 Output:
 ```
 PHASE 1: Initial Binary Analysis

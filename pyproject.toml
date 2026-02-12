@@ -56,7 +56,7 @@ build-backend = "hatchling.build"
 supe = "supe.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["ab", "tasc", "tascer", "supe"]
+packages = ["ab", "tasc", "tascer", "supe", "teams"]
 
 [tool.ruff]
 line-length = 100
@@ -74,7 +74,7 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["ab", "tasc", "tascer", "supe"]
+source = ["ab", "tasc", "tascer", "supe", "teams"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
