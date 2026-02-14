@@ -1979,6 +1979,131 @@ def card(card_id, output_format):
             console.print(table)
 
 
+@memory.group()
+def vault():
+    """Vault: markdown view layer for AB Memory.
+
+    Export cards as markdown files or view the vault index.
+    """
+    pass
+
+
+@vault.command(name='export')
+@click.option('--output-dir', '-o', help='Output directory (default: .supe/vault/)')
+@click.option('--project', '-p', help='Filter by project')
+def vault_export(output_dir, project):
+    """Export all cards as markdown files to a vault directory.
+
+    Creates a folder structure organized by label with YAML frontmatter,
+    binary assets, and a vault index.
+
+    Example: supe memory vault export
+    Example: supe memory vault export --output-dir /tmp/vault --project myapp
+    """
+    from pathlib import Path
+
+    from ab.abdb import ABMemory
+    from ab.vault import export_vault
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    vault_dir = Path(output_dir or ".supe/vault")
+    mem = ABMemory(db_path)
+
+    console.print(f"[cyan]Exporting vault to:[/cyan] {vault_dir}")
+
+    result = export_vault(mem, vault_dir, project=project)
+
+    console.print(f"[green]Exported {result['exported']} cards[/green]")
+    if result["labels"]:
+        console.print(f"[dim]Labels: {', '.join(result['labels'])}[/dim]")
+    console.print(f"[dim]Index: {result['index_path']}[/dim]")
+
+
+@vault.command(name='index')
+@click.option('--project', '-p', help='Filter by project')
+@click.option('--limit', '-n', default=100, help='Max entries')
+@click.option(
+    '--format', '-f', 'output_format',
+    type=click.Choice(['table', 'json', 'markdown']),
+    default='table',
+)
+def vault_index(project, limit, output_format):
+    """Display the vault index (fast card listing with summaries).
+
+    Example: supe memory vault index
+    Example: supe memory vault index --format markdown
+    Example: supe memory vault index --project myapp --format json
+    """
+    import json as json_module
+
+    from ab.abdb import ABMemory
+    from ab.vault import generate_index
+
+    db_path = _get_global_db_path()
+    if not os.path.exists(db_path):
+        console.print("[yellow]No memory database found.[/yellow]")
+        return
+
+    mem = ABMemory(db_path)
+    entries = mem.vault_index(project=project, limit=limit)
+
+    if not entries:
+        console.print("[dim]No cards found.[/dim]")
+        return
+
+    if output_format == "json":
+        output = [
+            {
+                "card_id": e.card_id,
+                "label": e.label,
+                "track": e.track,
+                "summary": e.summary,
+                "strength": e.strength,
+                "recall_count": e.recall_count,
+                "created_at": e.created_at,
+                "buffer_count": e.buffer_count,
+            }
+            for e in entries
+        ]
+        console.print(json_module.dumps(output, indent=2))
+
+    elif output_format == "markdown":
+        console.print(generate_index(entries))
+
+    else:
+        title = "Vault Index"
+        if project:
+            title += f" [{project}]"
+        table = Table(title=title, box=box.ROUNDED)
+        table.add_column("ID", style="dim")
+        table.add_column("Label", style="cyan")
+        table.add_column("Track", style="dim")
+        table.add_column("Summary")
+        table.add_column("Str", style="green", justify="right")
+        table.add_column("Rec", style="dim", justify="right")
+        table.add_column("Bufs", style="dim", justify="right")
+
+        for e in entries:
+            summary = e.summary[:50].replace("\n", " ")
+            strength = f"{e.strength:.1f}" if e.strength else "-"
+            table.add_row(
+                str(e.card_id),
+                e.label,
+                e.track,
+                summary,
+                strength,
+                str(e.recall_count),
+                str(e.buffer_count),
+            )
+
+        console.print(table)
+        console.print(f"\n[dim]Showing {len(entries)} cards[/dim]")
+
+
 @memory.command()
 @click.argument('tool_name')
 @click.option('--input', '-i', 'tool_input', help='Tool input as JSON string')

@@ -64,6 +64,12 @@ from .self_agent import (  # noqa: F401
 from .subselves import LaneManager, propagate_subscriptions  # noqa: F401
 from .transforms import TransformRegistry, apply_transform  # noqa: F401
 from .transforms import registry as transform_registry  # noqa: F401
+from .vault import (  # noqa: F401
+    VaultIndexEntry,
+    card_to_markdown,
+    export_vault,
+    generate_index,
+)
 from .vector_search import (  # noqa: F401
     cosine_similarity,
     embed_text,

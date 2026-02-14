@@ -1228,6 +1228,78 @@ class ABMemory:
 
         return len(to_forget)
 
+    def vault_index(
+        self,
+        project: str | None = None,
+        limit: int = 500,
+    ) -> list:
+        """Fast first-pass index of all cards with summary + strength.
+
+        Single SQL query joining cards -> card_stats. Returns lightweight
+        entries suitable for scanning before deeper recall.
+
+        Args:
+            project: Filter by owner_self (project name). None for all.
+            limit: Maximum entries to return.
+
+        Returns:
+            List of VaultIndexEntry objects.
+        """
+        from .vault import VaultIndexEntry
+
+        cur = self.conn.cursor()
+
+        if project:
+            cur.execute(
+                """
+                SELECT c.id, c.label, c.track, c.master_input, c.owner_self,
+                       c.created_at,
+                       cs.strength, cs.recall_count,
+                       (SELECT COUNT(*) FROM buffers b WHERE b.card_id = c.id) as buffer_count
+                FROM cards c
+                LEFT JOIN card_stats cs ON cs.card_id = c.id
+                WHERE c.forgotten = 0 AND c.owner_self = ?
+                ORDER BY COALESCE(cs.strength, 0) DESC, c.id DESC
+                LIMIT ?
+                """,
+                (project, limit),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT c.id, c.label, c.track, c.master_input, c.owner_self,
+                       c.created_at,
+                       cs.strength, cs.recall_count,
+                       (SELECT COUNT(*) FROM buffers b WHERE b.card_id = c.id) as buffer_count
+                FROM cards c
+                LEFT JOIN card_stats cs ON cs.card_id = c.id
+                WHERE c.forgotten = 0
+                ORDER BY COALESCE(cs.strength, 0) DESC, c.id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+
+        rows = cur.fetchall()
+        entries = []
+        for row in rows:
+            summary = row["master_input"] or ""
+            if not summary:
+                summary = f"{row['label']}-{row['id']}"
+            entries.append(
+                VaultIndexEntry(
+                    card_id=row["id"],
+                    label=row["label"],
+                    track=row["track"] if "track" in row.keys() else "awareness",
+                    summary=summary[:80],
+                    strength=row["strength"] if row["strength"] is not None else 0.0,
+                    recall_count=row["recall_count"] if row["recall_count"] is not None else 0,
+                    created_at=row["created_at"],
+                    buffer_count=row["buffer_count"],
+                )
+            )
+        return entries
+
     def list_forgotten(self, limit: int = 100) -> list[Card]:
         """List forgotten cards (for potential recovery).
 
